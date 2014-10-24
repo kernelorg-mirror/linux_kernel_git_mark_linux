@@ -452,9 +452,9 @@ void lguest_arch_handle_trap(struct lg_cpu *cpu)
 static void adjust_pge(void *on)
 {
 	if (on)
-		write_cr4(read_cr4() | X86_CR4_PGE);
+		cr4_set_bits(X86_CR4_PGE);
 	else
-		write_cr4(read_cr4() & ~X86_CR4_PGE);
+		cr4_clear_bits(X86_CR4_PGE);
 }
 
 /*H:020
