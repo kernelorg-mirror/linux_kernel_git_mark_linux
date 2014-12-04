@@ -33,6 +33,7 @@
 #include <asm/mmu_context.h>
 #include <asm/mmu.h>
 #include <asm/pgtable.h>
+#include <asm/ptdump.h>
 
 struct efi_memory_map memmap;
 
@@ -369,3 +370,23 @@ bool efi_poweroff_required(void)
 {
 	return efi_enabled(EFI_RUNTIME_SERVICES);
 }
+
+#ifdef CONFIG_ARM64_PTDUMP
+static struct addr_marker efi_addr_markers[] = {
+	{ 0,	"EFI runtime services" },
+	{ -1,	NULL },
+};
+
+static struct ptdump_info efi_ptdump_info = {
+	.mm = &efi_mm,
+	.markers = efi_addr_markers,
+	.base_addr = 0,
+};
+
+static int efi_ptdump_init(void)
+{
+	/* TODO: guard this for EFI only */
+	return ptdump_register(&efi_ptdump_info, "efi_page_tables");
+}
+device_initcall(efi_ptdump_init);
+#endif /* CONFIG_ARM64_PTDUMP */
