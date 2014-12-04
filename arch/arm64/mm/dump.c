@@ -26,13 +26,7 @@
 #include <asm/memory.h>
 #include <asm/pgtable.h>
 #include <asm/pgtable-hwdef.h>
-
-#define LOWEST_ADDR	(UL(0xffffffffffffffff) << VA_BITS)
-
-struct addr_marker {
-	unsigned long start_address;
-	const char *name;
-};
+#include <asm/ptdump.h>
 
 enum address_markers_idx {
 	VMALLOC_START_NR = 0,
@@ -198,7 +192,7 @@ static void note_page(struct pg_state *st, unsigned long addr, unsigned level,
 		unsigned long delta;
 
 		if (st->current_prot) {
-			seq_printf(st->seq, "0x%16lx-0x%16lx   ",
+			seq_printf(st->seq, "0x%016lx-0x%016lx   ",
 				   st->start_address, addr);
 
 			delta = (addr - st->start_address) >> 10;
@@ -295,12 +289,13 @@ static void walk_pgd(struct pg_state *st, struct mm_struct *mm, unsigned long st
 
 static int ptdump_show(struct seq_file *m, void *v)
 {
+	struct ptdump_info *info = m->private;
 	struct pg_state st = {
 		.seq = m,
-		.marker = address_markers,
+		.marker = info->markers,
 	};
 
-	walk_pgd(&st, &init_mm, LOWEST_ADDR);
+	walk_pgd(&st, info->mm, info->base_addr);
 
 	note_page(&st, 0, 0, 0);
 	return 0;
@@ -308,7 +303,7 @@ static int ptdump_show(struct seq_file *m, void *v)
 
 static int ptdump_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, ptdump_show, NULL);
+	return single_open(file, ptdump_show, inode->i_private);
 }
 
 static const struct file_operations ptdump_fops = {
@@ -318,9 +313,21 @@ static const struct file_operations ptdump_fops = {
 	.release	= single_release,
 };
 
-static int ptdump_init(void)
+int ptdump_register(struct ptdump_info *info, const char *name)
 {
 	struct dentry *pe;
+	pe = debugfs_create_file(name, 0400, NULL, info, &ptdump_fops);
+	return pe ? 0 : -ENOMEM;
+}
+
+static struct ptdump_info kernel_ptdump_info = {
+	.mm = &init_mm,
+	.markers = address_markers,
+	.base_addr = UL(0xffffffffffffffff) << VA_BITS,
+};
+
+static int ptdump_init(void)
+{
 	unsigned i, j;
 
 	for (i = 0; i < ARRAY_SIZE(pg_level); i++)
@@ -335,8 +342,6 @@ static int ptdump_init(void)
 				(unsigned long)virt_to_page(high_memory);
 #endif
 
-	pe = debugfs_create_file("kernel_page_tables", 0400, NULL, NULL,
-				 &ptdump_fops);
-	return pe ? 0 : -ENOMEM;
+	return ptdump_register(&kernel_ptdump_info, "kernel_page_tables");
 }
 device_initcall(ptdump_init);
