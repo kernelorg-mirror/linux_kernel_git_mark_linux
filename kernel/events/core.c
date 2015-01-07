@@ -872,22 +872,33 @@ void perf_pmu_enable(struct pmu *pmu)
 		pmu->pmu_enable(pmu);
 }
 
-static DEFINE_PER_CPU(struct list_head, rotation_list);
+static DEFINE_PER_CPU(struct list_head, active_ctx_list);
 
 /*
- * perf_pmu_rotate_start() and perf_rotate_context() are fully serialized
- * because they're strictly cpu affine and rotate_start is called with IRQs
- * disabled, while rotate_context is called from IRQ context.
+ * perf_pmu_ctx_activate(), perf_pmu_ctx_deactivate(), and
+ * perf_even_task_tick() are fully serialized because they're strictly cpu
+ * affine and perf_pmu_ctx{activate,deactiveate} are called with IRQs disabled,
+ * while perf_event_task_tick is called from IRQ context.
  */
-static void perf_pmu_rotate_start(struct pmu *pmu)
+static void perf_pmu_ctx_activate(struct pmu *pmu)
 {
 	struct perf_cpu_context *cpuctx = this_cpu_ptr(pmu->pmu_cpu_context);
-	struct list_head *head = this_cpu_ptr(&rotation_list);
+	struct list_head *head = this_cpu_ptr(&active_ctx_list);
 
 	WARN_ON(!irqs_disabled());
 
-	if (list_empty(&cpuctx->rotation_list))
-		list_add(&cpuctx->rotation_list, head);
+	WARN_ON(!list_empty(&cpuctx->active_ctx_list));
+
+	list_add(&cpuctx->active_ctx_list, head);
+}
+
+static void perf_pmu_ctx_deactivate(struct pmu *pmu)
+{
+	struct perf_cpu_context *cpuctx = this_cpu_ptr(pmu->pmu_cpu_context);
+
+	WARN_ON(!irqs_disabled());
+
+	list_del_init(&cpuctx->active_ctx_list);
 }
 
 static void get_ctx(struct perf_event_context *ctx)
@@ -1227,7 +1238,7 @@ list_add_event(struct perf_event *event, struct perf_event_context *ctx)
 
 	list_add_rcu(&event->event_entry, &ctx->event_list);
 	if (!ctx->nr_events)
-		perf_pmu_rotate_start(ctx->pmu);
+		perf_pmu_ctx_activate(ctx->pmu);
 	ctx->nr_events++;
 	if (event->attr.inherit_stat)
 		ctx->nr_stat++;
@@ -1401,6 +1412,8 @@ list_del_event(struct perf_event *event, struct perf_event_context *ctx)
 		ctx->nr_stat--;
 
 	list_del_rcu(&event->event_entry);
+	if (!ctx->nr_events)
+		perf_pmu_ctx_deactivate(ctx->pmu);
 
 	if (event->group_leader == event)
 		list_del_init(&event->group_entry);
@@ -2735,12 +2748,6 @@ static void perf_event_context_sched_in(struct perf_event_context *ctx,
 
 	perf_pmu_enable(ctx->pmu);
 	perf_ctx_unlock(cpuctx, ctx);
-
-	/*
-	 * Since these rotations are per-cpu, we need to ensure the
-	 * cpu-context we got scheduled on is actually rotating.
-	 */
-	perf_pmu_rotate_start(ctx->pmu);
 }
 
 /*
@@ -3029,24 +3036,22 @@ static void rotate_ctx(struct perf_event_context *ctx)
 }
 
 /*
- * perf_pmu_rotate_start() and perf_rotate_context() are fully serialized
+ * perf_pmu_ctx_activate() and perf_rotate_context() are fully serialized
  * because they're strictly cpu affine and rotate_start is called with IRQs
  * disabled, while rotate_context is called from IRQ context.
  */
 static int perf_rotate_context(struct perf_cpu_context *cpuctx)
 {
 	struct perf_event_context *ctx = NULL;
-	int rotate = 0, remove = 1;
+	int rotate = 0;
 
 	if (cpuctx->ctx.nr_events) {
-		remove = 0;
 		if (cpuctx->ctx.nr_events != cpuctx->ctx.nr_active)
 			rotate = 1;
 	}
 
 	ctx = cpuctx->task_ctx;
 	if (ctx && ctx->nr_events) {
-		remove = 0;
 		if (ctx->nr_events != ctx->nr_active)
 			rotate = 1;
 	}
@@ -3070,8 +3075,6 @@ static int perf_rotate_context(struct perf_cpu_context *cpuctx)
 	perf_pmu_enable(cpuctx->ctx.pmu);
 	perf_ctx_unlock(cpuctx, cpuctx->task_ctx);
 done:
-	if (remove)
-		list_del_init(&cpuctx->rotation_list);
 
 	return rotate;
 }
@@ -3089,7 +3092,7 @@ bool perf_event_can_stop_tick(void)
 
 void perf_event_task_tick(void)
 {
-	struct list_head *head = this_cpu_ptr(&rotation_list);
+	struct list_head *head = this_cpu_ptr(&active_ctx_list);
 	struct perf_cpu_context *cpuctx, *tmp;
 	struct perf_event_context *ctx;
 	int throttled;
@@ -3099,7 +3102,7 @@ void perf_event_task_tick(void)
 	__this_cpu_inc(perf_throttled_seq);
 	throttled = __this_cpu_xchg(perf_throttled_count, 0);
 
-	list_for_each_entry_safe(cpuctx, tmp, head, rotation_list) {
+	list_for_each_entry_safe(cpuctx, tmp, head, active_ctx_list) {
 		ctx = &cpuctx->ctx;
 		perf_adjust_freq_unthr_context(ctx, throttled);
 
@@ -6958,7 +6961,7 @@ skip_type:
 
 		__perf_cpu_hrtimer_init(cpuctx, cpu);
 
-		INIT_LIST_HEAD(&cpuctx->rotation_list);
+		INIT_LIST_HEAD(&cpuctx->active_ctx_list);
 		cpuctx->unique_pmu = pmu;
 	}
 
@@ -8334,7 +8337,7 @@ static void __init perf_event_init_all_cpus(void)
 	for_each_possible_cpu(cpu) {
 		swhash = &per_cpu(swevent_htable, cpu);
 		mutex_init(&swhash->hlist_mutex);
-		INIT_LIST_HEAD(&per_cpu(rotation_list, cpu));
+		INIT_LIST_HEAD(&per_cpu(active_ctx_list, cpu));
 	}
 }
 
@@ -8355,21 +8358,10 @@ static void perf_event_init_cpu(int cpu)
 }
 
 #if defined CONFIG_HOTPLUG_CPU || defined CONFIG_KEXEC
-static void perf_pmu_rotate_stop(struct pmu *pmu)
-{
-	struct perf_cpu_context *cpuctx = this_cpu_ptr(pmu->pmu_cpu_context);
-
-	WARN_ON(!irqs_disabled());
-
-	list_del_init(&cpuctx->rotation_list);
-}
-
 static void __perf_event_exit_context(void *__info)
 {
 	struct remove_event re = { .detach_group = true };
 	struct perf_event_context *ctx = __info;
-
-	perf_pmu_rotate_stop(ctx->pmu);
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(re.event, &ctx->event_list, event_entry)
