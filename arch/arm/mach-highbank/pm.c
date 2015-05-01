@@ -16,19 +16,15 @@
 
 #include <linux/cpu_pm.h>
 #include <linux/init.h>
+#include <linux/psci.h>
 #include <linux/suspend.h>
 
 #include <asm/suspend.h>
-#include <asm/psci.h>
 
 static int highbank_suspend_finish(unsigned long val)
 {
-	const struct psci_power_state ps = {
-		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
-		.affinity_level = 1,
-	};
-
-	return psci_ops.cpu_suspend(ps, __pa(cpu_resume));
+	/* Aff1 power down */
+	return psci_ops.cpu_suspend(0x01010000, __pa(cpu_resume));
 }
 
 static int highbank_pm_enter(suspend_state_t state)

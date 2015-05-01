@@ -25,16 +25,15 @@
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/platform_device.h>
+#include <linux/psci.h>
+
 #include <asm/cpuidle.h>
 #include <asm/suspend.h>
-#include <asm/psci.h>
 
 static int calxeda_idle_finish(unsigned long val)
 {
-	const struct psci_power_state ps = {
-		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
-	};
-	return psci_ops.cpu_suspend(ps, __pa(cpu_resume));
+	/* Aff0 power down */
+	return psci_ops.cpu_suspend(0x00010000, __pa(cpu_resume));
 }
 
 static int calxeda_pwrdown_idle(struct cpuidle_device *dev,
