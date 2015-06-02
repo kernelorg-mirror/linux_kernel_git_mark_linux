@@ -23,6 +23,7 @@
 #include <linux/linkage.h>
 #include <linux/init.h>
 #include <linux/irqchip/arm-gic-v3.h>
+#include <linux/pe.h>
 
 #include <asm/assembler.h>
 #include <asm/ptrace.h>
@@ -109,8 +110,8 @@ pe_header:
 	.ascii	"PE"
 	.short 	0
 coff_header:
-	.short	0xaa64				// AArch64
-	.short	2				// nr_sections
+	.short	IMAGE_FILE_MACHINE_ARM64	// Machine
+	.short	2				// NumberOfSections
 	.long	0 				// TimeDateStamp
 	.long	0				// PointerToSymbolTable
 	.long	1				// NumberOfSymbols
@@ -120,7 +121,7 @@ coff_header:
 						// IMAGE_FILE_EXECUTABLE_IMAGE |
 						// IMAGE_FILE_LINE_NUMS_STRIPPED
 optional_header:
-	.short	0x20b				// PE32+ format
+	.short	PE_OPT_MAGIC_PE32PLUS		// PE32+ format
 	.byte	0x02				// MajorLinkerVersion
 	.byte	0x14				// MinorLinkerVersion
 	.long	_end - stext			// SizeOfCode
@@ -146,7 +147,7 @@ extra_header_fields:
 	// Everything before the kernel image is considered part of the header
 	.long	__efistub_stext_offset		// SizeOfHeaders
 	.long	0				// CheckSum
-	.short	0xa				// Subsystem (EFI application)
+	.short	IMAGE_SUBSYSTEM_EFI_APPLICATION	// Subsystem
 	.short	0				// DllCharacteristics
 	.quad	0				// SizeOfStackReserve
 	.quad	0				// SizeOfStackCommit
