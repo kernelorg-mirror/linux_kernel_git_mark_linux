@@ -58,6 +58,16 @@
 #endif
 	.endm
 
+	/*
+	 * Temporary hack to hook some EL0 handlers through C while developing.
+	 */
+	.macro hook_el0_sync
+	mov	x0, sp
+	bl	__el0_sync
+	b	ret_to_user
+	.endm
+
+
 /*
  * Bad Abort numbers
  *-----------------
@@ -242,17 +252,6 @@ scno	.req	x26		// syscall number
 stbl	.req	x27		// syscall table pointer
 tsk	.req	x28		// current thread_info
 
-/*
- * Interrupt handling.
- */
-	.macro	irq_handler
-	ldr_l	x1, handle_arch_irq
-	mov	x0, sp
-	irq_stack_entry
-	blr	x1
-	irq_stack_exit
-	.endm
-
 	.text
 
 /*
@@ -369,29 +368,9 @@ ENDPROC(el1_irq)
 	.align	6
 el0_sync:
 	kernel_entry 0
-	mrs	x25, esr_el1			// read the syndrome register
-	lsr	x24, x25, #ESR_ELx_EC_SHIFT	// exception class
-	cmp	x24, #ESR_ELx_EC_SVC64		// SVC in 64-bit state
-	b.eq	el0_svc
-	cmp	x24, #ESR_ELx_EC_DABT_LOW	// data abort in EL0
-	b.eq	el0_da
-	cmp	x24, #ESR_ELx_EC_IABT_LOW	// instruction abort in EL0
-	b.eq	el0_ia
-	cmp	x24, #ESR_ELx_EC_FP_ASIMD	// FP/ASIMD access
-	b.eq	el0_fpsimd_acc
-	cmp	x24, #ESR_ELx_EC_FP_EXC64	// FP/ASIMD exception
-	b.eq	el0_fpsimd_exc
-	cmp	x24, #ESR_ELx_EC_SYS64		// configurable trap
-	b.eq	el0_undef
-	cmp	x24, #ESR_ELx_EC_SP_ALIGN	// stack alignment exception
-	b.eq	el0_sp_pc
-	cmp	x24, #ESR_ELx_EC_PC_ALIGN	// pc alignment exception
-	b.eq	el0_sp_pc
-	cmp	x24, #ESR_ELx_EC_UNKNOWN	// unknown exception in EL0
-	b.eq	el0_undef
-	cmp	x24, #ESR_ELx_EC_BREAKPT_LOW	// debug exception in EL0
-	b.ge	el0_dbg
-	b	el0_inv
+	mov	x0, sp
+	bl	__el0_sync
+	kernel_exit 0
 
 #ifdef CONFIG_COMPAT
 	.align	6
@@ -438,10 +417,15 @@ el0_svc_compat:
 	.align	6
 el0_irq_compat:
 	kernel_entry 0, 32
-	b	el0_irq_naked
+	mov	x0, sp
+	irq_stack_entry
+	bl	__el0_irq_naked
+	irq_stack_exit
+	b	ret_to_user
 #endif
 
 el0_da:
+	hook_el0_sync
 	/*
 	 * Data abort handling
 	 */
@@ -455,6 +439,7 @@ el0_da:
 	bl	do_mem_abort
 	b	ret_to_user
 el0_ia:
+	hook_el0_sync
 	/*
 	 * Instruction abort handling
 	 */
@@ -535,18 +520,10 @@ ENDPROC(el0_sync)
 	.align	6
 el0_irq:
 	kernel_entry 0
-el0_irq_naked:
-	enable_dbg
-#ifdef CONFIG_TRACE_IRQFLAGS
-	bl	trace_hardirqs_off
-#endif
-
-	ct_user_exit
-	irq_handler
-
-#ifdef CONFIG_TRACE_IRQFLAGS
-	bl	trace_hardirqs_on
-#endif
+	mov	x0, sp
+	irq_stack_entry
+	bl	__el0_irq_naked
+	irq_stack_exit
 	b	ret_to_user
 ENDPROC(el0_irq)
 
