@@ -789,10 +789,3 @@ __ni_sys_trace:
 	bl	do_ni_syscall
 	b	__sys_trace_return
 
-/*
- * Special system call wrappers.
- */
-ENTRY(sys_rt_sigreturn_wrapper)
-	mov	x0, sp
-	b	sys_rt_sigreturn
-ENDPROC(sys_rt_sigreturn_wrapper)
