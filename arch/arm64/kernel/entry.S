@@ -348,70 +348,9 @@ ENDPROC(el1_error_invalid)
 	.align	6
 el1_sync:
 	kernel_entry 1
-	mrs	x1, esr_el1			// read the syndrome register
-	lsr	x24, x1, #ESR_ELx_EC_SHIFT	// exception class
-	cmp	x24, #ESR_ELx_EC_DABT_CUR	// data abort in EL1
-	b.eq	el1_da
-	cmp	x24, #ESR_ELx_EC_SYS64		// configurable trap
-	b.eq	el1_undef
-	cmp	x24, #ESR_ELx_EC_SP_ALIGN	// stack alignment exception
-	b.eq	el1_sp_pc
-	cmp	x24, #ESR_ELx_EC_PC_ALIGN	// pc alignment exception
-	b.eq	el1_sp_pc
-	cmp	x24, #ESR_ELx_EC_UNKNOWN	// unknown exception in EL1
-	b.eq	el1_undef
-	cmp	x24, #ESR_ELx_EC_BREAKPT_CUR	// debug exception in EL1
-	b.ge	el1_dbg
-	b	el1_inv
-el1_da:
-	/*
-	 * Data abort handling
-	 */
-	mrs	x0, far_el1
-	enable_dbg
-	// re-enable interrupts if they were enabled in the aborted context
-	tbnz	x23, #7, 1f			// PSR_I_BIT
-	enable_irq
-1:
-	mov	x2, sp				// struct pt_regs
-	bl	do_mem_abort
-
-	// disable interrupts before pulling preserved data off the stack
-	disable_irq
-	kernel_exit 1
-el1_sp_pc:
-	/*
-	 * Stack or PC alignment exception handling
-	 */
-	mrs	x0, far_el1
-	enable_dbg
-	mov	x2, sp
-	b	do_sp_pc_abort
-el1_undef:
-	/*
-	 * Undefined instruction
-	 */
-	enable_dbg
 	mov	x0, sp
-	b	do_undefinstr
-el1_dbg:
-	/*
-	 * Debug exception handling
-	 */
-	cmp	x24, #ESR_ELx_EC_BRK64		// if BRK64
-	cinc	x24, x24, eq			// set bit '0'
-	tbz	x24, #0, el1_inv		// EL1 only
-	mrs	x0, far_el1
-	mov	x2, sp				// struct pt_regs
-	bl	do_debug_exception
+	bl	__el1_sync
 	kernel_exit 1
-el1_inv:
-	// TODO: add support for undefined instructions in kernel mode
-	enable_dbg
-	mov	x0, sp
-	mov	x2, x1
-	mov	x1, #BAD_SYNC
-	b	bad_mode
 ENDPROC(el1_sync)
 
 	.align	6
