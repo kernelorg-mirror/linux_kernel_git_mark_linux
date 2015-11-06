@@ -222,6 +222,11 @@ static void el0_prepare_return(struct pt_regs *regs)
 	workaround_cortex_a53_845719();
 }
 
+void el0_ret_from_fork(struct pt_regs *regs)
+{
+	el0_prepare_return(regs);
+}
+
 asmlinkage void __el1_irq(struct pt_regs *regs)
 {
 	local_dbg_enable();

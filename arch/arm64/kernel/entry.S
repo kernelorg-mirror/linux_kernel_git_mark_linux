@@ -596,8 +596,9 @@ ENTRY(ret_from_fork)
 	cbz	x19, 1f				// not a kernel thread
 	mov	x0, x20
 	blr	x19
-1:	get_thread_info tsk
-	b	ret_to_user
+1:	mov	x0, sp
+	bl	el0_ret_from_fork
+	kernel_exit 0
 ENDPROC(ret_from_fork)
 
 /*
