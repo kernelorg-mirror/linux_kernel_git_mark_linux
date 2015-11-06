@@ -159,24 +159,6 @@
 	ct_user_enter
 	ldr	x23, [sp, #S_SP]		// load return stack pointer
 	msr	sp_el0, x23
-#ifdef CONFIG_ARM64_ERRATUM_845719
-alternative_if_not ARM64_WORKAROUND_845719
-	nop
-	nop
-#ifdef CONFIG_PID_IN_CONTEXTIDR
-	nop
-#endif
-alternative_else
-	tbz	x22, #4, 1f
-#ifdef CONFIG_PID_IN_CONTEXTIDR
-	mrs	x29, contextidr_el1
-	msr	contextidr_el1, x29
-#else
-	msr contextidr_el1, xzr
-#endif
-1:
-alternative_endif
-#endif
 	.endif
 	msr	elr_el1, x21			// set up the return data
 	msr	spsr_el1, x22
