@@ -534,7 +534,7 @@ static inline phys_addr_t pgd_page_paddr(pgd_t pgd)
 #define pud_offset(dir, addr)		((pud_t *)__va(pud_offset_phys((dir), (addr))))
 
 #define pud_fixmap(addr)		((pud_t *)set_fixmap_offset(FIX_PUD, addr))
-#define pud_fixmap_offset(pgd, addr)	pud_fixmap(pmd_offset_phys(pgd, addr))
+#define pud_fixmap_offset(pgd, addr)	pud_fixmap(pud_offset_phys(pgd, addr))
 #define pud_fixmap_unmap()		clear_fixmap(FIX_PUD)
 
 #define pgd_page(pgd)		pfn_to_page(__phys_to_pfn(pgd_val(pgd) & PHYS_MASK))
