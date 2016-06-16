@@ -148,43 +148,6 @@
 	mrs	\rd, sp_el0
 	.endm
 
-	.macro	irq_stack_entry
-	mov	x19, sp			// preserve the original sp
-
-	/*
-	 * Compare sp with the current thread_info, if the top
-	 * ~(THREAD_SIZE - 1) bits match, we are on a task stack, and
-	 * should switch to the irq stack.
-	 */
-	and	x25, x19, #~(THREAD_SIZE - 1)
-	cmp	x25, tsk
-	b.ne	9998f
-
-	this_cpu_ptr irq_stack, x25, x26
-	mov	x26, #IRQ_STACK_START_SP
-	add	x26, x25, x26
-
-	/* switch to the irq stack */
-	mov	sp, x26
-
-	/*
-	 * Add a dummy stack frame, this non-standard format is fixed up
-	 * by unwind_frame()
-	 */
-	stp     x29, x19, [sp, #-16]!
-	mov	x29, sp
-
-9998:
-	.endm
-
-	/*
-	 * x19 should be preserved between irq_stack_entry and
-	 * irq_stack_exit.
-	 */
-	.macro	irq_stack_exit
-	mov	sp, x19
-	.endm
-
 /*
  * These are the registers used in the syscall handler, and allow us to
  * have in theory up to 7 arguments to a function - x0 to x6.
@@ -297,9 +260,7 @@ ENDPROC(el1_sync)
 el1_irq:
 	kernel_entry 1
 	mov	x0, sp
-	irq_stack_entry
 	bl	__el1_irq
-	irq_stack_exit
 	kernel_exit 1
 ENDPROC(el1_irq)
 
@@ -318,9 +279,7 @@ ENDPROC(el0_sync)
 el0_irq:
 	kernel_entry 0
 	mov	x0, sp
-	irq_stack_entry
 	bl	__el0_irq_naked
-	irq_stack_exit
 	kernel_exit 0
 ENDPROC(el0_irq)
 
@@ -337,9 +296,7 @@ ENDPROC(el0_sync_compat)
 el0_irq_compat:
 	kernel_entry 0, 32
 	mov	x0, sp
-	irq_stack_entry
 	bl	__el0_irq_naked
-	irq_stack_exit
 	kernel_exit 0
 ENDPROC(el0_irq_compat)
 #endif

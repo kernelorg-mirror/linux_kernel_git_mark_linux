@@ -227,11 +227,56 @@ void el0_ret_from_fork(struct pt_regs *regs)
 	el0_prepare_return(regs);
 }
 
+static void __handle_irq_onstack(struct pt_regs *regs)
+{
+	register struct pt_regs *arg asm("x0") = regs;
+	unsigned long irqsp = IRQ_STACK_PTR(smp_processor_id());
+	unsigned long tmp;
+
+	/*
+	 * The first item on the irq stack is a non-standard frame record,
+	 * consisting of the saved FP and SP rather than FP and LR. In
+	 * unwind_frame we have a special case to use this when walking form
+	 * the irq stack to the task stack, as otherwise we cannot determine
+	 * the SP of the previous task stack frame.
+	 *
+	 * Note that irqsp and tmp must be callee-saved registers due to our
+	 * other clobbers.
+	 */
+	asm volatile(
+	"	mov	%[tmp], sp\n"
+	"	mov	sp, %[irqsp]\n"
+	"	stp	x29, %[tmp], [sp, #-16]!\n"
+	"	mov	x29, sp\n"
+	"	blr	%[func]\n"
+	"	ldr	x29, [sp]\n"
+	"	mov	sp, %[tmp]\n"
+	: [regs] "=&r" (arg), /* x0 argument to func */
+	  [tmp] "=&r" (tmp)
+	: [irqsp] "r" (irqsp),
+	  [func] "r" (handle_arch_irq)
+	: "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10",
+	  "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x30",
+	  "cc", "memory"
+	);
+}
+
+static void handle_irq_onstack(struct pt_regs *regs)
+{
+	unsigned long sp = current_stack_pointer;
+
+	if (on_irq_stack(sp, smp_processor_id()))
+		handle_arch_irq(regs);
+	else
+		__handle_irq_onstack(regs);
+}
+
+
 asmlinkage void __el1_irq(struct pt_regs *regs)
 {
 	local_dbg_enable();
 	trace_hardirqs_off();
-	handle_arch_irq(regs);
+	handle_irq_onstack(regs);
 	el1_preempt();
 	trace_hardirqs_on();
 }
@@ -242,7 +287,7 @@ asmlinkage void __el0_irq_naked(struct pt_regs *regs)
 	local_dbg_enable();
 	trace_hardirqs_off();
 	user_exit(); /* balanced in kernel_exit ??? */
-	handle_arch_irq(regs);
+	handle_irq_onstack(regs);
 	el1_preempt();
 	trace_hardirqs_on();
 	el0_prepare_return(regs);
