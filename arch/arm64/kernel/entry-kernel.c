@@ -227,6 +227,7 @@ void el0_ret_from_fork(struct pt_regs *regs)
 	el0_prepare_return(regs);
 }
 
+#if 0
 static void __handle_irq_onstack(struct pt_regs *regs)
 {
 	register struct pt_regs *arg asm("x0") = regs;
@@ -260,6 +261,14 @@ static void __handle_irq_onstack(struct pt_regs *regs)
 	  "cc", "memory"
 	);
 }
+#else
+void call_on_stack(void *arg, void *func, unsigned long stack);
+
+static void __handle_irq_onstack(struct pt_regs *regs)
+{
+	call_on_stack(regs, handle_arch_irq, IRQ_STACK_PTR(smp_processor_id()));
+}
+#endif
 
 static void handle_irq_onstack(struct pt_regs *regs)
 {

@@ -347,3 +347,36 @@ ENTRY(ret_from_fork)
 	kernel_exit 0
 ENDPROC(ret_from_fork)
 
+/*
+ * x0 - arg
+ * x1 - func
+ * x2 - stack
+ */
+ENTRY(call_on_stack)
+	/*
+	 * We need to save our LR somewhere, so we may as well make a frame
+	 * record.
+	 */
+	stp	x29, x30, [sp, #-16]!
+	mov	x29, sp
+
+	mov	sp, x2
+
+	/*
+	 * For the first frame on the IRQ stack, we use a special format
+	 * (handled by unwind_frame), where we store our previous SP rather the
+	 * than LR. Since we just made a frame, our FP is the same as our
+	 * original SP.
+	 */
+	stp	x29, x29, [sp, #-16]!
+	mov	x29, sp
+
+	blr	x1
+
+	ldp	x29, xzr, [sp], #16
+	mov	sp, x29
+
+	ldp	x29, x30, [sp], #16
+
+	ret
+ENDPROC(call_on_stack)
