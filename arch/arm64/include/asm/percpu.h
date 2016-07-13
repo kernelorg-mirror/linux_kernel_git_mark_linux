@@ -18,7 +18,7 @@
 
 static inline void set_my_cpu_offset(unsigned long off)
 {
-	asm volatile("msr tpidr_el1, %0" :: "r" (off) : "memory");
+	asm volatile("msr tpidr_el1, %0; mov x28, %0" :: "r" (off) : "memory");
 }
 
 static inline unsigned long __my_cpu_offset(void)
@@ -29,249 +29,175 @@ static inline unsigned long __my_cpu_offset(void)
 	 * We want to allow caching the value, so avoid using volatile and
 	 * instead use a fake stack read to hazard against barrier().
 	 */
-	asm("mrs %0, tpidr_el1" : "=r" (off) :
+	asm("mov %0, x28" : "=r" (off) :
 		"Q" (*(const unsigned long *)current_stack_pointer));
 
 	return off;
 }
 #define __my_cpu_offset __my_cpu_offset()
 
-#define PERCPU_OP(op, asm_op)						\
-static inline unsigned long __percpu_##op(void *ptr,			\
-			unsigned long val, int size)			\
-{									\
-	unsigned long loop, ret;					\
-									\
-	switch (size) {							\
-	case 1:								\
-		do {							\
-			asm ("//__per_cpu_" #op "_1\n"			\
-			"ldxrb	  %w[ret], %[ptr]\n"			\
-			#asm_op " %w[ret], %w[ret], %w[val]\n"		\
-			"stxrb	  %w[loop], %w[ret], %[ptr]\n"		\
-			: [loop] "=&r" (loop), [ret] "=&r" (ret),	\
-			  [ptr] "+Q"(*(u8 *)ptr)			\
-			: [val] "Ir" (val));				\
-		} while (loop);						\
-		break;							\
-	case 2:								\
-		do {							\
-			asm ("//__per_cpu_" #op "_2\n"			\
-			"ldxrh	  %w[ret], %[ptr]\n"			\
-			#asm_op " %w[ret], %w[ret], %w[val]\n"		\
-			"stxrh	  %w[loop], %w[ret], %[ptr]\n"		\
-			: [loop] "=&r" (loop), [ret] "=&r" (ret),	\
-			  [ptr]  "+Q"(*(u16 *)ptr)			\
-			: [val] "Ir" (val));				\
-		} while (loop);						\
-		break;							\
-	case 4:								\
-		do {							\
-			asm ("//__per_cpu_" #op "_4\n"			\
-			"ldxr	  %w[ret], %[ptr]\n"			\
-			#asm_op " %w[ret], %w[ret], %w[val]\n"		\
-			"stxr	  %w[loop], %w[ret], %[ptr]\n"		\
-			: [loop] "=&r" (loop), [ret] "=&r" (ret),	\
-			  [ptr] "+Q"(*(u32 *)ptr)			\
-			: [val] "Ir" (val));				\
-		} while (loop);						\
-		break;							\
-	case 8:								\
-		do {							\
-			asm ("//__per_cpu_" #op "_8\n"			\
-			"ldxr	  %[ret], %[ptr]\n"			\
-			#asm_op " %[ret], %[ret], %[val]\n"		\
-			"stxr	  %w[loop], %[ret], %[ptr]\n"		\
-			: [loop] "=&r" (loop), [ret] "=&r" (ret),	\
-			  [ptr] "+Q"(*(u64 *)ptr)			\
-			: [val] "Ir" (val));				\
-		} while (loop);						\
-		break;							\
-	default:							\
-		BUILD_BUG();						\
-	}								\
-									\
-	return ret;							\
-}
+#define __PCP_W_1	"w"
+#define __PCP_W_2	"w"
+#define __PCP_W_4	"w"
+#define __PCP_W_8	""
+#define __PCP_W(n)	__PCP_W_ ## n
 
-PERCPU_OP(add, add)
-PERCPU_OP(and, and)
-PERCPU_OP(or, orr)
-#undef PERCPU_OP
+#define __PCP_S_1	"b"
+#define __PCP_S_2	"h"
+#define __PCP_S_4	""
+#define __PCP_S_8	""
+#define __PCP_S(n)	__PCP_S_ ## n
 
-static inline unsigned long __percpu_read(void *ptr, int size)
-{
-	unsigned long ret;
-
-	switch (size) {
-	case 1:
-		ret = ACCESS_ONCE(*(u8 *)ptr);
-		break;
-	case 2:
-		ret = ACCESS_ONCE(*(u16 *)ptr);
-		break;
-	case 4:
-		ret = ACCESS_ONCE(*(u32 *)ptr);
-		break;
-	case 8:
-		ret = ACCESS_ONCE(*(u64 *)ptr);
-		break;
-	default:
-		BUILD_BUG();
-	}
-
-	return ret;
-}
-
-static inline void __percpu_write(void *ptr, unsigned long val, int size)
-{
-	switch (size) {
-	case 1:
-		ACCESS_ONCE(*(u8 *)ptr) = (u8)val;
-		break;
-	case 2:
-		ACCESS_ONCE(*(u16 *)ptr) = (u16)val;
-		break;
-	case 4:
-		ACCESS_ONCE(*(u32 *)ptr) = (u32)val;
-		break;
-	case 8:
-		ACCESS_ONCE(*(u64 *)ptr) = (u64)val;
-		break;
-	default:
-		BUILD_BUG();
-	}
-}
-
-static inline unsigned long __percpu_xchg(void *ptr, unsigned long val,
-						int size)
-{
-	unsigned long ret, loop;
-
-	switch (size) {
-	case 1:
-		do {
-			asm ("//__percpu_xchg_1\n"
-			"ldxrb %w[ret], %[ptr]\n"
-			"stxrb %w[loop], %w[val], %[ptr]\n"
-			: [loop] "=&r"(loop), [ret] "=&r"(ret),
-			  [ptr] "+Q"(*(u8 *)ptr)
-			: [val] "r" (val));
-		} while (loop);
-		break;
-	case 2:
-		do {
-			asm ("//__percpu_xchg_2\n"
-			"ldxrh %w[ret], %[ptr]\n"
-			"stxrh %w[loop], %w[val], %[ptr]\n"
-			: [loop] "=&r"(loop), [ret] "=&r"(ret),
-			  [ptr] "+Q"(*(u16 *)ptr)
-			: [val] "r" (val));
-		} while (loop);
-		break;
-	case 4:
-		do {
-			asm ("//__percpu_xchg_4\n"
-			"ldxr %w[ret], %[ptr]\n"
-			"stxr %w[loop], %w[val], %[ptr]\n"
-			: [loop] "=&r"(loop), [ret] "=&r"(ret),
-			  [ptr] "+Q"(*(u32 *)ptr)
-			: [val] "r" (val));
-		} while (loop);
-		break;
-	case 8:
-		do {
-			asm ("//__percpu_xchg_8\n"
-			"ldxr %[ret], %[ptr]\n"
-			"stxr %w[loop], %[val], %[ptr]\n"
-			: [loop] "=&r"(loop), [ret] "=&r"(ret),
-			  [ptr] "+Q"(*(u64 *)ptr)
-			: [val] "r" (val));
-		} while (loop);
-		break;
-	default:
-		BUILD_BUG();
-	}
-
-	return ret;
-}
-
-#define _percpu_read(pcp)						\
+#define ____PCP_READ(n, __pcp)						\
 ({									\
-	typeof(pcp) __retval;						\
-	preempt_disable();						\
-	__retval = (typeof(pcp))__percpu_read(raw_cpu_ptr(&(pcp)), 	\
-					      sizeof(pcp));		\
-	preempt_enable();						\
-	__retval;							\
+	typeof(__pcp) __ret;						\
+	asm("ldr" __PCP_S(n) " %" __PCP_W(n) "[ret], [%[ptr], x28]"	\
+	    : [ret] "=r" (__ret)					\
+	    : [ptr] "r" (&__pcp), [force_hazard] "Q" (__pcp));		\
+	__ret;								\
 })
 
-#define _percpu_write(pcp, val)						\
-do {									\
-	preempt_disable();						\
-	__percpu_write(raw_cpu_ptr(&(pcp)), (unsigned long)(val), 	\
-				sizeof(pcp));				\
-	preempt_enable();						\
-} while(0)								\
+#define this_cpu_read_1(pcp)		____PCP_READ(1, pcp)
+#define this_cpu_read_2(pcp)		____PCP_READ(2, pcp)
+#define this_cpu_read_4(pcp)		____PCP_READ(4, pcp)
+#define this_cpu_read_8(pcp)		____PCP_READ(8, pcp)
 
-#define _pcp_protect(operation, pcp, val)			\
-({								\
-	typeof(pcp) __retval;					\
-	preempt_disable();					\
-	__retval = (typeof(pcp))operation(raw_cpu_ptr(&(pcp)),	\
-					  (val), sizeof(pcp));	\
-	preempt_enable();					\
-	__retval;						\
+#define ____PCP_WRITE(n, __pcp, __val)					\
+({									\
+	asm("str" __PCP_S(n) " %" __PCP_W(n) "[val], [%[pcp], x28]"	\
+	    : [force_hazard] "=Q" (__pcp)				\
+	    : [val] "r" (__val), [pcp] "r" (&__pcp));			\
 })
 
-#define _percpu_add(pcp, val) \
-	_pcp_protect(__percpu_add, pcp, val)
+#define this_cpu_write_1(pcp, val)	____PCP_WRITE(1, pcp, val)
+#define this_cpu_write_2(pcp, val)	____PCP_WRITE(2, pcp, val)
+#define this_cpu_write_4(pcp, val)	____PCP_WRITE(4, pcp, val)
+#define this_cpu_write_8(pcp, val)	____PCP_WRITE(8, pcp, val)
 
-#define _percpu_add_return(pcp, val) _percpu_add(pcp, val)
+#define __PCP_OP(n, __pcp, __i, __op, __cl)					\
+({										\
+	unsigned long __ret, __tmp, __off, __ptr;				\
+										\
+	asm volatile(								\
+	"1:	mov	%[off], x28\n"						\
+	"	add	%[ptr], %[pcp], %[off]\n"				\
+	"	ldxr" __PCP_S(n) "\t%" __PCP_W(n) "[ret], [%[ptr]]\n"		\
+	"	eor	%[tmp], %[off], x28\n"					\
+	"	cbnz	%[tmp], 1b\n"						\
+	"	" #__op " %[ret], %[ret], %[i]\n"				\
+	"	stxr" __PCP_S(n) "\t%w[tmp], %" __PCP_W(n) "[ret], [%[ptr]]\n"	\
+	"	cbnz	%[tmp], 1b\n"						\
+	: [ret] "=&r" (__ret), [off] "=&r" (__off), [tmp] "=&r" (__tmp),	\
+	  [ptr] "=&r" (__ptr), [force_hazard] "+Q" (__pcp)			\
+	: [pcp] "r" (&__pcp), [i] "r" (__i)					\
+	: __cl									\
+	);									\
+										\
+	(typeof(__pcp))__ret;							\
+})
 
-#define _percpu_and(pcp, val) \
-	_pcp_protect(__percpu_and, pcp, val)
+#define this_cpu_add_1(pcp, val)		__PCP_OP(1, pcp, val, add, )
+#define this_cpu_add_2(pcp, val)		__PCP_OP(2, pcp, val, add, )
+#define this_cpu_add_4(pcp, val)		__PCP_OP(4, pcp, val, add, )
+#define this_cpu_add_8(pcp, val)		__PCP_OP(8, pcp, val, add, )
 
-#define _percpu_or(pcp, val) \
-	_pcp_protect(__percpu_or, pcp, val)
+#define this_cpu_add_return_1(pcp, val)		__PCP_OP(1, pcp, val, add, "memory")
+#define this_cpu_add_return_2(pcp, val)		__PCP_OP(2, pcp, val, add, "memory")
+#define this_cpu_add_return_4(pcp, val)		__PCP_OP(4, pcp, val, add, "memory")
+#define this_cpu_add_return_8(pcp, val)		__PCP_OP(8, pcp, val, add, "memory")
 
-#define _percpu_xchg(pcp, val) (typeof(pcp)) \
-	_pcp_protect(__percpu_xchg, pcp, (unsigned long)(val))
+#define this_cpu_and_1(pcp, val)		__PCP_OP(1, pcp, val, and, )
+#define this_cpu_and_2(pcp, val)		__PCP_OP(2, pcp, val, and, )
+#define this_cpu_and_4(pcp, val)		__PCP_OP(4, pcp, val, and, )
+#define this_cpu_and_8(pcp, val)		__PCP_OP(8, pcp, val, and, )
 
-#define this_cpu_add_1(pcp, val) _percpu_add(pcp, val)
-#define this_cpu_add_2(pcp, val) _percpu_add(pcp, val)
-#define this_cpu_add_4(pcp, val) _percpu_add(pcp, val)
-#define this_cpu_add_8(pcp, val) _percpu_add(pcp, val)
+#define this_cpu_or_1(pcp, val)			__PCP_OP(1, pcp, val, orr, )
+#define this_cpu_or_2(pcp, val)			__PCP_OP(2, pcp, val, orr, )
+#define this_cpu_or_4(pcp, val)			__PCP_OP(4, pcp, val, orr, )
+#define this_cpu_or_8(pcp, val)			__PCP_OP(8, pcp, val, orr, )
 
-#define this_cpu_add_return_1(pcp, val) _percpu_add_return(pcp, val)
-#define this_cpu_add_return_2(pcp, val) _percpu_add_return(pcp, val)
-#define this_cpu_add_return_4(pcp, val) _percpu_add_return(pcp, val)
-#define this_cpu_add_return_8(pcp, val) _percpu_add_return(pcp, val)
+#define __PCP_XCHG(n, __pcp, __new)						\
+({										\
+	unsigned long __ret, __tmp, __off, __ptr;				\
+										\
+	asm volatile(								\
+	"1:	mov	%[off], x28\n"						\
+	"	add	%[ptr], %[pcp], %[off]\n"				\
+	"	ldxr" __PCP_S(n) "\t%" __PCP_W(n) "[ret], [%[ptr]]\n"		\
+	"	eor	%[tmp], %[off], x28\n"					\
+	"	cbnz	%[tmp], 1b\n"						\
+	"	stxr" __PCP_S(n) "\t%w[tmp], %" __PCP_W(n) "[new], [%[ptr]]\n"	\
+	"	cbnz	%[tmp], 1b\n"						\
+	: [ret] "=&r" (__ret), [off] "=&r" (__off), [tmp] "=&r" (__tmp),	\
+	  [ptr] "=&r" (__ptr), [force_hazard] "+Q" (__pcp)			\
+	: [pcp] "r" (&__pcp), [new] "r" (__new)					\
+	: "memory"								\
+	);									\
+										\
+	(typeof(__pcp))__ret;							\
+})
 
-#define this_cpu_and_1(pcp, val) _percpu_and(pcp, val)
-#define this_cpu_and_2(pcp, val) _percpu_and(pcp, val)
-#define this_cpu_and_4(pcp, val) _percpu_and(pcp, val)
-#define this_cpu_and_8(pcp, val) _percpu_and(pcp, val)
+#define this_cpu_xchg_1(pcp, val)		__PCP_XCHG(1, pcp, val)
+#define this_cpu_xchg_2(pcp, val)		__PCP_XCHG(2, pcp, val)
+#define this_cpu_xchg_4(pcp, val)		__PCP_XCHG(4, pcp, val)
+#define this_cpu_xchg_8(pcp, val)		__PCP_XCHG(8, pcp, val)
 
-#define this_cpu_or_1(pcp, val) _percpu_or(pcp, val)
-#define this_cpu_or_2(pcp, val) _percpu_or(pcp, val)
-#define this_cpu_or_4(pcp, val) _percpu_or(pcp, val)
-#define this_cpu_or_8(pcp, val) _percpu_or(pcp, val)
+#define __PCP_CMPXCHG(n, __pcp, __old, __new)					\
+({										\
+	unsigned long __ret, __tmp, __off, __ptr;				\
+										\
+	asm volatile(								\
+	"1:	mov	%[off], x28\n"						\
+	"	add	%[ptr], %[pcp], %[off]\n"				\
+	"	ldxr" __PCP_S(n) "\t%" __PCP_W(n) "[ret], [%[ptr]]\n"		\
+	"	eor	%[tmp], %[off], x28\n"					\
+	"	cbnz	%[tmp], 1b\n"						\
+	"	eor	%[tmp], %[ret], %[old]\n"				\
+	"	cbnz	%[tmp], 2f\n"						\
+	"	stxr" __PCP_S(n) "\t%w[tmp], %" __PCP_W(n) "[new], [%[ptr]]\n"	\
+	"	cbnz	%[tmp], 1b\n"						\
+	"2:"									\
+	: [ret] "=&r" (__ret), [off] "=&r" (__off), [tmp] "=&r" (__tmp),	\
+	  [ptr] "=&r" (__ptr), [force_hazard] "+Q" (__pcp)			\
+	: [pcp] "r" (&__pcp), [old] "r" (__old), [new] "r" (__new)		\
+	: "memory"								\
+	);									\
+										\
+	(typeof(__pcp))__ret;							\
+})
 
-#define this_cpu_read_1(pcp) _percpu_read(pcp)
-#define this_cpu_read_2(pcp) _percpu_read(pcp)
-#define this_cpu_read_4(pcp) _percpu_read(pcp)
-#define this_cpu_read_8(pcp) _percpu_read(pcp)
+#define this_cpu_cmpxhg_1(pcp, o, n)	__PCP_CMPXCHG(1, pcp, o, n)
+#define this_cpu_cmpxhg_2(pcp, o, n)	__PCP_CMPXCHG(2, pcp, o, n)
+#define this_cpu_cmpxhg_4(pcp, o, n)	__PCP_CMPXCHG(4, pcp, o, n)
+#define this_cpu_cmpxhg_8(pcp, o, n)	__PCP_CMPXCHG(8, pcp, o, n)
 
-#define this_cpu_write_1(pcp, val) _percpu_write(pcp, val)
-#define this_cpu_write_2(pcp, val) _percpu_write(pcp, val)
-#define this_cpu_write_4(pcp, val) _percpu_write(pcp, val)
-#define this_cpu_write_8(pcp, val) _percpu_write(pcp, val)
-
-#define this_cpu_xchg_1(pcp, val) _percpu_xchg(pcp, val)
-#define this_cpu_xchg_2(pcp, val) _percpu_xchg(pcp, val)
-#define this_cpu_xchg_4(pcp, val) _percpu_xchg(pcp, val)
-#define this_cpu_xchg_8(pcp, val) _percpu_xchg(pcp, val)
+#define this_cpu_cmpxchg_double_8(ptr1, ptr2, o1, o2, n1, n2)		\
+({									\
+	unsigned long __ret, __tmp, __off, __ptr;			\
+									\
+	asm volatile(							\
+	"1:	mov 	%[off], x28\n"					\
+	"	add	%[ptr], %[pcp], %[off]\n"			\
+	"	ldxp	%[ret], %[tmp], [%[ptr]]\n"			\
+	"	cmp	%[off], x28\n"					\
+	"	b.ne	1b\n"						\
+	"	eor	%[ret], %[ret], %[old1]\n"			\
+	"	eor	%[tmp], %[tmp], %[old2]\n"			\
+	"	orr	%[ret], %[ret], %[tmp]\n"			\
+	"	cbnz	%[ret], 2f\n"					\
+	"	stxp	%w[ret], %[new1], %[new2], [%[ptr]]\n"		\
+	"	cbnz	%[ret], 1b\n"					\
+	"2:"								\
+	: [ret] "=&r" (__ret), [tmp] "=&r" (__tmp),			\
+	  [off] "=&r" (__off), [ptr] "=&r" (__ptr),			\
+	  [hazard1] "+Q" (ptr1), [hazard2] "+Q" (ptr2)			\
+	: [pcp] "r" (&ptr1), [old1] "r" (o1), [old2] "r" (o2),		\
+	  [new1] "r" (n1), [new2] "r" (n2)				\
+	: "memory", "cc"						\
+	);								\
+									\
+	!__ret;								\
+})
 
 #include <asm-generic/percpu.h>
 

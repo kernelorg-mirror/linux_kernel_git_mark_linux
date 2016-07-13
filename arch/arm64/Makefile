@@ -35,6 +35,11 @@ KBUILD_CFLAGS	+= -fno-asynchronous-unwind-tables
 KBUILD_CFLAGS	+= $(call cc-option, -mpc-relative-literal-loads)
 KBUILD_AFLAGS	+= $(lseinstr)
 
+# We use this general purpose register to hold the percpu offset.
+# This register was *arbitrarily* chosen. It may be better to take x18 (AKA the
+# platform register), or another register entirely.
+KBUILD_CFLAGS	+= -ffixed-x28
+
 ifeq ($(CONFIG_CPU_BIG_ENDIAN), y)
 KBUILD_CPPFLAGS	+= -mbig-endian
 AS		+= -EB

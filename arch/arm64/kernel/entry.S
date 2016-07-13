@@ -88,15 +88,24 @@
 	stp	x26, x27, [sp, #16 * 13]
 	stp	x28, x29, [sp, #16 * 14]
 
+	/*
+	 * The faulting context might have been userspace, or a privileged
+	 * context such as EFI runtime services where the offset register might
+	 * have been stashed elsewhere temporarily. Thus we must always restore
+	 * it.
+	 */
+	mrs	tls, tpidr_el1
+
 	.if	\el == 0
 	mrs	x21, sp_el0
 	mov	tsk, sp
 	and	tsk, tsk, #~(THREAD_SIZE - 1)	// Ensure MDSCR_EL1.SS is clear,
-	ldr	x19, [tsk, #TI_FLAGS]		// since we can unmask debug
-	disable_step_tsk x19, x20		// exceptions when scheduling.
+	ldr	x24, [tsk, #TI_FLAGS]		// since we can unmask debug
+	disable_step_tsk x24, x25		// exceptions when scheduling.
 
 	mov	x29, xzr			// fp pointed to user-space
 	.else
+	mrs	tsk, sp_el0
 	add	x21, sp, #S_FRAME_SIZE
 	get_thread_info tsk
 	/* Save the task's original addr_limit and set USER_DS (TASK_SIZE_64) */
@@ -167,6 +176,20 @@ alternative_else
 1:
 alternative_endif
 #endif
+	.else
+	/*
+	 * We permit the offset register to be stashed/restores temporarily in
+	 * non-preemptible contexts, so we must not clobber the stashed value.
+	 * If it was not stashed, we can't have moved CPU, and thus the
+	 * original value is still valid.
+	 *
+	 * For preemptible contexts we must always restore the offset, as CPU
+	 * migration may have occured since it was stashed.
+	 */
+	ldr	w24, [tsk, #TI_PREEMPT]		// get preempt count
+	cbnz	w24, 9997f			// preempt count != 0
+	str	tls, [sp, #8 * 28]		// install offset into context
+9997:
 	.endif
 	msr	elr_el1, x21			// set up the return data
 	msr	spsr_el1, x22
@@ -237,10 +260,11 @@ alternative_endif
  *
  * x7 is reserved for the system call number in 32-bit mode.
  */
+tsk	.req	x20		// current thread_info
 sc_nr	.req	x25		// number of system calls
 scno	.req	x26		// syscall number
 stbl	.req	x27		// syscall table pointer
-tsk	.req	x28		// current thread_info
+tls	.req	x28		// current percpu offset
 
 /*
  * Interrupt handling.
@@ -658,7 +682,7 @@ ENTRY(cpu_switch_to)
 	ldp	x21, x22, [x8], #16
 	ldp	x23, x24, [x8], #16
 	ldp	x25, x26, [x8], #16
-	ldp	x27, x28, [x8], #16
+	ldp	x27, xzr, [x8], #16		// preserve tls (x28)
 	ldp	x29, x9, [x8], #16
 	ldr	lr, [x8]
 	mov	sp, x9
