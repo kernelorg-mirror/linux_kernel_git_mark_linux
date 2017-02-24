@@ -168,7 +168,14 @@ static inline void cpu_replace_ttbr1(pgd_t *pgdp)
 #define destroy_context(mm)		do { } while(0)
 void check_and_switch_context(struct mm_struct *mm, unsigned int cpu);
 
-#define init_new_context(tsk,mm)	({ atomic64_set(&(mm)->context.id, 0); 0; })
+static inline int init_new_context(struct task_struct *tsk,
+				   struct mm_struct *mm)
+{
+	atomic64_set(&mm->context.id, 0);
+	mm_ctx_ptrauth_init(&mm->context);
+
+	return 0;
+}
 
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN
 static inline void update_saved_ttbr0(struct task_struct *tsk,
@@ -215,6 +222,8 @@ static inline void __switch_mm(struct mm_struct *next)
 		cpu_set_reserved_ttbr0();
 		return;
 	}
+
+	mm_ctx_ptrauth_switch(&next->context);
 
 	check_and_switch_context(next, cpu);
 }
