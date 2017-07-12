@@ -396,11 +396,63 @@ el1_error_invalid:
 	inv_entry 1, BAD_ERROR
 ENDPROC(el1_error_invalid)
 
+#ifdef CONFIG_VMAP_STACK
+/*
+ * Check whether we have sufficient space to store an exception frame to the
+ * stack. If so, carry on as normal. If not, branch to __bad_stack.
+ *
+ * This is only valid for exceptions taken from EL1. We rely on the EL0 paths
+ * saving/restoring SP_EL0 so that it is free for us to clobber here to free up
+ * a scratch reigster.
+ */
+.macro detect_bad_stack
+	msr	sp_el0, x0
+	get_thread_info	x0
+	ldr	x0, [x0, #TSK_TI_CUR_STK]
+	sub	x0, sp, x0
+	sub	x0, x0, #S_FRAME_SIZE
+	and	x0, x0, #~(THREAD_SIZE - 1)
+	cbnz	x0, __bad_stack
+	mrs	x0, sp_el0
+.endm
+
+__bad_stack:
+	/*
+	 * Stash the bad SP, and free up another GPR. We no longer care about
+	 * EL0 state, since this thread cannot recover.
+	 */
+	mov	x0, sp
+	msr	tpidrro_el0, x0
+	msr	tpidr_el0, x1
+
+	/* Move to the emergency stack */
+	adr_this_cpu	x0, bad_stack, x1
+	mov	x1, #THREAD_START_SP
+	add	sp, x0, x1
+
+	/* Restore GPRs and log them to pt_regs */
+	mrs	x0, sp_el0
+	mrs	x1, tpidr_el0
+	kernel_entry 1
+
+	/* restore the bad SP to pt_regs */
+	mrs	x1, tpidrro_el0
+	str	x1, [sp, #S_SP]
+
+	/* Time to die */
+	mov	x0, sp
+	b	handle_bad_stack
+#else
+.macro detect_bad_stack
+.endm
+#endif
+
 /*
  * EL1 mode handlers.
  */
 	.align	6
 el1_sync:
+	detect_bad_stack
 	kernel_entry 1
 	mrs	x1, esr_el1			// read the syndrome register
 	lsr	x24, x1, #ESR_ELx_EC_SHIFT	// exception class

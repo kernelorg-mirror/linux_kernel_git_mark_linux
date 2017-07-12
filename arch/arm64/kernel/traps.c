@@ -683,6 +683,31 @@ asmlinkage void bad_el0_sync(struct pt_regs *regs, int reason, unsigned int esr)
 	force_sig_info(info.si_signo, &info, current);
 }
 
+#ifdef CONFIG_VMAP_STACK
+DEFINE_PER_CPU(unsigned long [IRQ_STACK_SIZE/sizeof(long)], bad_stack) __aligned(16);
+
+asmlinkage void __noreturn handle_bad_stack(struct pt_regs *regs)
+{
+	unsigned long tsk_stk = (unsigned long)current->stack;
+	unsigned long irq_stk = (unsigned long)per_cpu(irq_stack, smp_processor_id());
+	unsigned int esr = read_sysreg(esr_el1);
+	unsigned long far = read_sysreg(far_el1);
+
+	console_verbose();
+	pr_emerg("Insufficient stack space to handle exception!");
+
+	show_regs(regs);
+
+	pr_emerg("Task stack: [0x%016lx..0x%016lx]\n", tsk_stk, tsk_stk + THREAD_SIZE);
+	pr_emerg("IRQ stack:  [0x%016lx..0x%016lx]\n", irq_stk, irq_stk + THREAD_SIZE);
+
+	pr_emerg("ESR: 0x%08x -- %s\n", esr, esr_get_class_string(esr));
+	pr_emerg("FAR: 0x%016lx\n", far);
+
+	panic("kernel stack overflow");
+}
+#endif
+
 void __pte_error(const char *file, int line, unsigned long val)
 {
 	pr_err("%s:%d: bad pte %016lx.\n", file, line, val);
