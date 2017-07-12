@@ -50,6 +50,7 @@ struct thread_info {
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN
 	u64			ttbr0;		/* saved TTBR0_EL1 */
 #endif
+	unsigned long		pcp_offset;	/* Current CPU's percpu offset */
 	int			preempt_count;	/* 0 => preemptable, <0 => bug */
 };
 

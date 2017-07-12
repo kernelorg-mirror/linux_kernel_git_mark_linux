@@ -324,7 +324,7 @@ __primary_switched:
 	adrp	x4, init_thread_union
 	add	sp, x4, #THREAD_SIZE
 	adr_l	x5, init_task
-	msr	sp_el0, x5			// Save thread_info
+	msr	tpidr_el1, x5			// Save thread_info
 
 	adr_l	x8, vectors			// load VBAR_EL1 with virtual
 	msr	vbar_el1, x8			// vector table address
@@ -615,7 +615,7 @@ __secondary_switched:
 	ldr	x1, [x0, #CPU_BOOT_STACK]	// get secondary_data.stack
 	mov	sp, x1
 	ldr	x2, [x0, #CPU_BOOT_TASK]
-	msr	sp_el0, x2
+	msr	tpidr_el1, x2
 	mov	x29, #0
 	b	secondary_start_kernel
 ENDPROC(__secondary_switched)

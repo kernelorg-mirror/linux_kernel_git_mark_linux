@@ -229,6 +229,11 @@ lr	.req	x30		// link register
 #endif
 	.endm
 
+	.macro	get_this_cpu_offset dst
+	mrs	\dst, tpidr_el1
+	ldr	\dst, [\dst, #TSK_TI_PCP]
+	.endm
+
 	/*
 	 * @dst: Result of per_cpu(sym, smp_processor_id())
 	 * @sym: The name of the per-cpu variable
@@ -236,7 +241,7 @@ lr	.req	x30		// link register
 	 */
 	.macro adr_this_cpu, dst, sym, tmp
 	adr_l	\dst, \sym
-	mrs	\tmp, tpidr_el1
+	get_this_cpu_offset \tmp
 	add	\dst, \dst, \tmp
 	.endm
 
@@ -247,7 +252,7 @@ lr	.req	x30		// link register
 	 */
 	.macro ldr_this_cpu dst, sym, tmp
 	adr_l	\dst, \sym
-	mrs	\tmp, tpidr_el1
+	get_this_cpu_offset \tmp
 	ldr	\dst, [\dst, \tmp]
 	.endm
 
@@ -438,7 +443,7 @@ alternative_endif
  * Return the current thread_info.
  */
 	.macro	get_thread_info, rd
-	mrs	\rd, sp_el0
+	mrs	\rd, tpidr_el1
 	.endm
 
 /*
