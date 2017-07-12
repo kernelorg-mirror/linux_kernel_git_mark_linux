@@ -613,7 +613,8 @@ __secondary_switched:
 
 	adr_l	x0, secondary_data
 	ldr	x1, [x0, #CPU_BOOT_STACK]	// get secondary_data.stack
-	mov	sp, x1
+	mov	x3, #THREAD_START_SP
+	add	sp, x1, x3
 	ldr	x2, [x0, #CPU_BOOT_TASK]
 	msr	tpidr_el1, x2
 	mov	x29, #0
