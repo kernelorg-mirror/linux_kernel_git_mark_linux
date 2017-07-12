@@ -325,6 +325,9 @@ __primary_switched:
 	add	sp, x4, #THREAD_SIZE
 	adr_l	x5, init_task
 	msr	tpidr_el1, x5			// Save thread_info
+#ifdef CONFIG_VMAP_STACK
+	str	x4, [x5, #TSK_TI_CUR_STK]
+#endif
 
 	adr_l	x8, vectors			// load VBAR_EL1 with virtual
 	msr	vbar_el1, x8			// vector table address
@@ -616,6 +619,9 @@ __secondary_switched:
 	mov	x3, #THREAD_START_SP
 	add	sp, x1, x3
 	ldr	x2, [x0, #CPU_BOOT_TASK]
+#ifdef CONFIG_VMAP_STACK
+	str	x1, [x2, #TSK_TI_CUR_STK]
+#endif
 	msr	tpidr_el1, x2
 	mov	x29, #0
 	b	secondary_start_kernel

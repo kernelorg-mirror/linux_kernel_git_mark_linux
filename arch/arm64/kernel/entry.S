@@ -258,6 +258,9 @@ alternative_else_nop_endif
 
 	/* switch to the irq stack */
 	mov	sp, x26
+#ifdef CONFIG_VMAP_STACK
+	str	x25, [tsk, #TSK_TI_CUR_STK]
+#endif
 
 	/*
 	 * Add a dummy stack frame, this non-standard format is fixed up
@@ -275,6 +278,10 @@ alternative_else_nop_endif
 	 */
 	.macro	irq_stack_exit
 	mov	sp, x19
+#ifdef CONFIG_VMAP_STACK
+	and	x19, x19, #~(THREAD_SIZE - 1)
+	str	x19, [tsk, #TSK_TI_CUR_STK]
+#endif
 	.endm
 
 /*

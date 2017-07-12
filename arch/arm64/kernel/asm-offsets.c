@@ -40,6 +40,9 @@ int main(void)
   DEFINE(TSK_TI_PREEMPT,	offsetof(struct task_struct, thread_info.preempt_count));
   DEFINE(TSK_TI_PCP,		offsetof(struct task_struct, thread_info.pcp_offset));
   DEFINE(TSK_TI_ADDR_LIMIT,	offsetof(struct task_struct, thread_info.addr_limit));
+#ifdef CONFIG_VMAP_STACK
+  DEFINE(TSK_TI_CUR_STK,	offsetof(struct task_struct, thread_info.current_stack));
+#endif
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN
   DEFINE(TSK_TI_TTBR0,		offsetof(struct task_struct, thread_info.ttbr0));
 #endif

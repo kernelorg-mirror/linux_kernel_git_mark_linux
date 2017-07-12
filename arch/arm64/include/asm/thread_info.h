@@ -65,6 +65,9 @@ struct thread_info {
 #endif
 	unsigned long		pcp_offset;	/* Current CPU's percpu offset */
 	int			preempt_count;	/* 0 => preemptable, <0 => bug */
+#ifdef CONFIG_VMAP_STACK
+	unsigned long		current_stack;
+#endif
 };
 
 #define INIT_THREAD_INFO(tsk)						\

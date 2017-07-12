@@ -294,6 +294,10 @@ int copy_thread(unsigned long clone_flags, unsigned long stack_start,
 
 	ptrace_hw_copy_thread(p);
 
+#ifdef CONFIG_VMAP_STACK
+	p->thread_info.current_stack = (unsigned long)p->stack;
+#endif
+
 	return 0;
 }
 
