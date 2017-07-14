@@ -217,7 +217,10 @@ static unsigned long *alloc_thread_stack_node(struct task_struct *tsk, int node)
 		return s->addr;
 	}
 
-	stack = __vmalloc_node_range(THREAD_SIZE, THREAD_SIZE,
+#ifndef THREAD_ALIGN
+#define THREAD_ALIGN	THREAD_SIZE
+#endif
+	stack = __vmalloc_node_range(THREAD_SIZE, THREAD_ALIGN,
 				     VMALLOC_START, VMALLOC_END,
 				     THREADINFO_GFP,
 				     PAGE_KERNEL,
