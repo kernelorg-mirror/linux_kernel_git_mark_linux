@@ -69,9 +69,41 @@
 #define BAD_FIQ		2
 #define BAD_ERROR	3
 
+
 	.macro kernel_ventry	label
 	.align 7
 	sub	sp, sp, #S_FRAME_SIZE
+#ifdef CONFIG_VMAP_STACK
+	add	sp, sp, x0			// sp' = sp + x0
+	sub	x0, sp, x0			// x0' = sp' - x0 = (sp + x0) - x0 = sp
+	tbnz	x0, #THREAD_SHIFT, 0f
+	sub	x0, sp, x0			// sp' - x0' = (sp + x0) - sp = x0
+	sub	sp, sp, x0			// sp' - x0 = (sp + x0) - x0 = sp
+	b	\label
+
+	/* Stash the original SP value in tpidr_el0 */
+0:	msr	tpidr_el0, x0
+
+	/* Recover the original x0 value and stash it in tpidrro_el0 */
+	sub	x0, sp, x0
+	msr	tpidrro_el0, x0
+
+	/* Switch to the overflow stack */
+	adr_this_cpu sp, overflow_stack + OVERFLOW_STACK_SIZE, x0
+
+	/*
+	 * Check whether we were already on the overflow stack. This may happen
+	 * after panic() re-enables interrupts.
+	 */
+	mrs	x0, tpidr_el0			// sp of interrupted context
+	sub	x0, sp, x0			// delta with top of overflow stack
+	tst	x0, #~(OVERFLOW_STACK_SIZE - 1)	// within range?
+	b.ne	__bad_stack			// no? -> bad stack pointer
+
+	/* We were already on the overflow stack. Restore sp/x0 and carry on. */
+	sub	sp, sp, x0
+	mrs	x0, tpidrro_el0
+#endif
 	b	\label
 	.endm
 
@@ -316,6 +348,39 @@ tsk	.req	x28		// current thread_info
 	.endm
 
 	.text
+
+#ifdef CONFIG_VMAP_STACK
+	/*
+	 * We detected an overflow in kernel_ventry, which switched to the
+	 * overflow stack. Stash the exception regs, and head to our overflow
+	 * handler.
+	 */
+__bad_stack:
+	/* Restore the original x0 value */
+	mrs	x0, tpidrro_el0
+
+	/*
+	 * Store the original GPRs to the new stack, remembering to recover and
+	 * save the original SP.
+	 */
+	sub	sp, sp, #S_FRAME_SIZE
+	kernel_entry 1
+	mrs	x0, tpidr_el0
+	str	x0, [sp, #S_SP]
+
+	/* Stash the regs for handle_bad_stack */
+	mov	x0, sp
+
+	/*
+	 * Wire the stacks together via a dummy frame so we can get a useful
+	 * backtrace.
+	 */
+	stp	x29, xzr, [sp, #-16]!
+	mov	x29, sp
+
+	/* Time to die */
+	b	handle_bad_stack
+#endif /* CONFIG_VMAP_STACK */
 
 /*
  * Exception vectors.

@@ -61,6 +61,8 @@ int notrace unwind_frame(struct task_struct *tsk, struct stackframe *frame)
 		high = (unsigned long)tsk->stack + THREAD_SIZE;
 	else if (on_irq_stack(frame->fp))
 		high = IRQ_STACK_PTR();
+	else if (on_overflow_stack(frame->fp))
+		high = OVERFLOW_STACK_PTR();
 	else
 		return -EINVAL;
 
@@ -108,6 +110,13 @@ int notrace unwind_frame(struct task_struct *tsk, struct stackframe *frame)
 			 */
 			return -EINVAL;
 		}
+	} else if (is_overflow_frame(frame)) {
+		struct pt_regs *overflow_regs = overflow_frame_regs(frame);
+
+		// TODO: check  tsk/irq stack validity
+
+		frame->sp = overflow_regs->sp;
+		frame->pc = overflow_regs->pc;
 	}
 
 	return 0;

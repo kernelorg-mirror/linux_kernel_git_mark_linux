@@ -93,4 +93,41 @@ static inline bool on_irq_stack(unsigned long sp)
 	return (low <= sp && sp < high);
 }
 
+#ifdef CONFIG_VMAP_STACK
+DECLARE_PER_CPU(unsigned long [OVERFLOW_STACK_SIZE/sizeof(long)], overflow_stack);
+
+#define OVERFLOW_STACK_PTR() ((unsigned long)this_cpu_ptr(overflow_stack) + OVERFLOW_STACK_SIZE)
+
+static inline bool is_overflow_frame(struct stackframe *frame)
+{
+	return frame->sp == OVERFLOW_STACK_PTR() - sizeof(struct pt_regs);
+}
+
+static inline struct pt_regs *overflow_frame_regs(struct stackframe *frame)
+{
+	/*
+	 * In __bad_stack, we create a non-standard frame record, which only
+	 * has a valid FP. Immediately above this record (on the overflow
+	 * stack), is a pt_regs with the interrupted context.
+	 */
+	return (struct pt_regs *)frame->sp;
+}
+
+static inline bool on_overflow_stack(unsigned long sp)
+{
+	unsigned long low = (unsigned long)this_cpu_ptr(overflow_stack);
+	unsigned long high = low + OVERFLOW_STACK_SIZE;
+
+	return (low <= sp && sp < high);
+}
+#else
+static inline bool on_overflow_stack(unsigned long sp) { return false; }
+static inline bool is_overflow_frame(struct stackframe *frame) { return false; }
+static inline unsigned long overflow_frame_regs(struct stackframe *frame)
+{
+	BUILD_BUG();
+	return NULL;
+}
+#endif
+
 #endif	/* __ASM_STACKTRACE_H */
