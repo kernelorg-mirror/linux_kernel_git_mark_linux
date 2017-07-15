@@ -235,7 +235,8 @@ lr	.req	x30		// link register
 	 * @tmp: scratch register
 	 */
 	.macro adr_this_cpu, dst, sym, tmp
-	adr_l	\dst, \sym
+	adrp	\tmp, \sym
+	add	\dst, \tmp, #:lo12:\sym
 	mrs	\tmp, tpidr_el1
 	add	\dst, \dst, \tmp
 	.endm
