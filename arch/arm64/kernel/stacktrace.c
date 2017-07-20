@@ -44,28 +44,27 @@ int notrace unwind_frame(struct task_struct *tsk, struct stackframe *frame)
 {
 	unsigned long high, low;
 	unsigned long fp = frame->fp;
-	unsigned long irq_stack_ptr;
 
 	if (!tsk)
 		tsk = current;
 
 	/*
-	 * Switching between stacks is valid when tracing current and in
+	 * Switching between stacks is only valid when tracing current and in
 	 * non-preemptible context.
 	 */
-	if (tsk == current && !preemptible())
-		irq_stack_ptr = IRQ_STACK_PTR();
-	else
-		irq_stack_ptr = 0;
+	if ((tsk != current || preemptible()) && !on_task_stack(frame->fp, tsk))
+		return -EINVAL;
 
 	low  = frame->sp;
-	/* irq stacks are not THREAD_SIZE aligned */
-	if (on_irq_stack(frame->sp))
-		high = irq_stack_ptr;
-	else
-		high = ALIGN(low, THREAD_SIZE) - 0x10;
 
-	if (fp < low || fp > high || fp & 0xf)
+	if (on_task_stack(frame->fp, tsk))
+		high = (unsigned long)tsk->stack + THREAD_SIZE;
+	else if (on_irq_stack(frame->fp))
+		high = IRQ_STACK_PTR();
+	else
+		return -EINVAL;
+
+	if (fp < low || fp > high - 0xf || fp & 0xf)
 		return -EINVAL;
 
 	frame->sp = fp + 0x10;

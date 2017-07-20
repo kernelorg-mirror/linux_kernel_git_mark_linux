@@ -36,6 +36,14 @@ extern void walk_stackframe(struct task_struct *tsk, struct stackframe *frame,
 			    int (*fn)(struct stackframe *, void *), void *data);
 extern void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk);
 
+static inline bool on_task_stack(unsigned long sp, struct task_struct *tsk)
+{
+	unsigned long low = (unsigned long)tsk->stack;
+	unsigned long high = low + THREAD_SIZE;
+
+	return (low <= sp && sp < high);
+}
+
 DECLARE_PER_CPU(unsigned long [IRQ_STACK_SIZE/sizeof(long)], irq_stack);
 
 /*
