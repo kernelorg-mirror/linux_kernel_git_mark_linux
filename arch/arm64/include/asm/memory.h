@@ -112,6 +112,8 @@
 
 #define THREAD_ALIGN		THREAD_SIZE
 
+#define IRQ_STACK_SIZE		THREAD_SIZE
+
 /*
  * Memory types available.
  */
