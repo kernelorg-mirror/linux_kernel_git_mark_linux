@@ -57,11 +57,20 @@ DECLARE_PER_CPU(unsigned long [IRQ_STACK_SIZE/sizeof(long)], irq_stack);
  */
 #define IRQ_STACK_PTR() ((unsigned long)raw_cpu_ptr(irq_stack) + IRQ_STACK_SIZE)
 
-/*
- * The offset from irq_stack_ptr where entry.S will store the original
- * stack pointer. Used by unwind_frame() and dump_backtrace().
- */
-#define IRQ_STACK_TO_TASK_STACK(ptr) (*((unsigned long *)((ptr) - 0x08)))
+static inline bool is_irq_frame(struct stackframe *frame)
+{
+	return frame->sp == IRQ_STACK_PTR();
+}
+
+static inline struct pt_regs *irq_frame_regs(struct stackframe *frame)
+{
+	/*
+	 * In irq_stack_entry, we create a non-standard frame record, with the
+	 * LR field repurposed to hold the original SP, which points at the
+	 * pt_regs on the task stack.
+	 */
+	return (struct pt_regs *)frame->pc;
+}
 
 static inline bool on_irq_stack(unsigned long sp)
 {

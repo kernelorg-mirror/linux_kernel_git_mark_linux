@@ -89,22 +89,18 @@ int notrace unwind_frame(struct task_struct *tsk, struct stackframe *frame)
 	 * Check whether we are going to walk through from interrupt stack
 	 * to task stack.
 	 * If we reach the end of the stack - and its an interrupt stack,
-	 * unpack the dummy frame to find the original elr.
+	 * unpack the transfer frame to find the original elr and sp.
 	 *
 	 * Check the frame->fp we read from the bottom of the irq_stack,
 	 * and the original task stack pointer are both in current->stack.
 	 */
-	if (frame->sp == irq_stack_ptr) {
-		struct pt_regs *irq_args;
-		unsigned long orig_sp = IRQ_STACK_TO_TASK_STACK(irq_stack_ptr);
+	if (is_irq_frame(frame)) {
+		struct pt_regs *irq_regs = irq_frame_regs(frame);
 
-		if (object_is_on_stack((void *)orig_sp) &&
+		if (object_is_on_stack(irq_regs) &&
 		   object_is_on_stack((void *)frame->fp)) {
-			frame->sp = orig_sp;
-
-			/* orig_sp is the saved pt_regs, find the elr */
-			irq_args = (struct pt_regs *)orig_sp;
-			frame->pc = irq_args->pc;
+			frame->sp = irq_regs->sp;
+			frame->pc = irq_regs->pc;
 		} else {
 			/*
 			 * This frame has a non-standard format, and we
