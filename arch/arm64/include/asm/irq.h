@@ -2,7 +2,6 @@
 #define __ASM_IRQ_H
 
 #define IRQ_STACK_SIZE			THREAD_SIZE
-#define IRQ_STACK_START_SP		THREAD_START_SP
 
 #ifndef __ASSEMBLER__
 
@@ -32,7 +31,7 @@ DECLARE_PER_CPU(unsigned long [IRQ_STACK_SIZE/sizeof(long)], irq_stack);
  * from kernel_entry can be found.
  *
  */
-#define IRQ_STACK_PTR(cpu) ((unsigned long)per_cpu(irq_stack, cpu) + IRQ_STACK_START_SP)
+#define IRQ_STACK_PTR(cpu) ((unsigned long)per_cpu(irq_stack, cpu) + IRQ_STACK_SIZE)
 
 /*
  * The offset from irq_stack_ptr where entry.S will store the original
@@ -51,9 +50,9 @@ static inline bool on_irq_stack(unsigned long sp, int cpu)
 {
 	/* variable names the same as kernel/stacktrace.c */
 	unsigned long low = (unsigned long)per_cpu(irq_stack, cpu);
-	unsigned long high = low + IRQ_STACK_START_SP;
+	unsigned long high = low + IRQ_STACK_SIZE;
 
-	return (low <= sp && sp <= high);
+	return (low <= sp && sp < high);
 }
 
 #endif /* !__ASSEMBLER__ */

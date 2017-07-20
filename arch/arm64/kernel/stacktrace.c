@@ -63,7 +63,7 @@ int notrace unwind_frame(struct task_struct *tsk, struct stackframe *frame)
 	if (on_irq_stack(frame->sp, raw_smp_processor_id()))
 		high = irq_stack_ptr;
 	else
-		high = ALIGN(low, THREAD_SIZE) - 0x20;
+		high = ALIGN(low, THREAD_SIZE) - 0x10;
 
 	if (fp < low || fp > high || fp & 0xf)
 		return -EINVAL;
