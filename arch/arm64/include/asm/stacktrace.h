@@ -44,7 +44,11 @@ static inline bool on_task_stack(unsigned long sp, struct task_struct *tsk)
 	return (low <= sp && sp < high);
 }
 
-DECLARE_PER_CPU(unsigned long [IRQ_STACK_SIZE/sizeof(long)], irq_stack);
+#ifdef CONFIG_VMAP_STACK
+DECLARE_PER_CPU(char *, irq_stack);
+#else
+DECLARE_PER_CPU_ALIGNED(char [IRQ_STACK_SIZE], irq_stack);
+#endif
 
 /*
  * The highest address on the stack, and the first to be used. Used to
