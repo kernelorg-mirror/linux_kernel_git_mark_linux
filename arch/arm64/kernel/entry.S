@@ -116,7 +116,11 @@
 	 * time the exception was taken (in case we attempt to walk the call
 	 * stack later), chain it together with the stack frames.
 	 */
+	.if \el == 0
+	stp	xzr, xzr, [sp, #S_STACKFRAME]
+	.else
 	stp	x29, x22, [sp, #S_STACKFRAME]
+	.endif
 	add	x29, sp, #S_STACKFRAME
 
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN
