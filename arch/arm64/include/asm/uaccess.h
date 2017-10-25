@@ -195,6 +195,12 @@ static inline void uaccess_enable_not_uao(void)
 	__uaccess_enable(ARM64_ALT_PAN_NOT_UAO);
 }
 
+#define verify_uaccess(dir, ptr)					\
+({									\
+	if (IS_ENABLED(CONFIG_ARM64_PARANOID_UACCESS))			\
+		BUG_ON(!access_ok(dir, (ptr), sizeof(*(ptr))));		\
+})
+
 /*
  * The "__xxx" versions of the user access functions do not verify the address
  * space - it must have been done previously with a separate "access_ok()"
@@ -223,6 +229,7 @@ do {									\
 	unsigned long __gu_val;						\
 	typeof(ptr) __gu_ptr = (ptr);					\
 	__chk_user_ptr(__gu_ptr);					\
+	verify_uaccess(VERIFY_READ, __gu_ptr);				\
 	uaccess_enable_not_uao();					\
 	switch (sizeof(*(__gu_ptr))) {					\
 	case 1:								\
@@ -289,6 +296,7 @@ do {									\
 	typeof(ptr) __pu_ptr = (ptr);					\
 	__typeof__(*(__pu_ptr)) __pu_val = (x);				\
 	__chk_user_ptr(__pu_ptr);					\
+	verify_uaccess(VERIFY_WRITE, __pu_ptr);				\
 	uaccess_enable_not_uao();					\
 	switch (sizeof(*(__pu_ptr))) {					\
 	case 1:								\

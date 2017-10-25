@@ -1028,6 +1028,15 @@ config RANDOMIZE_MODULE_REGION_FULL
 	  a limited range that contains the [_stext, _etext] interval of the
 	  core kernel, so branch relocations are always in range.
 
+config ARM64_PARANOID_UACCESS
+	bool "Use paranoid uaccess primitives"
+	help
+	  Forces access_ok() checks in __get_user(), __put_user(), and other
+	  low-level uaccess primitives which usually do not have checks. This
+	  can limit the effect of missing access_ok() checks in higher-level
+	  primitives, with a runtime performance overhead in some cases and a
+	  small code size overhead.
+
 endmenu
 
 menu "Boot options"
