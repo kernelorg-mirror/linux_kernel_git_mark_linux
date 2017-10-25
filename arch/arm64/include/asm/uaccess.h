@@ -70,17 +70,20 @@ static inline void set_fs(mm_segment_t fs)
  *
  * This needs 65-bit arithmetic.
  */
+static bool __range_ok_c(unsigned long addr, unsigned long size)
+{
+	unsigned long end = addr + size;
+
+	if (end < addr)
+		return false;
+
+	return end < current_thread_info()->addr_limit;
+}
+
 #define __range_ok(addr, size)						\
 ({									\
-	unsigned long __addr = (unsigned long)(addr);			\
-	unsigned long flag, roksum;					\
 	__chk_user_ptr(addr);						\
-	asm("adds %1, %1, %3; ccmp %1, %4, #2, cc; cset %0, ls"		\
-		: "=&r" (flag), "=&r" (roksum)				\
-		: "1" (__addr), "Ir" (size),				\
-		  "r" (current_thread_info()->addr_limit)		\
-		: "cc");						\
-	flag;								\
+	__range_ok_c((unsigned long)(addr), (unsigned long)(size));	\
 })
 
 /*
