@@ -221,30 +221,31 @@ static inline void uaccess_enable_not_uao(void)
 #define __get_user_err(x, ptr, err)					\
 do {									\
 	unsigned long __gu_val;						\
-	__chk_user_ptr(ptr);						\
+	typeof(ptr) __gu_ptr = (ptr);					\
+	__chk_user_ptr(__gu_ptr);					\
 	uaccess_enable_not_uao();					\
-	switch (sizeof(*(ptr))) {					\
+	switch (sizeof(*(__gu_ptr))) {					\
 	case 1:								\
-		__get_user_asm("ldrb", "ldtrb", "%w", __gu_val, (ptr),  \
-			       (err), ARM64_HAS_UAO);			\
+		__get_user_asm("ldrb", "ldtrb", "%w", __gu_val,		\
+			       __gu_ptr, (err), ARM64_HAS_UAO);		\
 		break;							\
 	case 2:								\
-		__get_user_asm("ldrh", "ldtrh", "%w", __gu_val, (ptr),  \
-			       (err), ARM64_HAS_UAO);			\
+		__get_user_asm("ldrh", "ldtrh", "%w", __gu_val,		\
+			       __gu_ptr, (err), ARM64_HAS_UAO);		\
 		break;							\
 	case 4:								\
-		__get_user_asm("ldr", "ldtr", "%w", __gu_val, (ptr),	\
-			       (err), ARM64_HAS_UAO);			\
+		__get_user_asm("ldr", "ldtr", "%w", __gu_val,		\
+			       __gu_ptr, (err), ARM64_HAS_UAO);		\
 		break;							\
 	case 8:								\
-		__get_user_asm("ldr", "ldtr", "%x",  __gu_val, (ptr),	\
-			       (err), ARM64_HAS_UAO);			\
+		__get_user_asm("ldr", "ldtr", "%x",  __gu_val,		\
+			       __gu_ptr, (err), ARM64_HAS_UAO);		\
 		break;							\
 	default:							\
 		BUILD_BUG();						\
 	}								\
 	uaccess_disable_not_uao();					\
-	(x) = (__force __typeof__(*(ptr)))__gu_val;			\
+	(x) = (__force __typeof__(*(__gu_ptr)))__gu_val;		\
 } while (0)
 
 #define __get_user(x, ptr)						\
@@ -285,25 +286,26 @@ do {									\
 
 #define __put_user_err(x, ptr, err)					\
 do {									\
-	__typeof__(*(ptr)) __pu_val = (x);				\
-	__chk_user_ptr(ptr);						\
+	typeof(ptr) __pu_ptr = (ptr);					\
+	__typeof__(*(__pu_ptr)) __pu_val = (x);				\
+	__chk_user_ptr(__pu_ptr);					\
 	uaccess_enable_not_uao();					\
-	switch (sizeof(*(ptr))) {					\
+	switch (sizeof(*(__pu_ptr))) {					\
 	case 1:								\
-		__put_user_asm("strb", "sttrb", "%w", __pu_val, (ptr),	\
-			       (err), ARM64_HAS_UAO);			\
+		__put_user_asm("strb", "sttrb", "%w", __pu_val,		\
+			       __pu_ptr, (err), ARM64_HAS_UAO);		\
 		break;							\
 	case 2:								\
-		__put_user_asm("strh", "sttrh", "%w", __pu_val, (ptr),	\
-			       (err), ARM64_HAS_UAO);			\
+		__put_user_asm("strh", "sttrh", "%w", __pu_val, 	\
+			       __pu_ptr, (err), ARM64_HAS_UAO);		\
 		break;							\
 	case 4:								\
-		__put_user_asm("str", "sttr", "%w", __pu_val, (ptr),	\
-			       (err), ARM64_HAS_UAO);			\
+		__put_user_asm("str", "sttr", "%w", __pu_val,		\
+			       __pu_ptr, (err), ARM64_HAS_UAO);		\
 		break;							\
 	case 8:								\
-		__put_user_asm("str", "sttr", "%x", __pu_val, (ptr),	\
-			       (err), ARM64_HAS_UAO);			\
+		__put_user_asm("str", "sttr", "%x", __pu_val,		\
+			       __pu_ptr, (err), ARM64_HAS_UAO);		\
 		break;							\
 	default:							\
 		BUILD_BUG();						\
