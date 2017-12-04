@@ -31,6 +31,8 @@ static inline u32 disr_to_esr(u64 disr)
 	return esr;
 }
 
+asmlinkage void call_on_stack(struct pt_regs *, void (*)(struct pt_regs *),
+			      unsigned long);
 asmlinkage void enter_from_user_mode(void);
 void do_mem_abort(unsigned long addr, unsigned int esr, struct pt_regs *regs);
 void do_sp_pc_abort(unsigned long addr, unsigned int esr, struct pt_regs *regs);

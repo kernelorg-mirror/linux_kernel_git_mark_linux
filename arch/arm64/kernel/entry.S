@@ -898,6 +898,29 @@ ENTRY(ret_from_fork)
 ENDPROC(ret_from_fork)
 NOKPROBE(ret_from_fork)
 
+/*
+ * void call_on_stack(struct pt_regs *regs,
+ * 		      void (*func)(struct pt_regs *),
+ * 		      unsigned long new_sp)
+ *
+ * Calls func(regs) using new_sp as the initial stack pointer.
+ */
+ENTRY(call_on_stack)
+	/* Create a frame record to save our LR and SP (implicit in FP) */
+	stp	x29, x30, [sp, #-16]!
+	mov	x29, sp
+
+	/* Move to the new stack and call the function there */
+	mov	sp, x2
+	blr	x1
+
+	/* Restore SP from the FP, FP and LR from the record, and return */
+	mov	sp, x29
+	ldp	x29, x30, [sp], #16
+	ret
+ENDPROC(call_on_stack)
+NOKPROBE(call_on_stack)
+
 #ifdef CONFIG_ARM_SDE_INTERFACE
 
 #include <asm/sdei.h>
