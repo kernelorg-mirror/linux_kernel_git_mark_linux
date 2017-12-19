@@ -32,24 +32,6 @@ u8 debug_monitors_arch(void)
 }
 
 /*
- * MDSCR access routines.
- */
-static void mdscr_write(u32 mdscr)
-{
-	unsigned long flags;
-	flags = local_daif_save();
-	write_sysreg(mdscr, mdscr_el1);
-	local_daif_restore(flags);
-}
-NOKPROBE_SYMBOL(mdscr_write);
-
-static u32 mdscr_read(void)
-{
-	return read_sysreg(mdscr_el1);
-}
-NOKPROBE_SYMBOL(mdscr_read);
-
-/*
  * Allow root to disable self-hosted debug from userspace.
  * This is useful if you want to connect an external JTAG debugger.
  */
@@ -91,9 +73,9 @@ void enable_debug_monitors(enum dbg_active_el el)
 		enable |= DBG_MDSCR_KDE;
 
 	if (enable && debug_enabled) {
-		mdscr = mdscr_read();
+		mdscr = read_sysreg(mdscr_el1);
 		mdscr |= enable;
-		mdscr_write(mdscr);
+		write_sysreg(mdscr, mdscr_el1);
 	}
 }
 NOKPROBE_SYMBOL(enable_debug_monitors);
@@ -112,9 +94,9 @@ void disable_debug_monitors(enum dbg_active_el el)
 		disable &= ~DBG_MDSCR_KDE;
 
 	if (disable) {
-		mdscr = mdscr_read();
+		mdscr = read_sysreg(mdscr_el1);
 		mdscr &= disable;
-		mdscr_write(mdscr);
+		write_sysreg(mdscr, mdscr_el1);
 	}
 }
 NOKPROBE_SYMBOL(disable_debug_monitors);
@@ -409,7 +391,7 @@ void kernel_enable_single_step(struct pt_regs *regs)
 {
 	WARN_ON(!irqs_disabled());
 	set_regs_spsr_ss(regs);
-	mdscr_write(mdscr_read() | DBG_MDSCR_SS);
+	__enable_single_step_nosync();
 	enable_debug_monitors(DBG_ACTIVE_EL1);
 }
 NOKPROBE_SYMBOL(kernel_enable_single_step);
@@ -417,7 +399,7 @@ NOKPROBE_SYMBOL(kernel_enable_single_step);
 void kernel_disable_single_step(void)
 {
 	WARN_ON(!irqs_disabled());
-	mdscr_write(mdscr_read() & ~DBG_MDSCR_SS);
+	__disable_single_step_nosync();
 	disable_debug_monitors(DBG_ACTIVE_EL1);
 }
 NOKPROBE_SYMBOL(kernel_disable_single_step);
@@ -425,7 +407,7 @@ NOKPROBE_SYMBOL(kernel_disable_single_step);
 int kernel_active_single_step(void)
 {
 	WARN_ON(!irqs_disabled());
-	return mdscr_read() & DBG_MDSCR_SS;
+	return read_sysreg(mdscr_el1) & DBG_MDSCR_SS;
 }
 NOKPROBE_SYMBOL(kernel_active_single_step);
 
