@@ -107,6 +107,16 @@ enum dbg_active_el {
 void enable_debug_monitors(enum dbg_active_el el);
 void disable_debug_monitors(enum dbg_active_el el);
 
+static __always_inline void __enable_single_step_nosync(void)
+{
+	sysreg_clear_set(mdscr_el1, 0, DBG_MDSCR_SS);
+}
+
+static __always_inline void __disable_single_step_nosync(void)
+{
+	sysreg_clear_set(mdscr_el1, DBG_MDSCR_SS, 0);
+}
+
 void user_rewind_single_step(struct task_struct *task);
 void user_fastforward_single_step(struct task_struct *task);
 void user_regs_reset_single_step(struct user_pt_regs *regs,
