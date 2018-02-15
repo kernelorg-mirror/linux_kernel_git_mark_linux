@@ -168,6 +168,8 @@ void ftrace_likely_update(struct ftrace_likely_data *f, int val,
 
 #include <uapi/linux/types.h>
 
+void access_once_alignment_check(const volatile void *ptr, int size);
+
 #define __READ_ONCE_SIZE						\
 ({									\
 	switch (size) {							\
@@ -185,6 +187,7 @@ void ftrace_likely_update(struct ftrace_likely_data *f, int val,
 static __always_inline
 void __read_once_size(const volatile void *p, void *res, int size)
 {
+	access_once_alignment_check(p, size);
 	__READ_ONCE_SIZE;
 }
 
@@ -208,6 +211,8 @@ void __read_once_size_nocheck(const volatile void *p, void *res, int size)
 
 static __always_inline void __write_once_size(volatile void *p, void *res, int size)
 {
+	access_once_alignment_check(p, size);
+
 	switch (size) {
 	case 1: *(volatile __u8 *)p = *(__u8 *)res; break;
 	case 2: *(volatile __u16 *)p = *(__u16 *)res; break;

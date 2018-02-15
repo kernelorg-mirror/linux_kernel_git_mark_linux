@@ -3,6 +3,7 @@
 # Makefile for the linux memory manager.
 #
 
+KASAN_SANITIZE_access_once.o := n
 KASAN_SANITIZE_slab_common.o := n
 KASAN_SANITIZE_slab.o := n
 KASAN_SANITIZE_slub.o := n
@@ -10,6 +11,7 @@ KASAN_SANITIZE_slub.o := n
 # These files are disabled because they produce non-interesting and/or
 # flaky coverage that is not a function of syscall inputs. E.g. slab is out of
 # free pages, or a task is migrated between nodes.
+KCOV_INSTRUMENT_access_once.o := n
 KCOV_INSTRUMENT_slab_common.o := n
 KCOV_INSTRUMENT_slob.o := n
 KCOV_INSTRUMENT_slab.o := n
@@ -39,7 +41,7 @@ obj-y			:= filemap.o mempool.o oom_kill.o \
 			   mm_init.o mmu_context.o percpu.o slab_common.o \
 			   compaction.o vmacache.o \
 			   interval_tree.o list_lru.o workingset.o \
-			   debug.o $(mmu-y)
+			   debug.o access_once.o $(mmu-y)
 
 obj-y += init-mm.o
 
