@@ -84,7 +84,7 @@ void install_memreserve_table(efi_system_table_t *sys_table_arg)
 
 	rsv->next = 0;
 	rsv->size = 0;
-	atomic_set(&rsv->count, 0);
+	rsv->count = (atomic_t)ATOMIC_INIT(0);
 
 	status = efi_call_early(install_configuration_table,
 				&memreserve_table_guid,
