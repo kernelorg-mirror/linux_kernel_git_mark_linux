@@ -41,6 +41,7 @@
 #include <linux/kthread.h>
 #include <linux/init.h>
 #include <linux/mmu_notifier.h>
+#include <linux/refcount.h>
 
 #include <asm/tlb.h>
 #include "internal.h"
@@ -807,7 +808,7 @@ static bool task_will_free_mem(struct task_struct *task)
 	if (test_bit(MMF_OOM_SKIP, &mm->flags))
 		return false;
 
-	if (atomic_read(&mm->mm_users) <= 1)
+	if (refcount_read(&mm->mm_users) <= 1)
 		return true;
 
 	/*

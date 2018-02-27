@@ -13,6 +13,7 @@
 #include <trace/events/mmflags.h>
 #include <linux/migrate.h>
 #include <linux/page_owner.h>
+#include <linux/refcount.h>
 
 #include "internal.h"
 
@@ -133,8 +134,8 @@ void dump_mm(const struct mm_struct *mm)
 		mm->get_unmapped_area,
 #endif
 		mm->mmap_base, mm->mmap_legacy_base, mm->highest_vm_end,
-		mm->pgd, atomic_read(&mm->mm_users),
-		atomic_read(&mm->mm_count),
+		mm->pgd, refcount_read(&mm->mm_users),
+		refcount_read(&mm->mm_count),
 		mm_pgtables_bytes(mm),
 		mm->map_count,
 		mm->hiwater_rss, mm->hiwater_vm, mm->total_vm, mm->locked_vm,
