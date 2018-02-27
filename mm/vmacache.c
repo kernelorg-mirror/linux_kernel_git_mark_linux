@@ -6,6 +6,7 @@
 #include <linux/sched/task.h>
 #include <linux/mm.h>
 #include <linux/vmacache.h>
+#include <linux/refcount.h>
 
 /*
  * Flush vma caches for threads that share a given mm.
@@ -28,7 +29,7 @@ void vmacache_flush_all(struct mm_struct *mm)
 	 * to worry about other threads' seqnum. Current's
 	 * flush will occur upon the next lookup.
 	 */
-	if (atomic_read(&mm->mm_users) == 1)
+	if (refcount_read(&mm->mm_users) == 1)
 		return;
 
 	rcu_read_lock();

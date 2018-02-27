@@ -32,6 +32,7 @@
 #include <asm/cacheflush.h>
 #include <asm/mmu_context.h>
 #include <asm/tlbflush.h>
+#include <linux/refcount.h>
 
 #include "internal.h"
 
@@ -63,7 +64,7 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
 
 	/* Get target node for single threaded private VMAs */
 	if (prot_numa && !(vma->vm_flags & VM_SHARED) &&
-	    atomic_read(&vma->vm_mm->mm_users) == 1)
+	    refcount_read(&vma->vm_mm->mm_users) == 1)
 		target_node = numa_node_id();
 
 	flush_tlb_batched_pending(vma->vm_mm);

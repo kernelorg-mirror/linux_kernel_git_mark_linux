@@ -19,6 +19,7 @@
 #include <linux/sched.h>
 #include <linux/sched/mm.h>
 #include <linux/slab.h>
+#include <linux/refcount.h>
 
 /* global SRCU for all MMs */
 DEFINE_STATIC_SRCU(srcu);
@@ -274,7 +275,7 @@ static int do_mmu_notifier_register(struct mmu_notifier *mn,
 	struct mmu_notifier_mm *mmu_notifier_mm;
 	int ret;
 
-	BUG_ON(atomic_read(&mm->mm_users) <= 0);
+	BUG_ON(refcount_read(&mm->mm_users) <= 0);
 
 	ret = -ENOMEM;
 	mmu_notifier_mm = kmalloc(sizeof(struct mmu_notifier_mm), GFP_KERNEL);
@@ -314,7 +315,7 @@ out_clean:
 		up_write(&mm->mmap_sem);
 	kfree(mmu_notifier_mm);
 out:
-	BUG_ON(atomic_read(&mm->mm_users) <= 0);
+	BUG_ON(refcount_read(&mm->mm_users) <= 0);
 	return ret;
 }
 
@@ -367,7 +368,7 @@ void __mmu_notifier_mm_destroy(struct mm_struct *mm)
  */
 void mmu_notifier_unregister(struct mmu_notifier *mn, struct mm_struct *mm)
 {
-	BUG_ON(atomic_read(&mm->mm_count) <= 0);
+	BUG_ON(refcount_read(&mm->mm_count) <= 0);
 
 	if (!hlist_unhashed(&mn->hlist)) {
 		/*
@@ -400,7 +401,7 @@ void mmu_notifier_unregister(struct mmu_notifier *mn, struct mm_struct *mm)
 	 */
 	synchronize_srcu(&srcu);
 
-	BUG_ON(atomic_read(&mm->mm_count) <= 0);
+	BUG_ON(refcount_read(&mm->mm_count) <= 0);
 
 	mmdrop(mm);
 }
@@ -420,7 +421,7 @@ void mmu_notifier_unregister_no_release(struct mmu_notifier *mn,
 	hlist_del_init_rcu(&mn->hlist);
 	spin_unlock(&mm->mmu_notifier_mm->lock);
 
-	BUG_ON(atomic_read(&mm->mm_count) <= 0);
+	BUG_ON(refcount_read(&mm->mm_count) <= 0);
 	mmdrop(mm);
 }
 EXPORT_SYMBOL_GPL(mmu_notifier_unregister_no_release);
