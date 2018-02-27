@@ -69,6 +69,7 @@
 #include <linux/userfaultfd_k.h>
 #include <linux/dax.h>
 #include <linux/oom.h>
+#include <linux/refcount.h>
 
 #include <asm/io.h>
 #include <asm/mmu_context.h>
@@ -379,7 +380,7 @@ void tlb_remove_table(struct mmu_gather *tlb, void *table)
 	 * When there's less then two users of this mm there cannot be a
 	 * concurrent page-table walk.
 	 */
-	if (atomic_read(&tlb->mm->mm_users) < 2) {
+	if (refcount_read(&tlb->mm->mm_users) < 2) {
 		__tlb_remove_table(table);
 		return;
 	}

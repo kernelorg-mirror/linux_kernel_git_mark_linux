@@ -39,6 +39,7 @@
 #include <linux/percpu-rwsem.h>
 #include <linux/task_work.h>
 #include <linux/shmem_fs.h>
+#include <linux/refcount.h>
 
 #include <linux/uprobes.h>
 
@@ -1123,7 +1124,7 @@ void uprobe_munmap(struct vm_area_struct *vma, unsigned long start, unsigned lon
 	if (no_uprobe_events() || !valid_vma(vma, false))
 		return;
 
-	if (!atomic_read(&vma->vm_mm->mm_users)) /* called by mmput() ? */
+	if (!refcount_read(&vma->vm_mm->mm_users)) /* called by mmput() ? */
 		return;
 
 	if (!test_bit(MMF_HAS_UPROBES, &vma->vm_mm->flags) ||

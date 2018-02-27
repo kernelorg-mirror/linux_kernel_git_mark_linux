@@ -40,6 +40,7 @@
 #include <linux/fs.h>
 #include <linux/path.h>
 #include <linux/timekeeping.h>
+#include <linux/refcount.h>
 
 #include <linux/uaccess.h>
 #include <asm/mmu_context.h>
@@ -350,7 +351,7 @@ static int zap_threads(struct task_struct *tsk, struct mm_struct *mm,
 		return nr;
 
 	tsk->flags |= PF_DUMPCORE;
-	if (atomic_read(&mm->mm_users) == nr + 1)
+	if (refcount_read(&mm->mm_users) == nr + 1)
 		goto done;
 	/*
 	 * We should find and kill all tasks which use this mm, and we should

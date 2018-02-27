@@ -12,6 +12,7 @@
 #include <linux/sched/signal.h>
 #include <linux/sched/task.h>
 #include <linux/sched/mm.h>
+#include <linux/refcount.h>
 
 /*
  * Returns true if the task does not share ->mm with another thread/process.
@@ -26,7 +27,7 @@ bool current_is_single_threaded(void)
 	if (atomic_read(&task->signal->live) != 1)
 		return false;
 
-	if (atomic_read(&mm->mm_users) == 1)
+	if (refcount_read(&mm->mm_users) == 1)
 		return true;
 
 	ret = false;
