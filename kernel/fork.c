@@ -595,6 +595,8 @@ static void check_mm(struct mm_struct *mm)
 void __mmdrop(struct mm_struct *mm)
 {
 	BUG_ON(mm == &init_mm);
+	BUG_ON(refcount_read(&mm->mm_users) != 0);
+	BUG_ON(refcount_read(&mm->mm_count) != 0);
 	WARN_ON_ONCE(mm == current->mm);
 	WARN_ON_ONCE(mm == current->active_mm);
 	mm_free_pgd(mm);
