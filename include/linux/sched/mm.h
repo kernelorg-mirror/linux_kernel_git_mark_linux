@@ -4,10 +4,13 @@
 
 #include <linux/kernel.h>
 #include <linux/atomic.h>
+#include <linux/refcount.h>
 #include <linux/sched.h>
 #include <linux/mm_types.h>
 #include <linux/gfp.h>
 #include <linux/sync_core.h>
+
+#include <asm/barrier.h>
 
 /*
  * Routines for handling mm_structs
@@ -33,7 +36,7 @@ extern struct mm_struct *mm_alloc(void);
  */
 static inline void mmgrab(struct mm_struct *mm)
 {
-	atomic_inc(&mm->mm_count);
+	refcount_inc(&mm->mm_count);
 }
 
 extern void __mmdrop(struct mm_struct *mm);
@@ -45,7 +48,8 @@ static inline void mmdrop(struct mm_struct *mm)
 	 * required by the membarrier system call before returning to
 	 * user-space, after storing to rq->curr.
 	 */
-	if (unlikely(atomic_dec_and_test(&mm->mm_count)))
+	smp_mb__before_atomic();
+	if (unlikely(refcount_dec_and_test(&mm->mm_count)))
 		__mmdrop(mm);
 }
 
@@ -67,12 +71,12 @@ static inline void mmdrop(struct mm_struct *mm)
  */
 static inline void mmget(struct mm_struct *mm)
 {
-	atomic_inc(&mm->mm_users);
+	refcount_inc(&mm->mm_users);
 }
 
 static inline bool mmget_not_zero(struct mm_struct *mm)
 {
-	return atomic_inc_not_zero(&mm->mm_users);
+	return refcount_inc_not_zero(&mm->mm_users);
 }
 
 /* mmput gets rid of the mappings and all user-space */

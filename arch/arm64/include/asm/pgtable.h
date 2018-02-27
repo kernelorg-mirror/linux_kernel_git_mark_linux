@@ -43,6 +43,7 @@
 #include <asm/fixmap.h>
 #include <linux/mmdebug.h>
 #include <linux/mm_types.h>
+#include <linux/refcount.h>
 #include <linux/sched.h>
 
 extern void __pte_error(const char *file, int line, unsigned long val);
@@ -262,7 +263,7 @@ static inline void set_pte_at(struct mm_struct *mm, unsigned long addr,
 	 */
 	old_pte = READ_ONCE(*ptep);
 	if (IS_ENABLED(CONFIG_DEBUG_VM) && pte_valid(old_pte) && pte_valid(pte) &&
-	   (mm == current->active_mm || atomic_read(&mm->mm_users) > 1)) {
+	   (mm == current->active_mm || refcount_read(&mm->mm_users) > 1)) {
 		VM_WARN_ONCE(!pte_young(pte),
 			     "%s: racy access flag clearing: 0x%016llx -> 0x%016llx",
 			     __func__, pte_val(old_pte), pte_val(pte));

@@ -62,6 +62,7 @@
 #include <linux/random.h>
 #include <linux/rcuwait.h>
 #include <linux/compat.h>
+#include <linux/refcount.h>
 
 #include <linux/uaccess.h>
 #include <asm/unistd.h>
@@ -419,7 +420,7 @@ retry:
 	 * candidates.  Do not leave the mm pointing to a possibly
 	 * freed task structure.
 	 */
-	if (atomic_read(&mm->mm_users) <= 1) {
+	if (refcount_read(&mm->mm_users) <= 1) {
 		mm->owner = NULL;
 		return;
 	}
