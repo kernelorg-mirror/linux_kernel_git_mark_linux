@@ -598,6 +598,8 @@ void __mmdrop(struct mm_struct *mm)
 	BUG_ON(mm == &init_mm);
 	BUG_ON(refcount_read(&mm->mm_users) != 0);
 	BUG_ON(refcount_read(&mm->mm_count) != 0);
+	BUG_ON(mm == current->mm);
+	BUG_ON(mm == current->active_mm);
 	mm_free_pgd(mm);
 	destroy_context(mm);
 	hmm_mm_destroy(mm);
