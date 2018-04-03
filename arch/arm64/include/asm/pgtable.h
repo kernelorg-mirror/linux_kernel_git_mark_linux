@@ -39,8 +39,8 @@
 
 #ifndef __ASSEMBLY__
 
-#include <asm/cmpxchg.h>
 #include <asm/fixmap.h>
+#include <linux/atomic.h>
 #include <linux/mmdebug.h>
 #include <linux/mm_types.h>
 #include <linux/sched.h>

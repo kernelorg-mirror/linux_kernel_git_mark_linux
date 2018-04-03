@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/atomic.h>
 #include <linux/extable.h>
 #include <linux/signal.h>
 #include <linux/mm.h>
@@ -34,7 +35,6 @@
 #include <linux/hugetlb.h>
 
 #include <asm/bug.h>
-#include <asm/cmpxchg.h>
 #include <asm/cpufeature.h>
 #include <asm/exception.h>
 #include <asm/debug-monitors.h>
