@@ -33,15 +33,18 @@
 #define KVM_ARM64_DEBUG_DIRTY_SHIFT	0
 #define KVM_ARM64_DEBUG_DIRTY		(1 << KVM_ARM64_DEBUG_DIRTY_SHIFT)
 
+#ifndef __ASSEMBLY__
+
+#include <linux/mm.h>
+
 #define kvm_ksym_ref(sym)						\
 	({								\
 		void *val = &sym;					\
 		if (!is_kernel_in_hyp_mode())				\
-			val = phys_to_virt((u64)&sym - kimage_voffset);	\
+			val = lm_alias(&sym);				\
 		val;							\
 	 })
 
-#ifndef __ASSEMBLY__
 struct kvm;
 struct kvm_vcpu;
 
