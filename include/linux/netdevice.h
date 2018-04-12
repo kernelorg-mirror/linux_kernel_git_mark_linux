@@ -3721,6 +3721,10 @@ void netdev_run_todo(void);
  */
 static inline void dev_put(struct net_device *dev)
 {
+	if (!dev->pcpu_refcnt) {
+		panic("dev->pcpu_refcnt is NULL for net_device %px (%s) in reg_state 0x%lx\n",
+		      dev, dev->name, (unsigned long)dev->reg_state);
+	}
 	this_cpu_dec(*dev->pcpu_refcnt);
 }
 
