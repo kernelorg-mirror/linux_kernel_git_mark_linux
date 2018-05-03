@@ -498,6 +498,62 @@ INSTR_ATOMIC64_AND(_release)
 #define atomic64_and_release atomic64_and_release
 #endif
 
+#define INSTR_ATOMIC_ANDNOT(order)					\
+static __always_inline void						\
+atomic_andnot##order(int i, atomic_t *v)				\
+{									\
+	kasan_check_write(v, sizeof(*v));				\
+	arch_atomic_andnot##order(i, v);				\
+}
+
+#ifdef arch_atomic_andnot
+INSTR_ATOMIC_ANDNOT()
+#define atomic_andnot atomic_andnot
+#endif
+
+#ifdef arch_atomic_andnot_relaxed
+INSTR_ATOMIC_ANDNOT(_relaxed)
+#define atomic_andnot_relaxed atomic_andnot_relaxed
+#endif
+
+#ifdef arch_atomic_andnot_acquire
+INSTR_ATOMIC_ANDNOT(_acquire)
+#define atomic_andnot_acquire atomic_andnot_acquire
+#endif
+
+#ifdef arch_atomic_andnot_release
+INSTR_ATOMIC_ANDNOT(_release)
+#define atomic_andnot_release atomic_andnot_release
+#endif
+
+#define INSTR_ATOMIC64_ANDNOT(order)					\
+static __always_inline void						\
+atomic64_andnot##order(s64 i, atomic64_t *v)				\
+{									\
+	kasan_check_write(v, sizeof(*v));				\
+	arch_atomic64_andnot##order(i, v);				\
+}
+
+#ifdef arch_atomic64_andnot
+INSTR_ATOMIC64_ANDNOT()
+#define atomic64_andnot atomic64_andnot
+#endif
+
+#ifdef arch_atomic64_andnot_relaxed
+INSTR_ATOMIC64_ANDNOT(_relaxed)
+#define atomic64_andnot_relaxed atomic64_andnot_relaxed
+#endif
+
+#ifdef arch_atomic64_andnot_acquire
+INSTR_ATOMIC64_ANDNOT(_acquire)
+#define atomic64_andnot_acquire atomic64_andnot_acquire
+#endif
+
+#ifdef arch_atomic64_andnot_release
+INSTR_ATOMIC64_ANDNOT(_release)
+#define atomic64_andnot_release atomic64_andnot_release
+#endif
+
 #define INSTR_ATOMIC_OR(order)						\
 static __always_inline void						\
 atomic_or##order(int i, atomic_t *v)					\
@@ -982,6 +1038,62 @@ INSTR_ATOMIC64_FETCH_AND(_acquire)
 #ifdef arch_atomic64_fetch_and_release
 INSTR_ATOMIC64_FETCH_AND(_release)
 #define atomic64_fetch_and_release atomic64_fetch_and_release
+#endif
+
+#define INSTR_ATOMIC_FETCH_ANDNOT(order)				\
+static __always_inline int						\
+atomic_fetch_andnot##order(int i, atomic_t *v)				\
+{									\
+	kasan_check_write(v, sizeof(*v));				\
+	return arch_atomic_fetch_andnot##order(i, v);			\
+}
+
+#ifdef arch_atomic_fetch_andnot
+INSTR_ATOMIC_FETCH_ANDNOT()
+#define atomic_fetch_andnot atomic_fetch_andnot
+#endif
+
+#ifdef arch_atomic_fetch_andnot_relaxed
+INSTR_ATOMIC_FETCH_ANDNOT(_relaxed)
+#define atomic_fetch_andnot_relaxed atomic_fetch_andnot_relaxed
+#endif
+
+#ifdef arch_atomic_fetch_andnot_acquire
+INSTR_ATOMIC_FETCH_ANDNOT(_acquire)
+#define atomic_fetch_andnot_acquire atomic_fetch_andnot_acquire
+#endif
+
+#ifdef arch_atomic_fetch_andnot_release
+INSTR_ATOMIC_FETCH_ANDNOT(_release)
+#define atomic_fetch_andnot_release atomic_fetch_andnot_release
+#endif
+
+#define INSTR_ATOMIC64_FETCH_ANDNOT(order)				\
+static __always_inline s64						\
+atomic64_fetch_andnot##order(s64 i, atomic64_t *v)			\
+{									\
+	kasan_check_write(v, sizeof(*v));				\
+	return arch_atomic64_fetch_andnot##order(i, v);			\
+}
+
+#ifdef arch_atomic64_fetch_andnot
+INSTR_ATOMIC64_FETCH_ANDNOT()
+#define atomic64_fetch_andnot atomic64_fetch_andnot
+#endif
+
+#ifdef arch_atomic64_fetch_andnot_relaxed
+INSTR_ATOMIC64_FETCH_ANDNOT(_relaxed)
+#define atomic64_fetch_andnot_relaxed atomic64_fetch_andnot_relaxed
+#endif
+
+#ifdef arch_atomic64_fetch_andnot_acquire
+INSTR_ATOMIC64_FETCH_ANDNOT(_acquire)
+#define atomic64_fetch_andnot_acquire atomic64_fetch_andnot_acquire
+#endif
+
+#ifdef arch_atomic64_fetch_andnot_release
+INSTR_ATOMIC64_FETCH_ANDNOT(_release)
+#define atomic64_fetch_andnot_release atomic64_fetch_andnot_release
 #endif
 
 #define INSTR_ATOMIC_FETCH_OR(order)					\
