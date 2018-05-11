@@ -428,12 +428,6 @@ __notrace_funcgraph struct task_struct *__switch_to(struct task_struct *prev,
 	entry_task_switch(next);
 	uao_thread_switch(next);
 
-	/* TODO:
-	 * - switch kernel keys in cpu_switch_to,
-	 * - switch user/kernel keys in exception entry/return
-	 */
-	ptrauth_task_switch(next);
-
 	/*
 	 * Complete any pending TLB or cache maintenance on this CPU in case
 	 * the thread migrates to a different CPU.

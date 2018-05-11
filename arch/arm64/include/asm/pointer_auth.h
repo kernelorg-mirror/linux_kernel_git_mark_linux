@@ -73,11 +73,7 @@ static inline unsigned long ptrauth_strip_insn_pac(unsigned long ptr)
 }
 
 #define ptrauth_task_init_user(tsk)	\
-	ptrauth_keys_init(&(tsk)->thread_info.keys_user); \
-	ptrauth_keys_switch(&(tsk)->thread_info.keys_user)
-
-#define ptrauth_task_switch(tsk)	\
-	ptrauth_keys_switch(&(tsk)->thread_info.keys_user)
+	ptrauth_keys_init(&(tsk)->thread_info.keys_user);
 
 #define mm_ctx_ptrauth_dup(oldctx, newctx) \
 	ptrauth_keys_dup(&(oldctx)->ptrauth_keys, &(newctx)->ptrauth_keys)
@@ -85,7 +81,6 @@ static inline unsigned long ptrauth_strip_insn_pac(unsigned long ptr)
 #else /* CONFIG_ARM64_PTR_AUTH */
 #define ptrauth_strip_insn_pac(lr)	(lr)
 #define ptrauth_task_init_user(tsk)
-#define ptrauth_task_switch(tsk)
 #endif /* CONFIG_ARM64_PTR_AUTH */
 
 #endif /* __ASM_POINTER_AUTH_H */

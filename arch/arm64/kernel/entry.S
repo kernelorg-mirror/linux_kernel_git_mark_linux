@@ -22,8 +22,9 @@
 #include <linux/linkage.h>
 
 #include <asm/alternative.h>
-#include <asm/assembler.h>
 #include <asm/asm-offsets.h>
+#include <asm/asm-uaccess.h>
+#include <asm/assembler.h>
 #include <asm/cpufeature.h>
 #include <asm/errno.h>
 #include <asm/esr.h>
@@ -32,8 +33,8 @@
 #include <asm/mmu.h>
 #include <asm/processor.h>
 #include <asm/ptrace.h>
+#include <asm/ptrauth-asm.h>
 #include <asm/thread_info.h>
-#include <asm/asm-uaccess.h>
 #include <asm/unistd.h>
 
 /*
@@ -304,6 +305,9 @@ alternative_else_nop_endif
 #endif
 3:
 	.endif
+
+	// TODO: this needs to be patched in dynamically
+	ptrauth_keys_install_user tsk, x0
 
 	msr	elr_el1, x21			// set up the return data
 	msr	spsr_el1, x22
