@@ -57,6 +57,7 @@
 #include <asm/fpsimd.h>
 #include <asm/mmu_context.h>
 #include <asm/processor.h>
+#include <asm/pointer_auth.h>
 #include <asm/stacktrace.h>
 
 #ifdef CONFIG_CC_STACKPROTECTOR
@@ -271,6 +272,7 @@ static void tls_thread_flush(void)
 
 void flush_thread(void)
 {
+	ptrauth_task_init_user(current);
 	fpsimd_flush_thread();
 	tls_thread_flush();
 	flush_ptrace_hw_breakpoint(current);
@@ -425,6 +427,12 @@ __notrace_funcgraph struct task_struct *__switch_to(struct task_struct *prev,
 	contextidr_thread_switch(next);
 	entry_task_switch(next);
 	uao_thread_switch(next);
+
+	/* TODO:
+	 * - switch kernel keys in cpu_switch_to,
+	 * - switch user/kernel keys in exception entry/return
+	 */
+	ptrauth_task_switch(next);
 
 	/*
 	 * Complete any pending TLB or cache maintenance on this CPU in case
