@@ -231,6 +231,9 @@ alternative_else_nop_endif
 	msr	sp_el0, tsk
 	.endif
 
+	// HACK: msr_s can't handle register aliases, x28 == tsk
+	ptrauth_keys_install_kernel x28, x18
+
 	/*
 	 * Registers that may be useful after this macro is invoked:
 	 *
@@ -1148,6 +1151,7 @@ ENTRY(cpu_switch_to)
 	ldr	lr, [x8]
 	mov	sp, x9
 	msr	sp_el0, x1
+	ptrauth_keys_install_kernel x1, x2
 	ret
 ENDPROC(cpu_switch_to)
 NOKPROBE(cpu_switch_to)

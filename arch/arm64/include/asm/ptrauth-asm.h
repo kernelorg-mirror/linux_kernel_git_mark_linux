@@ -14,9 +14,18 @@
 	msr_s	SYS_APIAKEYHI_EL1, \tmp
 	.endm
 
+	.macro ptrauth_keys_install_kernel tsk, tmp
+	msr_s	SYS_APIAKEYLO_EL1, \tsk
+	msr_s	SYS_APIAKEYHI_EL1, \tsk
+	isb
+	.endm
+
 #else /* CONFIG_ARM64_PTR_AUTH */
 
 	.macro ptrauth_keys_install_user keys, tmp
+	.endm
+
+	.macro ptrauth_keys_install_kernel tsk, tmp
 	.endm
 
 #endif /* CONFIG_ARM64_PTR_AUTH */

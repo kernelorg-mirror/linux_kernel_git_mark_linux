@@ -37,6 +37,7 @@
 #include <asm/pgtable-hwdef.h>
 #include <asm/pgtable.h>
 #include <asm/page.h>
+#include <asm/ptrauth-asm.h>
 #include <asm/smp.h>
 #include <asm/sysreg.h>
 #include <asm/thread_info.h>
@@ -445,6 +446,9 @@ __primary_switched:
 	ret					// to __primary_switch()
 0:
 #endif
+	adr_l	x0, init_task
+	ptrauth_keys_install_kernel x0, x1
+
 	add	sp, sp, #16
 	mov	x29, #0
 	mov	x30, #0
@@ -472,13 +476,13 @@ ENTRY(el2_setup)
 	mrs	x0, CurrentEL
 	cmp	x0, #CurrentEL_EL2
 	b.eq	1f
-	mov_q	x0, (SCTLR_EL1_RES1 | ENDIAN_SET_EL1)
+	mov_q	x0, (SCTLR_EL1_RES1 | ENDIAN_SET_EL1 | SCTLR_ELx_ENIA)
 	msr	sctlr_el1, x0
 	mov	w0, #BOOT_CPU_MODE_EL1		// This cpu booted in EL1
 	isb
 	ret
 
-1:	mov_q	x0, (SCTLR_EL2_RES1 | ENDIAN_SET_EL2)
+1:	mov_q	x0, (SCTLR_EL2_RES1 | ENDIAN_SET_EL2 | SCTLR_ELx_ENIA)
 	msr	sctlr_el2, x0
 
 #ifdef CONFIG_ARM64_VHE
@@ -720,6 +724,7 @@ __secondary_switched:
 	mov	sp, x1
 	ldr	x2, [x0, #CPU_BOOT_TASK]
 	msr	sp_el0, x2
+	ptrauth_keys_install_kernel x2, x3
 	mov	x29, #0
 	mov	x30, #0
 	b	secondary_start_kernel
