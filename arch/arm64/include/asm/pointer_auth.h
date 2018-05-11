@@ -64,12 +64,16 @@ static inline void ptrauth_keys_dup(struct ptrauth_keys *old,
  * The EL0 pointer bits used by a pointer authentication code.
  * This is dependent on TBI0 being enabled, or bits 63:56 would also apply.
  */
-#define ptrauth_pac_mask() 	GENMASK(54, VA_BITS)
+#define ptrauth_pac_mask_ttbr0() 	GENMASK(54, VA_BITS)
 
-/* Only valid for EL0 TTBR0 instruction pointers */
+#define ptrauth_pac_mask_ttbr1()	(GENMASK(63, 56) | GENMASK(54, VA_BITS))
+
 static inline unsigned long ptrauth_strip_insn_pac(unsigned long ptr)
 {
-	return ptr & ~ptrauth_pac_mask();
+	if (ptr & BIT_ULL(55))
+		return ptr | ptrauth_pac_mask_ttbr1();
+	else
+		return ptr & ~ptrauth_pac_mask_ttbr0();
 }
 
 #define ptrauth_task_init_user(tsk)	\

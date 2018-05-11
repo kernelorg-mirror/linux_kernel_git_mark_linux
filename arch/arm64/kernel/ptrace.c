@@ -969,7 +969,7 @@ static int pac_mask_get(struct task_struct *target,
 	 * depending on TCR_EL1.TBID*, which we may make use of in future, so
 	 * we expose separate masks.
 	 */
-	unsigned long mask = ptrauth_pac_mask();
+	unsigned long mask = ptrauth_pac_mask_ttbr0();
 	struct user_pac_mask uregs = {
 		.data_mask = mask,
 		.insn_mask = mask,
