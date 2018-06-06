@@ -96,6 +96,11 @@ enum arm_smccc_conduit {
  */
 enum arm_smccc_conduit arm_smccc_1_1_get_conduit(void);
 
+static inline bool arm_smccc_1_1_available(void)
+{
+	return arm_smccc_1_1_get_conduit() != SMCCC_CONDUIT_NONE;
+}
+
 /**
  * struct arm_smccc_res - Result from SMC/HVC call
  * @a0-a3 result values from registers 0 to 3
@@ -307,6 +312,35 @@ asmlinkage void __arm_smccc_hvc(unsigned long a0, unsigned long a1,
  * from register 0 to 3 on return from the HVC instruction if not NULL.
  */
 #define arm_smccc_1_1_hvc(...)	__arm_smccc_1_1(SMCCC_HVC_INST, __VA_ARGS__)
+
+/*
+ * arm_smccc_1_1_call() - make an SMCCC v1.1 compliant call
+ *
+ * This is a variadic macro taking one to eight source arguments.
+ *
+ * @a0-a7: arguments passed in registers 0 to 7
+ *
+ * returns result values from registers 0 to 3
+ *
+ * This macro is used to make calls following SMC Calling Convention v1.1,
+ * using whichever conduit is available. It is the caller's resposibility to
+ * check that SMCCC v1.1 is available.
+ *
+ * The content of the supplied param are copied to registers 0 to 7 prior
+ * to the SMC instruction. The return values are updated with the content
+ * from register 0 to 3 on return from the SMC instruction if not NULL.
+ */
+#define arm_smccc_1_1_call(...)						\
+({									\
+	struct arm_smccc_res __res;					\
+									\
+	if (arm_smccc_1_1_get_conduit() == SMCCC_CONDUIT_SMC)		\
+		__res = arm_smccc_1_1_smc(__VA_ARGS__);			\
+	else								\
+		__res = arm_smccc_1_1_hvc(__VA_ARGS__);			\
+									\
+	__res;								\
+})
 
 /* Return codes defined in ARM DEN 0070A */
 #define SMCCC_RET_SUCCESS			0
