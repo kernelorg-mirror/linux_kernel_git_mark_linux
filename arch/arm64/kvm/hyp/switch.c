@@ -479,7 +479,7 @@ static void __hyp_text __set_guest_arch_workaround_state(struct kvm_vcpu *vcpu)
 	 */
 	if (__needs_ssbd_off(vcpu) &&
 	    __hyp_this_cpu_read(arm64_ssbd_callback_required))
-		arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_2, 0, NULL);
+		arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_2, 0);
 #endif
 }
 
@@ -491,7 +491,7 @@ static void __hyp_text __set_host_arch_workaround_state(struct kvm_vcpu *vcpu)
 	 */
 	if (__needs_ssbd_off(vcpu) &&
 	    __hyp_this_cpu_read(arm64_ssbd_callback_required))
-		arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_2, 1, NULL);
+		arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_2, 1);
 #endif
 }
 

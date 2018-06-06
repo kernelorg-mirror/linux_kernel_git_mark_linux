@@ -177,7 +177,7 @@ asmlinkage void __arm_smccc_hvc(unsigned long a0, unsigned long a1,
 
 #endif
 
-#define ___count_args(_0, _1, _2, _3, _4, _5, _6, _7, _8, x, ...) x
+#define ___count_args(_0, _1, _2, _3, _4, _5, _6, _7, x, ...) x
 
 #define __count_args(...)						\
 	___count_args(__VA_ARGS__, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -204,58 +204,54 @@ asmlinkage void __arm_smccc_hvc(unsigned long a0, unsigned long a1,
 #define __constraint_read_6	__constraint_read_5, "r" (r6)
 #define __constraint_read_7	__constraint_read_6, "r" (r7)
 
-#define __declare_arg_0(a0, res)					\
-	struct arm_smccc_res   *___res = res;				\
+#define __declare_arg_0(a0)						\
 	register unsigned long r0 asm("r0") = (u32)a0;			\
 	register unsigned long r1 asm("r1");				\
 	register unsigned long r2 asm("r2");				\
 	register unsigned long r3 asm("r3")
 
-#define __declare_arg_1(a0, a1, res)					\
+#define __declare_arg_1(a0, a1)						\
 	typeof(a1) __a1 = a1;						\
-	struct arm_smccc_res   *___res = res;				\
 	register unsigned long r0 asm("r0") = (u32)a0;			\
 	register unsigned long r1 asm("r1") = __a1;			\
 	register unsigned long r2 asm("r2");				\
 	register unsigned long r3 asm("r3")
 
-#define __declare_arg_2(a0, a1, a2, res)				\
+#define __declare_arg_2(a0, a1, a2)					\
 	typeof(a1) __a1 = a1;						\
 	typeof(a2) __a2 = a2;						\
-	struct arm_smccc_res   *___res = res;				\
 	register unsigned long r0 asm("r0") = (u32)a0;			\
 	register unsigned long r1 asm("r1") = __a1;			\
 	register unsigned long r2 asm("r2") = __a2;			\
 	register unsigned long r3 asm("r3")
 
-#define __declare_arg_3(a0, a1, a2, a3, res)				\
+#define __declare_arg_3(a0, a1, a2, a3)					\
 	typeof(a1) __a1 = a1;						\
 	typeof(a2) __a2 = a2;						\
 	typeof(a3) __a3 = a3;						\
-	struct arm_smccc_res   *___res = res;				\
 	register unsigned long r0 asm("r0") = (u32)a0;			\
 	register unsigned long r1 asm("r1") = __a1;			\
 	register unsigned long r2 asm("r2") = __a2;			\
 	register unsigned long r3 asm("r3") = __a3
 
-#define __declare_arg_4(a0, a1, a2, a3, a4, res)			\
+#define __declare_arg_4(a0, a1, a2, a3, a4)				\
 	typeof(a4) __a4 = a4;						\
-	__declare_arg_3(a0, a1, a2, a3, res);				\
+	__declare_arg_3(a0, a1, a2, a3);				\
 	register unsigned long r4 asm("r4") = __a4
 
-#define __declare_arg_5(a0, a1, a2, a3, a4, a5, res)			\
+#define __declare_arg_5(a0, a1, a2, a3, a4, a5)				\
 	typeof(a5) __a5 = a5;						\
-	__declare_arg_4(a0, a1, a2, a3, a4, res);			\
+	__declare_arg_4(a0, a1, a2, a3, a4);				\
 	register unsigned long r5 asm("r5") = __a5
 
-#define __declare_arg_6(a0, a1, a2, a3, a4, a5, a6, res)		\
+#define __declare_arg_6(a0, a1, a2, a3, a4, a5, a6)			\
 	typeof(a6) __a6 = a6;						\
-	__declare_arg_5(a0, a1, a2, a3, a4, a5, res);			\
+	__declare_arg_5(a0, a1, a2, a3, a4, a5);			\
 	register unsigned long r6 asm("r6") = __a6
 
-#define __declare_arg_7(a0, a1, a2, a3, a4, a5, a6, a7, res)		\
+#define __declare_arg_7(a0, a1, a2, a3, a4, a5, a6, a7)			\
 	typeof(a7) __a7 = a7;						\
-	__declare_arg_6(a0, a1, a2, a3, a4, a5, a6, res);		\
+	__declare_arg_6(a0, a1, a2, a3, a4, a5, a6);			\
 	register unsigned long r7 asm("r7") = __a7
 
 #define ___declare_args(count, ...) __declare_arg_ ## count(__VA_ARGS__)
@@ -273,22 +269,21 @@ asmlinkage void __arm_smccc_hvc(unsigned long a0, unsigned long a1,
  * makes it stick.
  */
 #define __arm_smccc_1_1(inst, ...)					\
-	do {								\
+	({								\
 		__declare_args(__count_args(__VA_ARGS__), __VA_ARGS__);	\
 		asm volatile(inst "\n"					\
 			     __constraints(__count_args(__VA_ARGS__)));	\
-		if (___res)						\
-			*___res = (typeof(*___res)){r0, r1, r2, r3};	\
-	} while (0)
+		(struct arm_smccc_res){ r0, r1, r2, r3 };		\
+	})
 
 /*
  * arm_smccc_1_1_smc() - make an SMCCC v1.1 compliant SMC call
  *
- * This is a variadic macro taking one to eight source arguments, and
- * an optional return structure.
+ * This is a variadic macro taking one to eight source arguments.
  *
  * @a0-a7: arguments passed in registers 0 to 7
- * @res: result values from registers 0 to 3
+ *
+ * returns result values from registers 0 to 3
  *
  * This macro is used to make SMC calls following SMC Calling Convention v1.1.
  * The content of the supplied param are copied to registers 0 to 7 prior
@@ -300,11 +295,11 @@ asmlinkage void __arm_smccc_hvc(unsigned long a0, unsigned long a1,
 /*
  * arm_smccc_1_1_hvc() - make an SMCCC v1.1 compliant HVC call
  *
- * This is a variadic macro taking one to eight source arguments, and
- * an optional return structure.
+ * This is a variadic macro taking one to eight source arguments.
  *
  * @a0-a7: arguments passed in registers 0 to 7
- * @res: result values from registers 0 to 3
+ *
+ * returns result values from registers 0 to 3
  *
  * This macro is used to make HVC calls following SMC Calling Convention v1.1.
  * The content of the supplied param are copied to registers 0 to 7 prior

@@ -169,12 +169,12 @@ static void install_bp_hardening_cb(bp_hardening_cb_t fn,
 
 static void call_smc_arch_workaround_1(void)
 {
-	arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_1, NULL);
+	arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_1);
 }
 
 static void call_hvc_arch_workaround_1(void)
 {
-	arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_WORKAROUND_1, NULL);
+	arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_WORKAROUND_1);
 }
 
 static void qcom_link_stack_sanitization(void)
@@ -211,8 +211,8 @@ static int detect_harden_bp_fw(void)
 
 	switch (arm_smccc_1_1_get_conduit()) {
 	case SMCCC_CONDUIT_HVC:
-		arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
-				  ARM_SMCCC_ARCH_WORKAROUND_1, &res);
+		res = arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
+					ARM_SMCCC_ARCH_WORKAROUND_1);
 		switch ((int)res.a0) {
 		case 1:
 			/* Firmware says we're just fine */
@@ -229,8 +229,8 @@ static int detect_harden_bp_fw(void)
 		break;
 
 	case SMCCC_CONDUIT_SMC:
-		arm_smccc_1_1_smc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
-				  ARM_SMCCC_ARCH_WORKAROUND_1, &res);
+		res = arm_smccc_1_1_smc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
+					ARM_SMCCC_ARCH_WORKAROUND_1);
 		switch ((int)res.a0) {
 		case 1:
 			/* Firmware says we're just fine */
@@ -347,11 +347,11 @@ void arm64_set_ssbd_mitigation(bool state)
 
 	switch (arm_smccc_1_1_get_conduit()) {
 	case SMCCC_CONDUIT_HVC:
-		arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_WORKAROUND_2, state, NULL);
+		arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_WORKAROUND_2, state);
 		break;
 
 	case SMCCC_CONDUIT_SMC:
-		arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_2, state, NULL);
+		arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_2, state);
 		break;
 
 	default:
@@ -386,13 +386,13 @@ static bool has_ssbd_mitigation(const struct arm64_cpu_capabilities *entry,
 
 	switch (arm_smccc_1_1_get_conduit()) {
 	case SMCCC_CONDUIT_HVC:
-		arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
-				  ARM_SMCCC_ARCH_WORKAROUND_2, &res);
+		res = arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
+					ARM_SMCCC_ARCH_WORKAROUND_2);
 		break;
 
 	case SMCCC_CONDUIT_SMC:
-		arm_smccc_1_1_smc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
-				  ARM_SMCCC_ARCH_WORKAROUND_2, &res);
+		res = arm_smccc_1_1_smc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
+					ARM_SMCCC_ARCH_WORKAROUND_2);
 		break;
 
 	default:

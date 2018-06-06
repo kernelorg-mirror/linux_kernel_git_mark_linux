@@ -28,12 +28,12 @@ static void harden_branch_predictor_iciallu(void)
 
 static void __maybe_unused call_smc_arch_workaround_1(void)
 {
-	arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_1, NULL);
+	arm_smccc_1_1_smc(ARM_SMCCC_ARCH_WORKAROUND_1);
 }
 
 static void __maybe_unused call_hvc_arch_workaround_1(void)
 {
-	arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_WORKAROUND_1, NULL);
+	arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_WORKAROUND_1);
 }
 
 static void cpu_v7_spectre_init(void)
@@ -76,8 +76,8 @@ static void cpu_v7_spectre_init(void)
 
 		switch (arm_smccc_1_1_get_conduit()) {
 		case SMCCC_CONDUIT_HVC:
-			arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
-					  ARM_SMCCC_ARCH_WORKAROUND_1, &res);
+			res = arm_smccc_1_1_hvc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
+						ARM_SMCCC_ARCH_WORKAROUND_1);
 			if ((int)res.a0 != 0)
 				break;
 			per_cpu(harden_branch_predictor_fn, cpu) =
@@ -87,8 +87,8 @@ static void cpu_v7_spectre_init(void)
 			break;
 
 		case SMCCC_CONDUIT_SMC:
-			arm_smccc_1_1_smc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
-					  ARM_SMCCC_ARCH_WORKAROUND_1, &res);
+			res = arm_smccc_1_1_smc(ARM_SMCCC_ARCH_FEATURES_FUNC_ID,
+						ARM_SMCCC_ARCH_WORKAROUND_1);
 			if ((int)res.a0 != 0)
 				break;
 			per_cpu(harden_branch_predictor_fn, cpu) =
