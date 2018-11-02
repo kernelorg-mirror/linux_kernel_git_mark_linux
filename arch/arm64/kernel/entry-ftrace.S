@@ -10,7 +10,9 @@
  */
 
 #include <linux/linkage.h>
+
 #include <asm/assembler.h>
+#include <asm/export.h>
 #include <asm/ftrace.h>
 #include <asm/insn.h>
 
@@ -121,6 +123,8 @@ skip_ftrace_call:			// }
 #endif /* CONFIG_FUNCTION_GRAPH_TRACER */
 	mcount_exit
 ENDPROC(_mcount)
+EXPORT_SYMBOL(_mcount)
+NOKPROBE(_mcount)
 
 #else /* CONFIG_DYNAMIC_FTRACE */
 /*
@@ -132,6 +136,8 @@ ENDPROC(_mcount)
 ENTRY(_mcount)
 	ret
 ENDPROC(_mcount)
+EXPORT_SYMBOL(_mcount)
+NOKPROBE(_mcount)
 
 /*
  * void ftrace_caller(unsigned long return_address)
