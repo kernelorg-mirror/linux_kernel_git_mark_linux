@@ -15,6 +15,8 @@
 #ifdef CONFIG_GCC_PLUGIN_STACKLEAK
 #include <asm/stacktrace.h>
 
+asmlinkage void notrace stackleak_erase(void);
+
 static inline void stackleak_task_init(struct task_struct *t)
 {
 	t->lowest_stack = (unsigned long)end_of_stack(t) + sizeof(unsigned long);
@@ -30,6 +32,7 @@ int stack_erasing_sysctl(struct ctl_table *table, int write,
 
 #else /* !CONFIG_GCC_PLUGIN_STACKLEAK */
 static inline void stackleak_task_init(struct task_struct *t) { }
+static inline void stackleak_erase(void) { }
 #endif
 
 #endif
