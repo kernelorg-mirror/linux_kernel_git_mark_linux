@@ -3,6 +3,7 @@
 #define _KERNEL_EVENTS_INTERNAL_H
 
 #include <linux/hardirq.h>
+#include <linux/refcount.h>
 #include <linux/uaccess.h>
 
 /* Buffer handling */
@@ -10,7 +11,7 @@
 #define RING_BUFFER_WRITABLE		0x01
 
 struct ring_buffer {
-	atomic_t			refcount;
+	refcount_t			refcount;
 	struct rcu_head			rcu_head;
 #ifdef CONFIG_PERF_USE_VMALLOC
 	struct work_struct		work;
@@ -48,7 +49,7 @@ struct ring_buffer {
 	atomic_t			aux_mmap_count;
 	unsigned long			aux_mmap_locked;
 	void				(*free_aux)(void *);
-	atomic_t			aux_refcount;
+	refcount_t			aux_refcount;
 	void				**aux_pages;
 	void				*aux_priv;
 
