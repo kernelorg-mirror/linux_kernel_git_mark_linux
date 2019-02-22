@@ -20,6 +20,8 @@
 
 #ifndef __ASSEMBLY__
 
+#include <linux/kasan-checks.h>
+
 #define __nops(n)	".rept	" #n "\nnop\n.endr\n"
 #define nops(n)		asm volatile(__nops(n))
 
@@ -72,31 +74,33 @@ static inline unsigned long array_index_mask_nospec(unsigned long idx,
 
 #define __smp_store_release(p, v)					\
 do {									\
+	typeof(p) __ssr_p = (p);					\
 	union { typeof(*p) __val; char __c[1]; } __u =			\
 		{ .__val = (__force typeof(*p)) (v) }; 			\
 	compiletime_assert_atomic_type(*p);				\
+	kasan_check_write(__ssr_p, sizeof(*__ssr_p));			\
 	switch (sizeof(*p)) {						\
 	case 1:								\
 		asm volatile ("stlrb %w1, %0"				\
-				: "=Q" (*p)				\
+				: "=Q" (*__ssr_p)			\
 				: "r" (*(__u8 *)__u.__c)		\
 				: "memory");				\
 		break;							\
 	case 2:								\
 		asm volatile ("stlrh %w1, %0"				\
-				: "=Q" (*p)				\
+				: "=Q" (*__ssr_p)			\
 				: "r" (*(__u16 *)__u.__c)		\
 				: "memory");				\
 		break;							\
 	case 4:								\
 		asm volatile ("stlr %w1, %0"				\
-				: "=Q" (*p)				\
+				: "=Q" (*__ssr_p)			\
 				: "r" (*(__u32 *)__u.__c)		\
 				: "memory");				\
 		break;							\
 	case 8:								\
 		asm volatile ("stlr %1, %0"				\
-				: "=Q" (*p)				\
+				: "=Q" (*__ssr_p)			\
 				: "r" (*(__u64 *)__u.__c)		\
 				: "memory");				\
 		break;							\
@@ -105,28 +109,30 @@ do {									\
 
 #define __smp_load_acquire(p)						\
 ({									\
+	typeof(p) __sla_p = (p);					\
 	union { typeof(*p) __val; char __c[1]; } __u;			\
 	compiletime_assert_atomic_type(*p);				\
+	kasan_check_read(__sla_p, sizeof(*__sla_p));			\
 	switch (sizeof(*p)) {						\
 	case 1:								\
 		asm volatile ("ldarb %w0, %1"				\
 			: "=r" (*(__u8 *)__u.__c)			\
-			: "Q" (*p) : "memory");				\
+			: "Q" (*__sla_p) : "memory");			\
 		break;							\
 	case 2:								\
 		asm volatile ("ldarh %w0, %1"				\
 			: "=r" (*(__u16 *)__u.__c)			\
-			: "Q" (*p) : "memory");				\
+			: "Q" (*__sla_p) : "memory");			\
 		break;							\
 	case 4:								\
 		asm volatile ("ldar %w0, %1"				\
 			: "=r" (*(__u32 *)__u.__c)			\
-			: "Q" (*p) : "memory");				\
+			: "Q" (*__sla_p) : "memory");			\
 		break;							\
 	case 8:								\
 		asm volatile ("ldar %0, %1"				\
 			: "=r" (*(__u64 *)__u.__c)			\
-			: "Q" (*p) : "memory");				\
+			: "Q" (*__sla_p) : "memory");			\
 		break;							\
 	}								\
 	__u.__val;							\
