@@ -104,6 +104,7 @@ static void unpoison_page(struct page *page)
 	 * see if a page was posioned.
 	 */
 	check_poison_mem(addr, PAGE_SIZE);
+	WRITE_ONCE(*(unsigned long *)addr, 0);
 	kunmap_atomic(addr);
 }
 
