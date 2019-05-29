@@ -17,13 +17,17 @@
 #ifndef _ASM_GENERIC_ATOMIC_INSTRUMENTED_H
 #define _ASM_GENERIC_ATOMIC_INSTRUMENTED_H
 
+#include <linux/bug.h>
 #include <linux/build_bug.h>
 #include <linux/kasan-checks.h>
+#include <linux/kernel.h>
 
 static inline int
 atomic_read(const atomic_t *v)
 {
 	kasan_check_read(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_read(v);
 }
 #define atomic_read atomic_read
@@ -33,6 +37,8 @@ static inline int
 atomic_read_acquire(const atomic_t *v)
 {
 	kasan_check_read(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_read_acquire(v);
 }
 #define atomic_read_acquire atomic_read_acquire
@@ -42,6 +48,8 @@ static inline void
 atomic_set(atomic_t *v, int i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_set(v, i);
 }
 #define atomic_set atomic_set
@@ -51,6 +59,8 @@ static inline void
 atomic_set_release(atomic_t *v, int i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_set_release(v, i);
 }
 #define atomic_set_release atomic_set_release
@@ -60,6 +70,8 @@ static inline void
 atomic_add(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_add(i, v);
 }
 #define atomic_add atomic_add
@@ -69,6 +81,8 @@ static inline int
 atomic_add_return(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_add_return(i, v);
 }
 #define atomic_add_return atomic_add_return
@@ -79,6 +93,8 @@ static inline int
 atomic_add_return_acquire(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_add_return_acquire(i, v);
 }
 #define atomic_add_return_acquire atomic_add_return_acquire
@@ -89,6 +105,8 @@ static inline int
 atomic_add_return_release(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_add_return_release(i, v);
 }
 #define atomic_add_return_release atomic_add_return_release
@@ -99,6 +117,8 @@ static inline int
 atomic_add_return_relaxed(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_add_return_relaxed(i, v);
 }
 #define atomic_add_return_relaxed atomic_add_return_relaxed
@@ -109,6 +129,8 @@ static inline int
 atomic_fetch_add(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_add(i, v);
 }
 #define atomic_fetch_add atomic_fetch_add
@@ -119,6 +141,8 @@ static inline int
 atomic_fetch_add_acquire(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_add_acquire(i, v);
 }
 #define atomic_fetch_add_acquire atomic_fetch_add_acquire
@@ -129,6 +153,8 @@ static inline int
 atomic_fetch_add_release(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_add_release(i, v);
 }
 #define atomic_fetch_add_release atomic_fetch_add_release
@@ -139,6 +165,8 @@ static inline int
 atomic_fetch_add_relaxed(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_add_relaxed(i, v);
 }
 #define atomic_fetch_add_relaxed atomic_fetch_add_relaxed
@@ -148,6 +176,8 @@ static inline void
 atomic_sub(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_sub(i, v);
 }
 #define atomic_sub atomic_sub
@@ -157,6 +187,8 @@ static inline int
 atomic_sub_return(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_sub_return(i, v);
 }
 #define atomic_sub_return atomic_sub_return
@@ -167,6 +199,8 @@ static inline int
 atomic_sub_return_acquire(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_sub_return_acquire(i, v);
 }
 #define atomic_sub_return_acquire atomic_sub_return_acquire
@@ -177,6 +211,8 @@ static inline int
 atomic_sub_return_release(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_sub_return_release(i, v);
 }
 #define atomic_sub_return_release atomic_sub_return_release
@@ -187,6 +223,8 @@ static inline int
 atomic_sub_return_relaxed(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_sub_return_relaxed(i, v);
 }
 #define atomic_sub_return_relaxed atomic_sub_return_relaxed
@@ -197,6 +235,8 @@ static inline int
 atomic_fetch_sub(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_sub(i, v);
 }
 #define atomic_fetch_sub atomic_fetch_sub
@@ -207,6 +247,8 @@ static inline int
 atomic_fetch_sub_acquire(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_sub_acquire(i, v);
 }
 #define atomic_fetch_sub_acquire atomic_fetch_sub_acquire
@@ -217,6 +259,8 @@ static inline int
 atomic_fetch_sub_release(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_sub_release(i, v);
 }
 #define atomic_fetch_sub_release atomic_fetch_sub_release
@@ -227,6 +271,8 @@ static inline int
 atomic_fetch_sub_relaxed(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_sub_relaxed(i, v);
 }
 #define atomic_fetch_sub_relaxed atomic_fetch_sub_relaxed
@@ -237,6 +283,8 @@ static inline void
 atomic_inc(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_inc(v);
 }
 #define atomic_inc atomic_inc
@@ -247,6 +295,8 @@ static inline int
 atomic_inc_return(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_inc_return(v);
 }
 #define atomic_inc_return atomic_inc_return
@@ -257,6 +307,8 @@ static inline int
 atomic_inc_return_acquire(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_inc_return_acquire(v);
 }
 #define atomic_inc_return_acquire atomic_inc_return_acquire
@@ -267,6 +319,8 @@ static inline int
 atomic_inc_return_release(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_inc_return_release(v);
 }
 #define atomic_inc_return_release atomic_inc_return_release
@@ -277,6 +331,8 @@ static inline int
 atomic_inc_return_relaxed(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_inc_return_relaxed(v);
 }
 #define atomic_inc_return_relaxed atomic_inc_return_relaxed
@@ -287,6 +343,8 @@ static inline int
 atomic_fetch_inc(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_inc(v);
 }
 #define atomic_fetch_inc atomic_fetch_inc
@@ -297,6 +355,8 @@ static inline int
 atomic_fetch_inc_acquire(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_inc_acquire(v);
 }
 #define atomic_fetch_inc_acquire atomic_fetch_inc_acquire
@@ -307,6 +367,8 @@ static inline int
 atomic_fetch_inc_release(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_inc_release(v);
 }
 #define atomic_fetch_inc_release atomic_fetch_inc_release
@@ -317,6 +379,8 @@ static inline int
 atomic_fetch_inc_relaxed(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_inc_relaxed(v);
 }
 #define atomic_fetch_inc_relaxed atomic_fetch_inc_relaxed
@@ -327,6 +391,8 @@ static inline void
 atomic_dec(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_dec(v);
 }
 #define atomic_dec atomic_dec
@@ -337,6 +403,8 @@ static inline int
 atomic_dec_return(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_dec_return(v);
 }
 #define atomic_dec_return atomic_dec_return
@@ -347,6 +415,8 @@ static inline int
 atomic_dec_return_acquire(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_dec_return_acquire(v);
 }
 #define atomic_dec_return_acquire atomic_dec_return_acquire
@@ -357,6 +427,8 @@ static inline int
 atomic_dec_return_release(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_dec_return_release(v);
 }
 #define atomic_dec_return_release atomic_dec_return_release
@@ -367,6 +439,8 @@ static inline int
 atomic_dec_return_relaxed(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_dec_return_relaxed(v);
 }
 #define atomic_dec_return_relaxed atomic_dec_return_relaxed
@@ -377,6 +451,8 @@ static inline int
 atomic_fetch_dec(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_dec(v);
 }
 #define atomic_fetch_dec atomic_fetch_dec
@@ -387,6 +463,8 @@ static inline int
 atomic_fetch_dec_acquire(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_dec_acquire(v);
 }
 #define atomic_fetch_dec_acquire atomic_fetch_dec_acquire
@@ -397,6 +475,8 @@ static inline int
 atomic_fetch_dec_release(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_dec_release(v);
 }
 #define atomic_fetch_dec_release atomic_fetch_dec_release
@@ -407,6 +487,8 @@ static inline int
 atomic_fetch_dec_relaxed(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_dec_relaxed(v);
 }
 #define atomic_fetch_dec_relaxed atomic_fetch_dec_relaxed
@@ -416,6 +498,8 @@ static inline void
 atomic_and(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_and(i, v);
 }
 #define atomic_and atomic_and
@@ -425,6 +509,8 @@ static inline int
 atomic_fetch_and(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_and(i, v);
 }
 #define atomic_fetch_and atomic_fetch_and
@@ -435,6 +521,8 @@ static inline int
 atomic_fetch_and_acquire(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_and_acquire(i, v);
 }
 #define atomic_fetch_and_acquire atomic_fetch_and_acquire
@@ -445,6 +533,8 @@ static inline int
 atomic_fetch_and_release(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_and_release(i, v);
 }
 #define atomic_fetch_and_release atomic_fetch_and_release
@@ -455,6 +545,8 @@ static inline int
 atomic_fetch_and_relaxed(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_and_relaxed(i, v);
 }
 #define atomic_fetch_and_relaxed atomic_fetch_and_relaxed
@@ -465,6 +557,8 @@ static inline void
 atomic_andnot(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_andnot(i, v);
 }
 #define atomic_andnot atomic_andnot
@@ -475,6 +569,8 @@ static inline int
 atomic_fetch_andnot(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_andnot(i, v);
 }
 #define atomic_fetch_andnot atomic_fetch_andnot
@@ -485,6 +581,8 @@ static inline int
 atomic_fetch_andnot_acquire(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_andnot_acquire(i, v);
 }
 #define atomic_fetch_andnot_acquire atomic_fetch_andnot_acquire
@@ -495,6 +593,8 @@ static inline int
 atomic_fetch_andnot_release(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_andnot_release(i, v);
 }
 #define atomic_fetch_andnot_release atomic_fetch_andnot_release
@@ -505,6 +605,8 @@ static inline int
 atomic_fetch_andnot_relaxed(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_andnot_relaxed(i, v);
 }
 #define atomic_fetch_andnot_relaxed atomic_fetch_andnot_relaxed
@@ -514,6 +616,8 @@ static inline void
 atomic_or(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_or(i, v);
 }
 #define atomic_or atomic_or
@@ -523,6 +627,8 @@ static inline int
 atomic_fetch_or(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_or(i, v);
 }
 #define atomic_fetch_or atomic_fetch_or
@@ -533,6 +639,8 @@ static inline int
 atomic_fetch_or_acquire(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_or_acquire(i, v);
 }
 #define atomic_fetch_or_acquire atomic_fetch_or_acquire
@@ -543,6 +651,8 @@ static inline int
 atomic_fetch_or_release(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_or_release(i, v);
 }
 #define atomic_fetch_or_release atomic_fetch_or_release
@@ -553,6 +663,8 @@ static inline int
 atomic_fetch_or_relaxed(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_or_relaxed(i, v);
 }
 #define atomic_fetch_or_relaxed atomic_fetch_or_relaxed
@@ -562,6 +674,8 @@ static inline void
 atomic_xor(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic_xor(i, v);
 }
 #define atomic_xor atomic_xor
@@ -571,6 +685,8 @@ static inline int
 atomic_fetch_xor(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_xor(i, v);
 }
 #define atomic_fetch_xor atomic_fetch_xor
@@ -581,6 +697,8 @@ static inline int
 atomic_fetch_xor_acquire(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_xor_acquire(i, v);
 }
 #define atomic_fetch_xor_acquire atomic_fetch_xor_acquire
@@ -591,6 +709,8 @@ static inline int
 atomic_fetch_xor_release(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_xor_release(i, v);
 }
 #define atomic_fetch_xor_release atomic_fetch_xor_release
@@ -601,6 +721,8 @@ static inline int
 atomic_fetch_xor_relaxed(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_xor_relaxed(i, v);
 }
 #define atomic_fetch_xor_relaxed atomic_fetch_xor_relaxed
@@ -611,6 +733,8 @@ static inline int
 atomic_xchg(atomic_t *v, int i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_xchg(v, i);
 }
 #define atomic_xchg atomic_xchg
@@ -621,6 +745,8 @@ static inline int
 atomic_xchg_acquire(atomic_t *v, int i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_xchg_acquire(v, i);
 }
 #define atomic_xchg_acquire atomic_xchg_acquire
@@ -631,6 +757,8 @@ static inline int
 atomic_xchg_release(atomic_t *v, int i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_xchg_release(v, i);
 }
 #define atomic_xchg_release atomic_xchg_release
@@ -641,6 +769,8 @@ static inline int
 atomic_xchg_relaxed(atomic_t *v, int i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_xchg_relaxed(v, i);
 }
 #define atomic_xchg_relaxed atomic_xchg_relaxed
@@ -651,6 +781,8 @@ static inline int
 atomic_cmpxchg(atomic_t *v, int old, int new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_cmpxchg(v, old, new);
 }
 #define atomic_cmpxchg atomic_cmpxchg
@@ -661,6 +793,8 @@ static inline int
 atomic_cmpxchg_acquire(atomic_t *v, int old, int new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_cmpxchg_acquire(v, old, new);
 }
 #define atomic_cmpxchg_acquire atomic_cmpxchg_acquire
@@ -671,6 +805,8 @@ static inline int
 atomic_cmpxchg_release(atomic_t *v, int old, int new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_cmpxchg_release(v, old, new);
 }
 #define atomic_cmpxchg_release atomic_cmpxchg_release
@@ -681,6 +817,8 @@ static inline int
 atomic_cmpxchg_relaxed(atomic_t *v, int old, int new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_cmpxchg_relaxed(v, old, new);
 }
 #define atomic_cmpxchg_relaxed atomic_cmpxchg_relaxed
@@ -691,6 +829,8 @@ static inline bool
 atomic_try_cmpxchg(atomic_t *v, int *old, int new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	kasan_check_write(old, sizeof(*old));
 	return arch_atomic_try_cmpxchg(v, old, new);
 }
@@ -702,6 +842,8 @@ static inline bool
 atomic_try_cmpxchg_acquire(atomic_t *v, int *old, int new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	kasan_check_write(old, sizeof(*old));
 	return arch_atomic_try_cmpxchg_acquire(v, old, new);
 }
@@ -713,6 +855,8 @@ static inline bool
 atomic_try_cmpxchg_release(atomic_t *v, int *old, int new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	kasan_check_write(old, sizeof(*old));
 	return arch_atomic_try_cmpxchg_release(v, old, new);
 }
@@ -724,6 +868,8 @@ static inline bool
 atomic_try_cmpxchg_relaxed(atomic_t *v, int *old, int new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	kasan_check_write(old, sizeof(*old));
 	return arch_atomic_try_cmpxchg_relaxed(v, old, new);
 }
@@ -735,6 +881,8 @@ static inline bool
 atomic_sub_and_test(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_sub_and_test(i, v);
 }
 #define atomic_sub_and_test atomic_sub_and_test
@@ -745,6 +893,8 @@ static inline bool
 atomic_dec_and_test(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_dec_and_test(v);
 }
 #define atomic_dec_and_test atomic_dec_and_test
@@ -755,6 +905,8 @@ static inline bool
 atomic_inc_and_test(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_inc_and_test(v);
 }
 #define atomic_inc_and_test atomic_inc_and_test
@@ -765,6 +917,8 @@ static inline bool
 atomic_add_negative(int i, atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_add_negative(i, v);
 }
 #define atomic_add_negative atomic_add_negative
@@ -775,6 +929,8 @@ static inline int
 atomic_fetch_add_unless(atomic_t *v, int a, int u)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_fetch_add_unless(v, a, u);
 }
 #define atomic_fetch_add_unless atomic_fetch_add_unless
@@ -785,6 +941,8 @@ static inline bool
 atomic_add_unless(atomic_t *v, int a, int u)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_add_unless(v, a, u);
 }
 #define atomic_add_unless atomic_add_unless
@@ -795,6 +953,8 @@ static inline bool
 atomic_inc_not_zero(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_inc_not_zero(v);
 }
 #define atomic_inc_not_zero atomic_inc_not_zero
@@ -805,6 +965,8 @@ static inline bool
 atomic_inc_unless_negative(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_inc_unless_negative(v);
 }
 #define atomic_inc_unless_negative atomic_inc_unless_negative
@@ -815,6 +977,8 @@ static inline bool
 atomic_dec_unless_positive(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_dec_unless_positive(v);
 }
 #define atomic_dec_unless_positive atomic_dec_unless_positive
@@ -825,6 +989,8 @@ static inline int
 atomic_dec_if_positive(atomic_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic_dec_if_positive(v);
 }
 #define atomic_dec_if_positive atomic_dec_if_positive
@@ -834,6 +1000,8 @@ static inline s64
 atomic64_read(const atomic64_t *v)
 {
 	kasan_check_read(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_read(v);
 }
 #define atomic64_read atomic64_read
@@ -843,6 +1011,8 @@ static inline s64
 atomic64_read_acquire(const atomic64_t *v)
 {
 	kasan_check_read(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_read_acquire(v);
 }
 #define atomic64_read_acquire atomic64_read_acquire
@@ -852,6 +1022,8 @@ static inline void
 atomic64_set(atomic64_t *v, s64 i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_set(v, i);
 }
 #define atomic64_set atomic64_set
@@ -861,6 +1033,8 @@ static inline void
 atomic64_set_release(atomic64_t *v, s64 i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_set_release(v, i);
 }
 #define atomic64_set_release atomic64_set_release
@@ -870,6 +1044,8 @@ static inline void
 atomic64_add(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_add(i, v);
 }
 #define atomic64_add atomic64_add
@@ -879,6 +1055,8 @@ static inline s64
 atomic64_add_return(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_add_return(i, v);
 }
 #define atomic64_add_return atomic64_add_return
@@ -889,6 +1067,8 @@ static inline s64
 atomic64_add_return_acquire(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_add_return_acquire(i, v);
 }
 #define atomic64_add_return_acquire atomic64_add_return_acquire
@@ -899,6 +1079,8 @@ static inline s64
 atomic64_add_return_release(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_add_return_release(i, v);
 }
 #define atomic64_add_return_release atomic64_add_return_release
@@ -909,6 +1091,8 @@ static inline s64
 atomic64_add_return_relaxed(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_add_return_relaxed(i, v);
 }
 #define atomic64_add_return_relaxed atomic64_add_return_relaxed
@@ -919,6 +1103,8 @@ static inline s64
 atomic64_fetch_add(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_add(i, v);
 }
 #define atomic64_fetch_add atomic64_fetch_add
@@ -929,6 +1115,8 @@ static inline s64
 atomic64_fetch_add_acquire(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_add_acquire(i, v);
 }
 #define atomic64_fetch_add_acquire atomic64_fetch_add_acquire
@@ -939,6 +1127,8 @@ static inline s64
 atomic64_fetch_add_release(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_add_release(i, v);
 }
 #define atomic64_fetch_add_release atomic64_fetch_add_release
@@ -949,6 +1139,8 @@ static inline s64
 atomic64_fetch_add_relaxed(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_add_relaxed(i, v);
 }
 #define atomic64_fetch_add_relaxed atomic64_fetch_add_relaxed
@@ -958,6 +1150,8 @@ static inline void
 atomic64_sub(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_sub(i, v);
 }
 #define atomic64_sub atomic64_sub
@@ -967,6 +1161,8 @@ static inline s64
 atomic64_sub_return(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_sub_return(i, v);
 }
 #define atomic64_sub_return atomic64_sub_return
@@ -977,6 +1173,8 @@ static inline s64
 atomic64_sub_return_acquire(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_sub_return_acquire(i, v);
 }
 #define atomic64_sub_return_acquire atomic64_sub_return_acquire
@@ -987,6 +1185,8 @@ static inline s64
 atomic64_sub_return_release(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_sub_return_release(i, v);
 }
 #define atomic64_sub_return_release atomic64_sub_return_release
@@ -997,6 +1197,8 @@ static inline s64
 atomic64_sub_return_relaxed(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_sub_return_relaxed(i, v);
 }
 #define atomic64_sub_return_relaxed atomic64_sub_return_relaxed
@@ -1007,6 +1209,8 @@ static inline s64
 atomic64_fetch_sub(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_sub(i, v);
 }
 #define atomic64_fetch_sub atomic64_fetch_sub
@@ -1017,6 +1221,8 @@ static inline s64
 atomic64_fetch_sub_acquire(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_sub_acquire(i, v);
 }
 #define atomic64_fetch_sub_acquire atomic64_fetch_sub_acquire
@@ -1027,6 +1233,8 @@ static inline s64
 atomic64_fetch_sub_release(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_sub_release(i, v);
 }
 #define atomic64_fetch_sub_release atomic64_fetch_sub_release
@@ -1037,6 +1245,8 @@ static inline s64
 atomic64_fetch_sub_relaxed(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_sub_relaxed(i, v);
 }
 #define atomic64_fetch_sub_relaxed atomic64_fetch_sub_relaxed
@@ -1047,6 +1257,8 @@ static inline void
 atomic64_inc(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_inc(v);
 }
 #define atomic64_inc atomic64_inc
@@ -1057,6 +1269,8 @@ static inline s64
 atomic64_inc_return(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_inc_return(v);
 }
 #define atomic64_inc_return atomic64_inc_return
@@ -1067,6 +1281,8 @@ static inline s64
 atomic64_inc_return_acquire(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_inc_return_acquire(v);
 }
 #define atomic64_inc_return_acquire atomic64_inc_return_acquire
@@ -1077,6 +1293,8 @@ static inline s64
 atomic64_inc_return_release(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_inc_return_release(v);
 }
 #define atomic64_inc_return_release atomic64_inc_return_release
@@ -1087,6 +1305,8 @@ static inline s64
 atomic64_inc_return_relaxed(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_inc_return_relaxed(v);
 }
 #define atomic64_inc_return_relaxed atomic64_inc_return_relaxed
@@ -1097,6 +1317,8 @@ static inline s64
 atomic64_fetch_inc(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_inc(v);
 }
 #define atomic64_fetch_inc atomic64_fetch_inc
@@ -1107,6 +1329,8 @@ static inline s64
 atomic64_fetch_inc_acquire(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_inc_acquire(v);
 }
 #define atomic64_fetch_inc_acquire atomic64_fetch_inc_acquire
@@ -1117,6 +1341,8 @@ static inline s64
 atomic64_fetch_inc_release(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_inc_release(v);
 }
 #define atomic64_fetch_inc_release atomic64_fetch_inc_release
@@ -1127,6 +1353,8 @@ static inline s64
 atomic64_fetch_inc_relaxed(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_inc_relaxed(v);
 }
 #define atomic64_fetch_inc_relaxed atomic64_fetch_inc_relaxed
@@ -1137,6 +1365,8 @@ static inline void
 atomic64_dec(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_dec(v);
 }
 #define atomic64_dec atomic64_dec
@@ -1147,6 +1377,8 @@ static inline s64
 atomic64_dec_return(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_dec_return(v);
 }
 #define atomic64_dec_return atomic64_dec_return
@@ -1157,6 +1389,8 @@ static inline s64
 atomic64_dec_return_acquire(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_dec_return_acquire(v);
 }
 #define atomic64_dec_return_acquire atomic64_dec_return_acquire
@@ -1167,6 +1401,8 @@ static inline s64
 atomic64_dec_return_release(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_dec_return_release(v);
 }
 #define atomic64_dec_return_release atomic64_dec_return_release
@@ -1177,6 +1413,8 @@ static inline s64
 atomic64_dec_return_relaxed(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_dec_return_relaxed(v);
 }
 #define atomic64_dec_return_relaxed atomic64_dec_return_relaxed
@@ -1187,6 +1425,8 @@ static inline s64
 atomic64_fetch_dec(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_dec(v);
 }
 #define atomic64_fetch_dec atomic64_fetch_dec
@@ -1197,6 +1437,8 @@ static inline s64
 atomic64_fetch_dec_acquire(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_dec_acquire(v);
 }
 #define atomic64_fetch_dec_acquire atomic64_fetch_dec_acquire
@@ -1207,6 +1449,8 @@ static inline s64
 atomic64_fetch_dec_release(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_dec_release(v);
 }
 #define atomic64_fetch_dec_release atomic64_fetch_dec_release
@@ -1217,6 +1461,8 @@ static inline s64
 atomic64_fetch_dec_relaxed(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_dec_relaxed(v);
 }
 #define atomic64_fetch_dec_relaxed atomic64_fetch_dec_relaxed
@@ -1226,6 +1472,8 @@ static inline void
 atomic64_and(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_and(i, v);
 }
 #define atomic64_and atomic64_and
@@ -1235,6 +1483,8 @@ static inline s64
 atomic64_fetch_and(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_and(i, v);
 }
 #define atomic64_fetch_and atomic64_fetch_and
@@ -1245,6 +1495,8 @@ static inline s64
 atomic64_fetch_and_acquire(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_and_acquire(i, v);
 }
 #define atomic64_fetch_and_acquire atomic64_fetch_and_acquire
@@ -1255,6 +1507,8 @@ static inline s64
 atomic64_fetch_and_release(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_and_release(i, v);
 }
 #define atomic64_fetch_and_release atomic64_fetch_and_release
@@ -1265,6 +1519,8 @@ static inline s64
 atomic64_fetch_and_relaxed(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_and_relaxed(i, v);
 }
 #define atomic64_fetch_and_relaxed atomic64_fetch_and_relaxed
@@ -1275,6 +1531,8 @@ static inline void
 atomic64_andnot(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_andnot(i, v);
 }
 #define atomic64_andnot atomic64_andnot
@@ -1285,6 +1543,8 @@ static inline s64
 atomic64_fetch_andnot(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_andnot(i, v);
 }
 #define atomic64_fetch_andnot atomic64_fetch_andnot
@@ -1295,6 +1555,8 @@ static inline s64
 atomic64_fetch_andnot_acquire(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_andnot_acquire(i, v);
 }
 #define atomic64_fetch_andnot_acquire atomic64_fetch_andnot_acquire
@@ -1305,6 +1567,8 @@ static inline s64
 atomic64_fetch_andnot_release(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_andnot_release(i, v);
 }
 #define atomic64_fetch_andnot_release atomic64_fetch_andnot_release
@@ -1315,6 +1579,8 @@ static inline s64
 atomic64_fetch_andnot_relaxed(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_andnot_relaxed(i, v);
 }
 #define atomic64_fetch_andnot_relaxed atomic64_fetch_andnot_relaxed
@@ -1324,6 +1590,8 @@ static inline void
 atomic64_or(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_or(i, v);
 }
 #define atomic64_or atomic64_or
@@ -1333,6 +1601,8 @@ static inline s64
 atomic64_fetch_or(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_or(i, v);
 }
 #define atomic64_fetch_or atomic64_fetch_or
@@ -1343,6 +1613,8 @@ static inline s64
 atomic64_fetch_or_acquire(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_or_acquire(i, v);
 }
 #define atomic64_fetch_or_acquire atomic64_fetch_or_acquire
@@ -1353,6 +1625,8 @@ static inline s64
 atomic64_fetch_or_release(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_or_release(i, v);
 }
 #define atomic64_fetch_or_release atomic64_fetch_or_release
@@ -1363,6 +1637,8 @@ static inline s64
 atomic64_fetch_or_relaxed(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_or_relaxed(i, v);
 }
 #define atomic64_fetch_or_relaxed atomic64_fetch_or_relaxed
@@ -1372,6 +1648,8 @@ static inline void
 atomic64_xor(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	arch_atomic64_xor(i, v);
 }
 #define atomic64_xor atomic64_xor
@@ -1381,6 +1659,8 @@ static inline s64
 atomic64_fetch_xor(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_xor(i, v);
 }
 #define atomic64_fetch_xor atomic64_fetch_xor
@@ -1391,6 +1671,8 @@ static inline s64
 atomic64_fetch_xor_acquire(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_xor_acquire(i, v);
 }
 #define atomic64_fetch_xor_acquire atomic64_fetch_xor_acquire
@@ -1401,6 +1683,8 @@ static inline s64
 atomic64_fetch_xor_release(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_xor_release(i, v);
 }
 #define atomic64_fetch_xor_release atomic64_fetch_xor_release
@@ -1411,6 +1695,8 @@ static inline s64
 atomic64_fetch_xor_relaxed(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_xor_relaxed(i, v);
 }
 #define atomic64_fetch_xor_relaxed atomic64_fetch_xor_relaxed
@@ -1421,6 +1707,8 @@ static inline s64
 atomic64_xchg(atomic64_t *v, s64 i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_xchg(v, i);
 }
 #define atomic64_xchg atomic64_xchg
@@ -1431,6 +1719,8 @@ static inline s64
 atomic64_xchg_acquire(atomic64_t *v, s64 i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_xchg_acquire(v, i);
 }
 #define atomic64_xchg_acquire atomic64_xchg_acquire
@@ -1441,6 +1731,8 @@ static inline s64
 atomic64_xchg_release(atomic64_t *v, s64 i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_xchg_release(v, i);
 }
 #define atomic64_xchg_release atomic64_xchg_release
@@ -1451,6 +1743,8 @@ static inline s64
 atomic64_xchg_relaxed(atomic64_t *v, s64 i)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_xchg_relaxed(v, i);
 }
 #define atomic64_xchg_relaxed atomic64_xchg_relaxed
@@ -1461,6 +1755,8 @@ static inline s64
 atomic64_cmpxchg(atomic64_t *v, s64 old, s64 new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_cmpxchg(v, old, new);
 }
 #define atomic64_cmpxchg atomic64_cmpxchg
@@ -1471,6 +1767,8 @@ static inline s64
 atomic64_cmpxchg_acquire(atomic64_t *v, s64 old, s64 new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_cmpxchg_acquire(v, old, new);
 }
 #define atomic64_cmpxchg_acquire atomic64_cmpxchg_acquire
@@ -1481,6 +1779,8 @@ static inline s64
 atomic64_cmpxchg_release(atomic64_t *v, s64 old, s64 new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_cmpxchg_release(v, old, new);
 }
 #define atomic64_cmpxchg_release atomic64_cmpxchg_release
@@ -1491,6 +1791,8 @@ static inline s64
 atomic64_cmpxchg_relaxed(atomic64_t *v, s64 old, s64 new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_cmpxchg_relaxed(v, old, new);
 }
 #define atomic64_cmpxchg_relaxed atomic64_cmpxchg_relaxed
@@ -1501,6 +1803,8 @@ static inline bool
 atomic64_try_cmpxchg(atomic64_t *v, s64 *old, s64 new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	kasan_check_write(old, sizeof(*old));
 	return arch_atomic64_try_cmpxchg(v, old, new);
 }
@@ -1512,6 +1816,8 @@ static inline bool
 atomic64_try_cmpxchg_acquire(atomic64_t *v, s64 *old, s64 new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	kasan_check_write(old, sizeof(*old));
 	return arch_atomic64_try_cmpxchg_acquire(v, old, new);
 }
@@ -1523,6 +1829,8 @@ static inline bool
 atomic64_try_cmpxchg_release(atomic64_t *v, s64 *old, s64 new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	kasan_check_write(old, sizeof(*old));
 	return arch_atomic64_try_cmpxchg_release(v, old, new);
 }
@@ -1534,6 +1842,8 @@ static inline bool
 atomic64_try_cmpxchg_relaxed(atomic64_t *v, s64 *old, s64 new)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	kasan_check_write(old, sizeof(*old));
 	return arch_atomic64_try_cmpxchg_relaxed(v, old, new);
 }
@@ -1545,6 +1855,8 @@ static inline bool
 atomic64_sub_and_test(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_sub_and_test(i, v);
 }
 #define atomic64_sub_and_test atomic64_sub_and_test
@@ -1555,6 +1867,8 @@ static inline bool
 atomic64_dec_and_test(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_dec_and_test(v);
 }
 #define atomic64_dec_and_test atomic64_dec_and_test
@@ -1565,6 +1879,8 @@ static inline bool
 atomic64_inc_and_test(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_inc_and_test(v);
 }
 #define atomic64_inc_and_test atomic64_inc_and_test
@@ -1575,6 +1891,8 @@ static inline bool
 atomic64_add_negative(s64 i, atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_add_negative(i, v);
 }
 #define atomic64_add_negative atomic64_add_negative
@@ -1585,6 +1903,8 @@ static inline s64
 atomic64_fetch_add_unless(atomic64_t *v, s64 a, s64 u)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_fetch_add_unless(v, a, u);
 }
 #define atomic64_fetch_add_unless atomic64_fetch_add_unless
@@ -1595,6 +1915,8 @@ static inline bool
 atomic64_add_unless(atomic64_t *v, s64 a, s64 u)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_add_unless(v, a, u);
 }
 #define atomic64_add_unless atomic64_add_unless
@@ -1605,6 +1927,8 @@ static inline bool
 atomic64_inc_not_zero(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_inc_not_zero(v);
 }
 #define atomic64_inc_not_zero atomic64_inc_not_zero
@@ -1615,6 +1939,8 @@ static inline bool
 atomic64_inc_unless_negative(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_inc_unless_negative(v);
 }
 #define atomic64_inc_unless_negative atomic64_inc_unless_negative
@@ -1625,6 +1951,8 @@ static inline bool
 atomic64_dec_unless_positive(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_dec_unless_positive(v);
 }
 #define atomic64_dec_unless_positive atomic64_dec_unless_positive
@@ -1635,154 +1963,207 @@ static inline s64
 atomic64_dec_if_positive(atomic64_t *v)
 {
 	kasan_check_write(v, sizeof(*v));
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)v, sizeof(*v)));
 	return arch_atomic64_dec_if_positive(v);
 }
 #define atomic64_dec_if_positive atomic64_dec_if_positive
 #endif
 
 #if !defined(arch_xchg_relaxed) || defined(arch_xchg)
-#define xchg(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_xchg(__ai_ptr, __VA_ARGS__);				\
+#define xchg(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_xchg(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if defined(arch_xchg_acquire)
-#define xchg_acquire(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_xchg_acquire(__ai_ptr, __VA_ARGS__);				\
+#define xchg_acquire(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_xchg_acquire(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if defined(arch_xchg_release)
-#define xchg_release(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_xchg_release(__ai_ptr, __VA_ARGS__);				\
+#define xchg_release(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_xchg_release(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if defined(arch_xchg_relaxed)
-#define xchg_relaxed(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_xchg_relaxed(__ai_ptr, __VA_ARGS__);				\
+#define xchg_relaxed(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_xchg_relaxed(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if !defined(arch_cmpxchg_relaxed) || defined(arch_cmpxchg)
-#define cmpxchg(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if defined(arch_cmpxchg_acquire)
-#define cmpxchg_acquire(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg_acquire(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg_acquire(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg_acquire(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if defined(arch_cmpxchg_release)
-#define cmpxchg_release(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg_release(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg_release(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg_release(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if defined(arch_cmpxchg_relaxed)
-#define cmpxchg_relaxed(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg_relaxed(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg_relaxed(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg_relaxed(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if !defined(arch_cmpxchg64_relaxed) || defined(arch_cmpxchg64)
-#define cmpxchg64(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg64(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg64(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg64(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if defined(arch_cmpxchg64_acquire)
-#define cmpxchg64_acquire(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg64_acquire(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg64_acquire(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg64_acquire(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if defined(arch_cmpxchg64_release)
-#define cmpxchg64_release(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg64_release(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg64_release(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg64_release(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
 #if defined(arch_cmpxchg64_relaxed)
-#define cmpxchg64_relaxed(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg64_relaxed(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg64_relaxed(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg64_relaxed(__ai_ptr, __VA_ARGS__);					\
 })
 #endif
 
-#define cmpxchg_local(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg_local(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg_local(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg_local(__ai_ptr, __VA_ARGS__);					\
 })
 
-#define cmpxchg64_local(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_cmpxchg64_local(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg64_local(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg64_local(__ai_ptr, __VA_ARGS__);					\
 })
 
-#define sync_cmpxchg(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, sizeof(*__ai_ptr));		\
-	arch_sync_cmpxchg(__ai_ptr, __VA_ARGS__);				\
+#define sync_cmpxchg(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_sync_cmpxchg(__ai_ptr, __VA_ARGS__);					\
 })
 
-#define cmpxchg_double(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, 2 * sizeof(*__ai_ptr));		\
-	arch_cmpxchg_double(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg_double(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = 2 * sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg_double(__ai_ptr, __VA_ARGS__);					\
 })
 
 
-#define cmpxchg_double_local(ptr, ...)						\
-({									\
-	typeof(ptr) __ai_ptr = (ptr);					\
-	kasan_check_write(__ai_ptr, 2 * sizeof(*__ai_ptr));		\
-	arch_cmpxchg_double_local(__ai_ptr, __VA_ARGS__);				\
+#define cmpxchg_double_local(ptr, ...)							\
+({										\
+	typeof(ptr) __ai_ptr = (ptr);						\
+	size_t __ai_size = 2 * sizeof(*__ai_ptr);				\
+	kasan_check_write(__ai_ptr, __ai_size);					\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\
+	arch_cmpxchg_double_local(__ai_ptr, __VA_ARGS__);					\
 })
 
 #endif /* _ASM_GENERIC_ATOMIC_INSTRUMENTED_H */
-// b29b625d5de9280f680e42c7be859b55b15e5f6a
+// 949b3c3a176cc5c3c2e6d70eb39bdb6f34eb7849

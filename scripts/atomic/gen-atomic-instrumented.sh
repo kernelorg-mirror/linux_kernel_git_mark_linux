@@ -18,9 +18,16 @@ gen_param_check()
 	esac
 
 	# We don't write to constant parameters
-	[ ${type#c} != ${type} ] && rw="read"
+	[ "${type#c}" != "${type}" ] && rw="read"
 
 	printf "\tkasan_check_${rw}(${name}, sizeof(*${name}));\n"
+
+	[ "${type#c}" = "v" ] || return
+
+cat <<EOF
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))
+		WARN_ON(!IS_ALIGNED((unsigned long)${name}, sizeof(*${name})));
+EOF
 }
 
 #gen_param_check(arg...)
@@ -104,11 +111,14 @@ gen_xchg()
 	local mult="$1"; shift
 
 cat <<EOF
-#define ${xchg}(ptr, ...)						\\
-({									\\
-	typeof(ptr) __ai_ptr = (ptr);					\\
-	kasan_check_write(__ai_ptr, ${mult}sizeof(*__ai_ptr));		\\
-	arch_${xchg}(__ai_ptr, __VA_ARGS__);				\\
+#define ${xchg}(ptr, ...)							\\
+({										\\
+	typeof(ptr) __ai_ptr = (ptr);						\\
+	size_t __ai_size = ${mult}sizeof(*__ai_ptr);				\\
+	kasan_check_write(__ai_ptr, __ai_size);					\\
+	if (IS_ENABLED(CONFIG_DEBUG_ATOMIC_ALIGNMENT))				\\
+		WARN_ON(!IS_ALIGNED((unsigned long)__ai_ptr, __ai_size));	\\
+	arch_${xchg}(__ai_ptr, __VA_ARGS__);					\\
 })
 EOF
 }
@@ -146,8 +156,10 @@ cat << EOF
 #ifndef _ASM_GENERIC_ATOMIC_INSTRUMENTED_H
 #define _ASM_GENERIC_ATOMIC_INSTRUMENTED_H
 
+#include <linux/bug.h>
 #include <linux/build_bug.h>
 #include <linux/kasan-checks.h>
+#include <linux/kernel.h>
 
 EOF
 
