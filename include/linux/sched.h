@@ -1621,11 +1621,22 @@ extern struct task_struct *idle_task(int cpu);
  * is_idle_task - is the specified task an idle task?
  * @p: the task in question.
  *
- * Return: 1 if @p is an idle task. 0 otherwise.
+ * Return: true if @p is an idle task, false otherwise.
  */
 static inline bool is_idle_task(const struct task_struct *p)
 {
 	return !!(p->flags & PF_IDLE);
+}
+
+/**
+ * is_kthread - is the specified task a kthread
+ * @p: the task in question.
+ *
+ * Return: true if @p is a kthread, false otherwise.
+ */
+static inline bool is_kthread(const struct task_struct *p)
+{
+	return !!(p->flags & PF_KTHREAD);
 }
 
 extern struct task_struct *curr_task(int cpu);
