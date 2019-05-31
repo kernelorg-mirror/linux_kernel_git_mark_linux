@@ -1323,7 +1323,7 @@ void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 
 static inline bool is_per_cpu_kthread(struct task_struct *p)
 {
-	if (!(p->flags & PF_KTHREAD))
+	if (!is_kthread(p))
 		return false;
 
 	if (p->nr_cpus_allowed != 1)
@@ -1518,7 +1518,7 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 	rq = task_rq_lock(p, &rf);
 	update_rq_clock(rq);
 
-	if (p->flags & PF_KTHREAD) {
+	if (is_kthread(p)) {
 		/*
 		 * Kernel threads are allowed on online && !active CPUs
 		 */
@@ -1544,7 +1544,7 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 
 	do_set_cpus_allowed(p, new_mask);
 
-	if (p->flags & PF_KTHREAD) {
+	if (is_kthread(p)) {
 		/*
 		 * For kernel threads that do indeed end up on online &&
 		 * !active we want to ensure they are strict per-CPU threads.
@@ -6649,7 +6649,7 @@ void normalize_rt_tasks(void)
 		/*
 		 * Only normalize user tasks:
 		 */
-		if (p->flags & PF_KTHREAD)
+		if (is_kthread(p))
 			continue;
 
 		p->se.exec_start = 0;

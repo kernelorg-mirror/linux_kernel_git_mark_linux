@@ -1739,7 +1739,7 @@ out:
  */
 void blkcg_schedule_throttle(struct request_queue *q, bool use_memdelay)
 {
-	if (unlikely(current->flags & PF_KTHREAD))
+	if (unlikely(is_kthread(current)))
 		return;
 
 	if (!blk_get_queue(q))

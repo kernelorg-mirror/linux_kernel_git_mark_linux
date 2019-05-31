@@ -2257,7 +2257,7 @@ static int smack_sk_alloc_security(struct sock *sk, int family, gfp_t gfp_flags)
 	/*
 	 * Sockets created by kernel threads receive web label.
 	 */
-	if (unlikely(current->flags & PF_KTHREAD)) {
+	if (unlikely(is_kthread(current))) {
 		ssp->smk_in = &smack_known_web;
 		ssp->smk_out = &smack_known_web;
 	} else {
@@ -2761,7 +2761,7 @@ static int smack_socket_post_create(struct socket *sock, int family,
 	/*
 	 * Sockets created by kernel threads receive web label.
 	 */
-	if (unlikely(current->flags & PF_KTHREAD)) {
+	if (unlikely(is_kthread(current))) {
 		ssp = sock->sk->sk_security;
 		ssp->smk_in = &smack_known_web;
 		ssp->smk_out = &smack_known_web;

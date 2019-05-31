@@ -831,7 +831,7 @@ static inline struct capture_control *task_capc(struct zone *zone)
 	struct capture_control *capc = current->capture_control;
 
 	return capc &&
-		!(current->flags & PF_KTHREAD) &&
+		!is_kthread(current) &&
 		!capc->page &&
 		capc->cc->zone == zone &&
 		capc->cc->direct_compaction ? capc : NULL;

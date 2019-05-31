@@ -907,7 +907,7 @@ static inline bool cgroup_task_freeze(struct task_struct *task)
 {
 	bool ret;
 
-	if (task->flags & PF_KTHREAD)
+	if (is_kthread(task))
 		return false;
 
 	rcu_read_lock();

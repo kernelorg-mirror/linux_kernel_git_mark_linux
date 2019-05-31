@@ -72,7 +72,7 @@ static inline void set_kthread_struct(void *kthread)
 
 static inline struct kthread *to_kthread(struct task_struct *k)
 {
-	WARN_ON(!(k->flags & PF_KTHREAD));
+	WARN_ON(!is_kthread(k));
 	return (__force void *)k->set_child_tid;
 }
 
@@ -1205,7 +1205,7 @@ void kthread_associate_blkcg(struct cgroup_subsys_state *css)
 {
 	struct kthread *kthread;
 
-	if (!(current->flags & PF_KTHREAD))
+	if (!is_kthread(current))
 		return;
 	kthread = to_kthread(current);
 	if (!kthread)
@@ -1231,7 +1231,7 @@ struct cgroup_subsys_state *kthread_blkcg(void)
 {
 	struct kthread *kthread;
 
-	if (current->flags & PF_KTHREAD) {
+	if (is_kthread(current)) {
 		kthread = to_kthread(current);
 		if (kthread)
 			return kthread->blkcg_css;

@@ -625,7 +625,7 @@ static void update_sections_early(struct section_perm perms[], int n)
 	struct task_struct *t, *s;
 
 	for_each_process(t) {
-		if (t->flags & PF_KTHREAD)
+		if (is_kthread(t))
 			continue;
 		for_each_thread(t, s)
 			set_section_perms(perms, n, true, s->mm);

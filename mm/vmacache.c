@@ -30,7 +30,7 @@
  */
 static inline bool vmacache_valid_mm(struct mm_struct *mm)
 {
-	return current->mm == mm && !(current->flags & PF_KTHREAD);
+	return current->mm == mm && !is_kthread(current);
 }
 
 void vmacache_update(unsigned long addr, struct vm_area_struct *newvma)

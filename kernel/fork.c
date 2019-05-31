@@ -459,7 +459,7 @@ void free_task(struct task_struct *tsk)
 	ftrace_graph_exit_task(tsk);
 	put_seccomp_filter(tsk);
 	arch_release_task_struct(tsk);
-	if (tsk->flags & PF_KTHREAD)
+	if (is_kthread(tsk))
 		free_kthread_struct(tsk);
 	free_task_struct(tsk);
 }
@@ -1167,7 +1167,7 @@ struct file *get_task_exe_file(struct task_struct *task)
 	task_lock(task);
 	mm = task->mm;
 	if (mm) {
-		if (!(task->flags & PF_KTHREAD))
+		if (!is_kthread(task))
 			exe_file = get_mm_exe_file(mm);
 	}
 	task_unlock(task);
@@ -1191,7 +1191,7 @@ struct mm_struct *get_task_mm(struct task_struct *task)
 	task_lock(task);
 	mm = task->mm;
 	if (mm) {
-		if (task->flags & PF_KTHREAD)
+		if (is_kthread(task))
 			mm = NULL;
 		else
 			mmget(mm);

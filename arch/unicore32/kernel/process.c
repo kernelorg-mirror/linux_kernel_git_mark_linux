@@ -228,7 +228,7 @@ copy_thread(unsigned long clone_flags, unsigned long stack_start,
 
 	memset(&thread->cpu_context, 0, sizeof(struct cpu_context_save));
 	thread->cpu_context.sp = (unsigned long)childregs;
-	if (unlikely(p->flags & PF_KTHREAD)) {
+	if (unlikely(is_kthread(p))) {
 		thread->cpu_context.pc = (unsigned long)ret_from_kernel_thread;
 		thread->cpu_context.r4 = stack_start;
 		thread->cpu_context.r5 = stk_sz;

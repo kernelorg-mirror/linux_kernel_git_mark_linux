@@ -376,7 +376,7 @@ static int ptrace_attach(struct task_struct *task, long request,
 	audit_ptrace(task);
 
 	retval = -EPERM;
-	if (unlikely(task->flags & PF_KTHREAD))
+	if (unlikely(is_kthread(task)))
 		goto out;
 	if (same_thread_group(task, current))
 		goto out;

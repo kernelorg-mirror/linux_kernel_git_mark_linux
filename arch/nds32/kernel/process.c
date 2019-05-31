@@ -156,7 +156,7 @@ int copy_thread(unsigned long clone_flags, unsigned long stack_start,
 
 	memset(&p->thread.cpu_context, 0, sizeof(struct cpu_context));
 
-	if (unlikely(p->flags & PF_KTHREAD)) {
+	if (unlikely(is_kthread(p))) {
 		memset(childregs, 0, sizeof(struct pt_regs));
 		/* kernel thread fn */
 		p->thread.cpu_context.r6 = stack_start;
@@ -207,7 +207,7 @@ struct task_struct *_switch_fpu(struct task_struct *prev, struct task_struct *ne
 #if !IS_ENABLED(CONFIG_LAZY_FPU)
 	unlazy_fpu(prev);
 #endif
-	if (!(next->flags & PF_KTHREAD))
+	if (!is_kthread(next))
 		clear_fpu(task_pt_regs(next));
 	return prev;
 }

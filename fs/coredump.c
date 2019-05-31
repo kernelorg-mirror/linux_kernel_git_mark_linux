@@ -412,7 +412,7 @@ static int zap_threads(struct task_struct *tsk, struct mm_struct *mm,
 	for_each_process(g) {
 		if (g == tsk->group_leader)
 			continue;
-		if (g->flags & PF_KTHREAD)
+		if (is_kthread(g))
 			continue;
 
 		for_each_thread(g, p) {

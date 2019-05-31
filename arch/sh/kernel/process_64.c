@@ -389,7 +389,7 @@ int copy_thread(unsigned long clone_flags, unsigned long usp,
 	childregs = (struct pt_regs *)(THREAD_SIZE + task_stack_page(p)) - 1;
 	p->thread.sp = (unsigned long) childregs;
 
-	if (unlikely(p->flags & PF_KTHREAD)) {
+	if (unlikely(is_kthread(p))) {
 		memset(childregs, 0, sizeof(struct pt_regs));
 		childregs->regs[2] = (unsigned long)arg;
 		childregs->regs[3] = (unsigned long)usp;
