@@ -19,8 +19,6 @@
 #ifndef __ASM_IO_H
 #define __ASM_IO_H
 
-#ifdef __KERNEL__
-
 #include <linux/types.h>
 
 #include <asm/byteorder.h>
@@ -218,5 +216,4 @@ extern int valid_mmap_phys_addr_range(unsigned long pfn, size_t size);
 
 extern int devmem_is_allowed(unsigned long pfn);
 
-#endif	/* __KERNEL__ */
 #endif	/* __ASM_IO_H */
