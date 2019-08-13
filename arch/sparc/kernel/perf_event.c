@@ -1858,7 +1858,7 @@ perf_callchain_user(struct perf_callchain_entry_ctx *entry, struct pt_regs *regs
 
 	perf_callchain_store(entry, regs->tpc);
 
-	if (!current->mm)
+	if (is_kthread(current))
 		return;
 
 	flushw_user();
