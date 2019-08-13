@@ -71,7 +71,7 @@ perf_callchain_user(struct perf_callchain_entry_ctx *entry, struct pt_regs *regs
 
 	perf_callchain_store(entry, regs->ARM_pc);
 
-	if (!current->mm)
+	if (is_kthread(current))
 		return;
 
 	tail = (struct frame_tail __user *)regs->ARM_fp - 1;
