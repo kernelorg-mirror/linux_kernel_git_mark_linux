@@ -857,7 +857,7 @@ static int branch_type(unsigned long from, unsigned long to, int abort)
 		 * can happen if measuring at the user level only
 		 * and we interrupt in a kernel thread, e.g., idle.
 		 */
-		if (!current->mm)
+		if (is_kthread(current))
 			return X86_BR_NONE;
 
 		/* may fail if text not present */
