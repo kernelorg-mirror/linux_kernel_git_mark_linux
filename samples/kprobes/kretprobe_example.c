@@ -41,7 +41,7 @@ static int entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
 	struct my_data *data;
 
-	if (!current->mm)
+	if (is_kthread(current))
 		return 1;	/* Skip kernel threads */
 
 	data = (struct my_data *)ri->data;
