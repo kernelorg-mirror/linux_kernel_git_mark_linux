@@ -769,6 +769,18 @@ asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
 	default:
 		el0_inv(regs, esr);
 	}
+
+	if (current->thread.last_kernel_pc != regs->pc) {
+		current->thread.last_kernel_pc = regs->pc;
+		current->thread.last_retries = 0;
+	} else {
+		current->thread.last_retries += 1;
+	}
+
+	if (current->thread.last_retries > 10000) {
+		WARN_RATELIMIT(1, "Repeatedly attempting to return to %pS, esr = 0x%016lx\n",
+			       (void *)regs->pc, esr);
+	}
 }
 
 asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs)
