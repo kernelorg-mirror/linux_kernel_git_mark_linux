@@ -6,8 +6,12 @@
  */
 
 #include <linux/context_tracking.h>
+#include <linux/hardirq.h>
+#include <linux/irq.h>
+#include <linux/irqflags.h>
 #include <linux/linkage.h>
 #include <linux/lockdep.h>
+#include <linux/percpu.h>
 #include <linux/preempt.h>
 #include <linux/ptrace.h>
 #include <linux/sched/debug.h>
@@ -19,6 +23,7 @@
 #include <asm/exception.h>
 #include <asm/kprobes.h>
 #include <asm/mmu.h>
+#include <asm/stacktrace.h>
 #include <asm/sysreg.h>
 
 static void notrace el1_abort(struct pt_regs *regs, unsigned long esr)
@@ -335,7 +340,7 @@ asmlinkage void notrace el0_sync_compat_handler(struct pt_regs *regs)
 NOKPROBE_SYMBOL(el0_sync_compat_handler);
 #endif /* CONFIG_COMPAT */
 
-asmlinkage void __sched el1_preempt(void)
+static void __sched el1_preempt(void)
 {
 	if (!IS_ENABLED(CONFIG_PREEMPT) || preempt_count())
 		return;
@@ -345,7 +350,7 @@ asmlinkage void __sched el1_preempt(void)
 	 * masked until the exception return. We want to context-switch with
 	 * IRQs masked but NMIs enabled, so cannot preempt an NMI.
 	 *
-	 * PSTATE.{D,A,F} are cleared for IRQ and NMI by el1_irq().
+	 * PSTATE.{D,A,F} are cleared for IRQ and NMI by el1_irq_handler().
 	 * When gic_handle_irq() handles an NMI, it leaves PSTATE.I set.
 	 * If anything is set in DAIF, this is an NMI.
 	 */
@@ -365,3 +370,75 @@ asmlinkage void __sched el1_preempt(void)
 	if (static_branch_likely(&arm64_const_caps_ready))
 		preempt_schedule_irq();
 }
+
+static void notrace invoke_irq_handler(struct pt_regs *regs)
+{
+	unsigned long irq_stack = (unsigned long)raw_cpu_read(irq_stack_ptr);
+
+	irq_stack += IRQ_STACK_SIZE;
+
+	if (on_thread_stack())
+		call_on_stack(regs, handle_arch_irq, irq_stack);
+	else
+		handle_arch_irq(regs);
+}
+NOKPROBE_SYMBOL(invoke_irq_handler);
+
+asmlinkage void notrace el1_irq_handler(struct pt_regs *regs)
+{
+	bool masked;
+
+	if (system_uses_irq_prio_masking())
+		gic_write_pmr(regs->pmr_save | GIC_PRIO_PSR_I_SET);
+
+	/*
+	 * We can't use local_daif_restore(DAIF_PROCCTX_NOIRQ) here as it will
+	 * see the A flag is clear and try to unmask NMIs.
+	 */
+	write_sysreg(DAIF_PROCCTX_NOIRQ, daif);
+
+	/*
+	 * If IRQs were masked, this is definitely an NMI. If IRQs were
+	 * unmasked, this may be an IRQ or an NMI, and gic_handle_nmi() will
+	 * handle nmi_{enter,exit} as necessary.
+	 */
+	masked = !irqs_priority_unmasked(regs);
+
+	if (masked)
+		nmi_enter();
+	else
+		trace_hardirqs_off();
+
+	invoke_irq_handler(regs);
+
+	if (masked) {
+		nmi_exit();
+	} else {
+		el1_preempt();
+		trace_hardirqs_on();
+	}
+}
+NOKPROBE_SYMBOL(el1_irq_handler);
+
+static inline void notrace do_el0_irq_bp_hardening(struct pt_regs *regs)
+{
+	if (!IS_ENABLED(CONFIG_HARDEN_BRANCH_PREDICTOR))
+		return;
+	if (regs->pc & BIT(55))
+		arm64_apply_bp_hardening();
+}
+NOKPROBE_SYMBOL(do_el0_irq_bp_hardening);
+
+asmlinkage void notrace el0_irq_handler(struct pt_regs *regs)
+{
+	if (system_uses_irq_prio_masking())
+		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
+
+	user_exit_irqoff();
+	local_daif_restore(DAIF_PROCCTX_NOIRQ);
+	trace_hardirqs_off();
+	do_el0_irq_bp_hardening(regs);
+	invoke_irq_handler(regs);
+	trace_hardirqs_on();
+}
+NOKPROBE_SYMBOL(el0_irq_handler);
