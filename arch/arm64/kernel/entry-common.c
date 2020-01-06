@@ -8,6 +8,7 @@
 #include <linux/context_tracking.h>
 #include <linux/linkage.h>
 #include <linux/lockdep.h>
+#include <linux/preempt.h>
 #include <linux/ptrace.h>
 #include <linux/sched/debug.h>
 #include <linux/thread_info.h>
@@ -334,8 +335,23 @@ asmlinkage void notrace el0_sync_compat_handler(struct pt_regs *regs)
 NOKPROBE_SYMBOL(el0_sync_compat_handler);
 #endif /* CONFIG_COMPAT */
 
-asmlinkage void __sched arm64_preempt_schedule_irq(void)
+asmlinkage void __sched el1_preempt(void)
 {
+	if (!IS_ENABLED(CONFIG_PREEMPT) || preempt_count())
+		return;
+
+	/*
+	 * To avoid nesting NMIs and overflowing the stack, we must leave NMIs
+	 * masked until the exception return. We want to context-switch with
+	 * IRQs masked but NMIs enabled, so cannot preempt an NMI.
+	 *
+	 * PSTATE.{D,A,F} are cleared for IRQ and NMI by el1_irq().
+	 * When gic_handle_irq() handles an NMI, it leaves PSTATE.I set.
+	 * If anything is set in DAIF, this is an NMI.
+	 */
+	if (system_uses_irq_prio_masking() && read_sysreg(daif) != 0)
+		return;
+
 	lockdep_assert_irqs_disabled();
 
 	/*
