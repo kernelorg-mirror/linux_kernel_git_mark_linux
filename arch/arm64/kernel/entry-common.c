@@ -5,6 +5,7 @@
  * Copyright (C) 2019 ARM Ltd.
  */
 
+#include <linux/compat.h>
 #include <linux/context_tracking.h>
 #include <linux/hardirq.h>
 #include <linux/irq.h>
@@ -31,6 +32,21 @@
 #include <asm/mmu.h>
 #include <asm/stacktrace.h>
 #include <asm/sysreg.h>
+
+static void notrace workaround_arm64_erratum_845719(void)
+{
+	unsigned long val = 0;
+
+	if (!IS_ENABLED(CONFIG_ARM64_ERRATUM_845719) ||
+	    !cpus_have_const_cap(ARM64_WORKAROUND_845719) ||
+	    !is_compat_task())
+		return;
+
+	if (IS_ENABLED(CONFIG_PID_IN_CONTEXTIDR))
+		val = read_sysreg(contextidr_el1);
+	write_sysreg(val, contextidr_el1);
+}
+NOKPROBE_SYMBOL(workaround_arm64_erratum_845719);
 
 asmlinkage void do_notify_resume(struct pt_regs *regs,
 				 unsigned long thread_flags)
@@ -108,6 +124,8 @@ static void notrace __el0_prepare_return(struct pt_regs *regs)
 
 	/* enabled while in userspace */
 	trace_hardirqs_on();
+	
+	workaround_arm64_erratum_845719();
 }
 NOKPROBE_SYMBOL(__el0_prepare_return);
 

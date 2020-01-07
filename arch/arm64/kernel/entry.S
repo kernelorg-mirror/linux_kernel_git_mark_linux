@@ -229,20 +229,7 @@ alternative_else_nop_endif
 	.if	\el == 0
 	ldr	x23, [sp, #S_SP]		// load return stack pointer
 	msr	sp_el0, x23
-	tst	x22, #PSR_MODE32_BIT		// native task?
-	b.eq	3f
 
-#ifdef CONFIG_ARM64_ERRATUM_845719
-alternative_if ARM64_WORKAROUND_845719
-#ifdef CONFIG_PID_IN_CONTEXTIDR
-	mrs	x29, contextidr_el1
-	msr	contextidr_el1, x29
-#else
-	msr contextidr_el1, xzr
-#endif
-alternative_else_nop_endif
-#endif
-3:
 	scs_save tsk, x0
 
 	/* No kernel C function calls after this as user keys are set. */
