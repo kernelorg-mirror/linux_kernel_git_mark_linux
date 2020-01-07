@@ -15,6 +15,7 @@
 #include <linux/preempt.h>
 #include <linux/ptrace.h>
 #include <linux/sched/debug.h>
+#include <linux/stackleak.h>
 #include <linux/syscalls.h>
 #include <linux/thread_info.h>
 #include <linux/tracehook.h>
@@ -22,6 +23,7 @@
 
 #include <asm/cpufeature.h>
 #include <asm/daifflags.h>
+#include <asm/debug-monitors.h>
 #include <asm/esr.h>
 #include <asm/exception.h>
 #include <asm/fpsimd.h>
@@ -111,16 +113,8 @@ asmlinkage void notrace el1_sync_handler(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(el1_sync_handler);
 
-asmlinkage void do_notify_resume(struct pt_regs *regs,
-				 unsigned long thread_flags)
+static void do_notify_resume(struct pt_regs *regs, unsigned long thread_flags)
 {
-	/*
-	 * The assembly code enters us with IRQs off, but it hasn't
-	 * informed the tracing code of that for efficiency reasons.
-	 * Update the trace code with the current status.
-	 */
-	trace_hardirqs_off();
-
 	do {
 		/* Check valid user FS if needed */
 		addr_limit_user_check();
@@ -153,6 +147,59 @@ asmlinkage void do_notify_resume(struct pt_regs *regs,
 		thread_flags = READ_ONCE(current_thread_info()->flags);
 	} while (thread_flags & _TIF_WORK_MASK);
 }
+
+static void notrace el0_prepare_entry(struct pt_regs *regs)
+{
+	if (test_thread_flag(TIF_SINGLESTEP)) {
+		__disable_single_step_nosync();
+		isb();
+	}
+}
+NOKPROBE_SYMBOL(el0_prepare_entry);
+
+static void notrace el0_prepare_return(struct pt_regs *regs)
+{
+	unsigned long flags;
+
+	local_daif_mask();
+
+	flags = READ_ONCE(current_thread_info()->flags);
+	if (unlikely(flags & _TIF_WORK_MASK)) {
+		do_notify_resume(regs, flags);
+		trace_hardirqs_on();
+	}
+
+	if (unlikely(test_thread_flag(TIF_SINGLESTEP)))
+		__enable_single_step_nosync();
+
+	user_enter();
+
+	stackleak_erase();
+}
+NOKPROBE_SYMBOL(el0_prepare_return);
+
+asmlinkage void notrace el0_prepare_return_from_fork(void)
+{
+	el0_prepare_return(current_pt_regs());
+}
+NOKPROBE_SYMBOL(el0_prepare_return_from_fork);
+
+/*
+ * Top-level exception handlers need to perform common entry/exit work. Use
+ * this macro when defining a handler for exceptions from EL0, so that work is
+ * handled automatically.
+ */
+#define EL0_HANDLER(handlername, regsname)						\
+static __always_inline void notrace __raw_##handlername(struct pt_regs *regsname);	\
+NOKPROBE_SYMBOL(__raw_##handlername);							\
+asmlinkage void notrace handlername(struct pt_regs *regs)				\
+{											\
+	el0_prepare_entry(regs);							\
+	__raw_##handlername(regs);							\
+	el0_prepare_return(regs);							\
+}											\
+NOKPROBE_SYMBOL(handlername);								\
+static __always_inline void notrace __raw_##handlername(struct pt_regs *regsname)
 
 static void notrace el0_da(struct pt_regs *regs, unsigned long esr)
 {
@@ -275,7 +322,7 @@ static void notrace el0_svc(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(el0_svc);
 
-asmlinkage void notrace el0_sync_handler(struct pt_regs *regs)
+EL0_HANDLER(el0_sync_handler, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -321,7 +368,6 @@ asmlinkage void notrace el0_sync_handler(struct pt_regs *regs)
 		el0_inv(regs, esr);
 	}
 }
-NOKPROBE_SYMBOL(el0_sync_handler);
 
 #ifdef CONFIG_COMPAT
 static void notrace el0_cp15(struct pt_regs *regs, unsigned long esr)
@@ -341,7 +387,7 @@ static void notrace el0_svc_compat(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(el0_svc_compat);
 
-asmlinkage void notrace el0_sync_compat_handler(struct pt_regs *regs)
+EL0_HANDLER(el0_sync_compat_handler, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -384,7 +430,6 @@ asmlinkage void notrace el0_sync_compat_handler(struct pt_regs *regs)
 		el0_inv(regs, esr);
 	}
 }
-NOKPROBE_SYMBOL(el0_sync_compat_handler);
 #endif /* CONFIG_COMPAT */
 
 static void __sched el1_preempt(void)
@@ -476,7 +521,7 @@ static inline void notrace do_el0_irq_bp_hardening(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(do_el0_irq_bp_hardening);
 
-asmlinkage void notrace el0_irq_handler(struct pt_regs *regs)
+EL0_HANDLER(el0_irq_handler, regs)
 {
 	if (system_uses_irq_prio_masking())
 		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
@@ -488,7 +533,6 @@ asmlinkage void notrace el0_irq_handler(struct pt_regs *regs)
 	invoke_irq_handler(regs);
 	trace_hardirqs_on();
 }
-NOKPROBE_SYMBOL(el0_irq_handler);
 
 asmlinkage void el1_error_handler(struct pt_regs *regs)
 {
@@ -502,7 +546,7 @@ asmlinkage void el1_error_handler(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(el1_error_handler);
 
-asmlinkage void el0_error_handler(struct pt_regs *regs)
+EL0_HANDLER(el0_error_handler, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -514,4 +558,3 @@ asmlinkage void el0_error_handler(struct pt_regs *regs)
 	do_serror(regs, esr);
 	local_daif_restore(DAIF_PROCCTX_NOIRQ);
 }
-NOKPROBE_SYMBOL(el0_error_handler);

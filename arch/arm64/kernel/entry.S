@@ -26,16 +26,6 @@
 #include <asm/asm-uaccess.h>
 #include <asm/unistd.h>
 
-/*
- * Context tracking subsystem.  Used to instrument transitions
- * between user and kernel mode.
- */
-	.macro ct_user_enter
-#ifdef CONFIG_CONTEXT_TRACKING
-	bl	context_tracking_user_enter
-#endif
-	.endm
-
 	.macro	clear_gp_regs
 	.irp	n,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29
 	mov	x\n, xzr
@@ -164,11 +154,6 @@ alternative_cb_end
 	ldr_this_cpu	tsk, __entry_task, x20
 	msr	sp_el0, tsk
 
-	// Ensure MDSCR_EL1.SS is clear, since we can unmask debug exceptions
-	// when scheduling.
-	ldr	x19, [tsk, #TSK_TI_FLAGS]
-	disable_step_tsk x19, x20
-
 	apply_ssbd 1, x22, x23
 
 	.else
@@ -268,9 +253,6 @@ alternative_if ARM64_HAS_IRQ_PRIO_MASKING
 alternative_else_nop_endif
 
 	ldp	x21, x22, [sp, #S_PC]		// load ELR, SPSR
-	.if	\el == 0
-	ct_user_enter
-	.endif
 
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN
 	/*
@@ -377,15 +359,6 @@ alternative_insn eret, nop, ARM64_UNMAP_KERNEL_AT_EL0
 
 /* GPRs used by entry code */
 tsk	.req	x28		// current thread_info
-
-	.macro	gic_prio_kentry_setup, tmp:req
-#ifdef CONFIG_ARM64_PSEUDO_NMI
-	alternative_if ARM64_HAS_IRQ_PRIO_MASKING
-	mov	\tmp, #(GIC_PRIO_PSR_I_SET | GIC_PRIO_IRQON)
-	msr_s	SYS_ICC_PMR_EL1, \tmp
-	alternative_else_nop_endif
-#endif
-	.endm
 
 	.text
 
@@ -592,31 +565,10 @@ ENDPROC(el0_error_compat)
 #endif
 
 /*
- * Ok, we need to do extra processing, enter the slow path.
- */
-work_pending:
-	mov	x0, sp				// 'regs'
-	bl	do_notify_resume
-#ifdef CONFIG_TRACE_IRQFLAGS
-	bl	trace_hardirqs_on		// enabled while in userspace
-#endif
-	ldr	x1, [tsk, #TSK_TI_FLAGS]	// re-check for single-step
-	b	finish_ret_to_user
-/*
- * "slow" syscall return path.
+ * Common EL0 exception return path
  */
 	.align 6
 ret_to_user:
-	disable_daif
-	gic_prio_kentry_setup tmp=x3
-	ldr	x1, [tsk, #TSK_TI_FLAGS]
-	and	x2, x1, #_TIF_WORK_MASK
-	cbnz	x2, work_pending
-finish_ret_to_user:
-	enable_step_tsk x1, x2
-#ifdef CONFIG_GCC_PLUGIN_STACKLEAK
-	bl	stackleak_erase
-#endif
 	kernel_exit 0
 ENDPROC(ret_to_user)
 
@@ -778,6 +730,7 @@ ENTRY(ret_from_fork)
 	mov	x0, x20
 	blr	x19
 1:	get_current_task tsk
+	bl	el0_prepare_return_from_fork
 	b	ret_to_user
 ENDPROC(ret_from_fork)
 NOKPROBE(ret_from_fork)
