@@ -33,6 +33,8 @@
 #include <asm/stacktrace.h>
 #include <asm/sysreg.h>
 
+#include <clocksource/arm_arch_timer.h>
+
 static void notrace el1_abort(struct pt_regs *regs, unsigned long esr)
 {
 	unsigned long far = read_sysreg(far_el1);
@@ -176,6 +178,23 @@ static void notrace workaround_arm64_erratum_845719(void)
 }
 NOKPROBE_SYMBOL(workaround_arm64_erratum_845719);
 
+static void notrace workaround_arm64_erratum_1418040(void)
+{
+	unsigned long clear = 0, set = 0;
+
+	if (!IS_ENABLED(CONFIG_ARM64_ERRATUM_1418040) ||
+	    !cpus_have_const_cap(ARM64_WORKAROUND_1418040))
+		return;
+
+	if (is_compat_task())
+		clear = ARCH_TIMER_USR_VCT_ACCESS_EN;
+	else
+		set = ARCH_TIMER_USR_VCT_ACCESS_EN;
+
+	sysreg_clear_set(cntkctl_el1, clear, set);
+}
+NOKPROBE_SYMBOL(workaround_arm64_erratum_1418040);
+
 static void notrace el0_prepare_return(struct pt_regs *regs)
 {
 	unsigned long flags;
@@ -194,6 +213,7 @@ static void notrace el0_prepare_return(struct pt_regs *regs)
 	user_enter();
 
 	workaround_arm64_erratum_845719();
+	workaround_arm64_erratum_1418040();
 
 	stackleak_erase();
 }
