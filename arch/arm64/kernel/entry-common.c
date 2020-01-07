@@ -150,6 +150,9 @@ static void do_notify_resume(struct pt_regs *regs, unsigned long thread_flags)
 
 static void notrace el0_prepare_entry(struct pt_regs *regs)
 {
+	/* Not in a syscall by default; do_el0_svc{,_compat} overwrite this */
+	regs->syscallno = NO_SYSCALL;
+
 	if (test_thread_flag(TIF_SINGLESTEP)) {
 		__disable_single_step_nosync();
 		isb();
