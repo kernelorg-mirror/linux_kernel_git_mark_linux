@@ -30,12 +30,6 @@
  * Context tracking subsystem.  Used to instrument transitions
  * between user and kernel mode.
  */
-	.macro ct_user_exit_irqoff
-#ifdef CONFIG_CONTEXT_TRACKING
-	bl	enter_from_user_mode
-#endif
-	.endm
-
 	.macro ct_user_enter
 #ifdef CONFIG_CONTEXT_TRACKING
 	bl	context_tracking_user_enter
@@ -556,7 +550,10 @@ ENDPROC(el0_irq_compat)
 
 el0_error_compat:
 	kernel_entry 0, 32
-	b	el0_error_naked
+	mov	x0, sp
+	bl	el0_error_handler
+	b	ret_to_user
+ENDPROC(el0_error_compat)
 #endif
 
 	.align	6
@@ -569,25 +566,15 @@ ENDPROC(el0_irq)
 
 el1_error:
 	kernel_entry 1
-	mrs	x1, esr_el1
-	gic_prio_kentry_setup tmp=x2
-	enable_dbg
 	mov	x0, sp
-	bl	do_serror
+	bl	el1_error_handler
 	kernel_exit 1
 ENDPROC(el1_error)
 
 el0_error:
 	kernel_entry 0
-el0_error_naked:
-	mrs	x25, esr_el1
-	gic_prio_kentry_setup tmp=x2
-	ct_user_exit_irqoff
-	enable_dbg
 	mov	x0, sp
-	mov	x1, x25
-	bl	do_serror
-	enable_da_f
+	bl	el0_error_handler
 	b	ret_to_user
 ENDPROC(el0_error)
 

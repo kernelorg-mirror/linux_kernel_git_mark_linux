@@ -442,3 +442,29 @@ asmlinkage void notrace el0_irq_handler(struct pt_regs *regs)
 	trace_hardirqs_on();
 }
 NOKPROBE_SYMBOL(el0_irq_handler);
+
+asmlinkage void el1_error_handler(struct pt_regs *regs)
+{
+	unsigned long esr = read_sysreg(esr_el1);
+
+	if (system_uses_irq_prio_masking())
+		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
+
+	local_daif_restore(DAIF_ERRCTX);
+	do_serror(regs, esr);
+}
+NOKPROBE_SYMBOL(el1_error_handler);
+
+asmlinkage void el0_error_handler(struct pt_regs *regs)
+{
+	unsigned long esr = read_sysreg(esr_el1);
+
+	if (system_uses_irq_prio_masking())
+		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
+
+	user_exit_irqoff();
+	local_daif_restore(DAIF_ERRCTX);
+	do_serror(regs, esr);
+	local_daif_restore(DAIF_PROCCTX_NOIRQ);
+}
+NOKPROBE_SYMBOL(el0_error_handler);
