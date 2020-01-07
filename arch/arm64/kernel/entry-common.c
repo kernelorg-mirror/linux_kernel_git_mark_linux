@@ -80,6 +80,9 @@ NOKPROBE_SYMBOL(__el1_prepare_return);
 
 static void notrace __el0_prepare_entry(struct pt_regs *regs)
 {
+	/* Not in a syscall by default; do_el0_svc{,_compat} overwrite this */
+	regs->syscallno = NO_SYSCALL;
+
 	/*
 	 * Ensure MDSCR_EL1.SS is clear, since we can unmask debug exceptions
 	 * when scheduling.

@@ -211,12 +211,6 @@ alternative_else_nop_endif
 
 	stp	x22, x23, [sp, #S_PC]
 
-	/* Not in a syscall by default (el0_svc overwrites for real syscall) */
-	.if	\el == 0
-	mov	w21, #NO_SYSCALL
-	str	w21, [sp, #S_SYSCALLNO]
-	.endif
-
 	/*
 	 * Registers that may be useful after this macro is invoked:
 	 *
