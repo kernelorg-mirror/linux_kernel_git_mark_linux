@@ -521,6 +521,14 @@ el1_irq:
 	kernel_exit 1
 ENDPROC(el1_irq)
 
+	.align	6
+el1_error:
+	kernel_entry 1
+	mov	x0, sp
+	bl	el1_error_handler
+	kernel_exit 1
+ENDPROC(el1_error)
+
 /*
  * EL0 mode handlers.
  */
@@ -531,6 +539,23 @@ el0_sync:
 	bl	el0_sync_handler
 	b	ret_to_user
 ENDPROC(el0_sync)
+
+	.align	6
+el0_irq:
+	kernel_entry 0
+	mov	x0, sp
+	bl	el0_irq_handler
+	b	ret_to_user
+ENDPROC(el0_irq)
+
+	.align	6
+el0_error:
+	kernel_entry 0
+	mov	x0, sp
+	bl	el0_error_handler
+	b	ret_to_user
+ENDPROC(el0_error)
+
 
 #ifdef CONFIG_COMPAT
 	.align	6
@@ -549,6 +574,7 @@ el0_irq_compat:
 	b	ret_to_user
 ENDPROC(el0_irq_compat)
 
+	.align	6
 el0_error_compat:
 	kernel_entry 0, 32
 	mov	x0, sp
@@ -556,28 +582,6 @@ el0_error_compat:
 	b	ret_to_user
 ENDPROC(el0_error_compat)
 #endif
-
-	.align	6
-el0_irq:
-	kernel_entry 0
-	mov	x0, sp
-	bl	el0_irq_handler
-	b	ret_to_user
-ENDPROC(el0_irq)
-
-el1_error:
-	kernel_entry 1
-	mov	x0, sp
-	bl	el1_error_handler
-	kernel_exit 1
-ENDPROC(el1_error)
-
-el0_error:
-	kernel_entry 0
-	mov	x0, sp
-	bl	el0_error_handler
-	b	ret_to_user
-ENDPROC(el0_error)
 
 /*
  * Ok, we need to do extra processing, enter the slow path.
