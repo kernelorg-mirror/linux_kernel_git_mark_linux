@@ -52,5 +52,6 @@ void do_el0_svc_compat(struct pt_regs *regs);
 void do_el0_ia_bp_hardening(unsigned long addr,  unsigned int esr,
 			    struct pt_regs *regs);
 void do_serror(struct pt_regs *regs, unsigned int esr);
+void do_signal(struct pt_regs *regs);
 
 #endif	/* __ASM_EXCEPTION_H */
