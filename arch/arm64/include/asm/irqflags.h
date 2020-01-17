@@ -28,12 +28,6 @@
  */
 static inline void arch_local_irq_enable(void)
 {
-	if (system_has_prio_mask_debugging()) {
-		u32 pmr = read_sysreg_s(SYS_ICC_PMR_EL1);
-
-		WARN_ON_ONCE(pmr != GIC_PRIO_IRQON && pmr != GIC_PRIO_IRQOFF);
-	}
-
 	asm volatile(ALTERNATIVE(
 		"msr	daifclr, #2		// arch_local_irq_enable",
 		__msr_s(SYS_ICC_PMR_EL1, "%0"),
@@ -47,12 +41,6 @@ static inline void arch_local_irq_enable(void)
 
 static inline void arch_local_irq_disable(void)
 {
-	if (system_has_prio_mask_debugging()) {
-		u32 pmr = read_sysreg_s(SYS_ICC_PMR_EL1);
-
-		WARN_ON_ONCE(pmr != GIC_PRIO_IRQON && pmr != GIC_PRIO_IRQOFF);
-	}
-
 	asm volatile(ALTERNATIVE(
 		"msr	daifset, #2		// arch_local_irq_disable",
 		__msr_s(SYS_ICC_PMR_EL1, "%0"),

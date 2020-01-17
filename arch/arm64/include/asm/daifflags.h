@@ -19,9 +19,6 @@
 /* mask/save/unmask/restore all exceptions, including interrupts. */
 static inline void local_daif_mask(void)
 {
-	WARN_ON(system_has_prio_mask_debugging() &&
-		(read_sysreg_s(SYS_ICC_PMR_EL1) == (GIC_PRIO_IRQOFF |
-						    GIC_PRIO_PSR_I_SET)));
 	__daif_imm_set(DAIF_IMM_DAIF);
 
 	/* Don't really care for a dsb here, we don't intend to enable IRQs */
@@ -60,9 +57,6 @@ static inline unsigned long local_daif_save(void)
 static inline void local_daif_restore(unsigned long flags)
 {
 	bool irq_disabled = flags & PSR_I_BIT;
-
-	WARN_ON(system_has_prio_mask_debugging() &&
-		!(read_sysreg(daif) & PSR_I_BIT));
 
 	if (!irq_disabled) {
 		trace_hardirqs_on();
@@ -122,9 +116,9 @@ static inline void local_daif_inherit(struct pt_regs *regs)
 	unsigned long flags = regs->pstate & DAIF_MASK;
 
 	/*
-	 * We can't use local_daif_restore(regs->pstate) here as
-	 * system_has_prio_mask_debugging() won't restore the I bit if it can
-	 * use the pmr instead.
+	 * We can't use local_daif_restore(regs->pstate) here as the
+	 * system_uses_irq_prio_masking() case won't restore the I bit if it
+	 * can use the pmr instead.
 	 */
 	write_sysreg(flags, daif);
 }
