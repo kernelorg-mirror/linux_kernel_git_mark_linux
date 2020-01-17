@@ -692,11 +692,11 @@ int kvm_vcpu_run_vhe(struct kvm_vcpu *vcpu)
 	 * will not signal the CPU of interrupts of lower priority, and the
 	 * only way to get out will be via guest exceptions.
 	 * Naturally, we want to avoid this.
-	 *
-	 * local_daif_save() already sets GIC_PRIO_PSR_I_SET, we just need a
-	 * dsb to ensure the redistributor is forwards EL2 IRQs to the CPU.
 	 */
-	pmr_sync();
+	if (system_uses_irq_prio_masking()) {
+		gic_write_pmr(GIC_PRIO_IRQON);
+		pmr_sync();
+	}
 
 	ret = __kvm_vcpu_run_vhe(vcpu);
 
@@ -731,7 +731,7 @@ int __hyp_text __kvm_vcpu_run_nvhe(struct kvm_vcpu *vcpu)
 	 * Naturally, we want to avoid this.
 	 */
 	if (system_uses_irq_prio_masking()) {
-		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
+		gic_write_pmr(GIC_PRIO_IRQON);
 		pmr_sync();
 	}
 

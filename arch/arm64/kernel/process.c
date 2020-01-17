@@ -87,7 +87,7 @@ static void __cpu_do_idle_irqprio(void)
 	 * be raised.
 	 */
 	pmr = gic_read_pmr();
-	gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
+	gic_write_pmr(GIC_PRIO_IRQON);
 
 	__cpu_do_idle();
 

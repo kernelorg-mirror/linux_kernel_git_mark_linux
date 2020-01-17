@@ -23,31 +23,42 @@
  * unmask it at all other times.
  */
 
-/*
- * CPU interrupt mask handling.
- */
+#define daif_to_flags(daif)	(daif)
+#define flags_to_daif(flags)	((u32)(flags))
+
+#define pmr_to_flags(pmr)	((u64)(pmr) << 32)
+#define flags_to_pmr(flags)	((flags) >> 32)
+
+static inline bool __system_uses_irq_prio_masking(void)
+{
+	return IS_ENABLED(CONFIG_ARM64_PSEUDO_NMI) &&
+	       __cpus_have_const_cap(ARM64_HAS_IRQ_PRIO_MASKING);
+}
+
 static inline void arch_local_irq_enable(void)
 {
-	asm volatile(ALTERNATIVE(
-		"msr	daifclr, #2		// arch_local_irq_enable",
-		__msr_s(SYS_ICC_PMR_EL1, "%0"),
-		ARM64_HAS_IRQ_PRIO_MASKING)
-		:
-		: "r" ((unsigned long) GIC_PRIO_IRQON)
-		: "memory");
+	barrier();
 
-	pmr_sync();
+	if (__system_uses_irq_prio_masking()) {
+		write_sysreg_s(GIC_PRIO_IRQON, SYS_ICC_PMR_EL1);
+		pmr_sync();
+	} else {
+		__daif_imm_clear(DAIF_IMM_I);
+	}
+
+	barrier();
 }
 
 static inline void arch_local_irq_disable(void)
 {
-	asm volatile(ALTERNATIVE(
-		"msr	daifset, #2		// arch_local_irq_disable",
-		__msr_s(SYS_ICC_PMR_EL1, "%0"),
-		ARM64_HAS_IRQ_PRIO_MASKING)
-		:
-		: "r" ((unsigned long) GIC_PRIO_IRQOFF)
-		: "memory");
+	barrier();
+
+	if (__system_uses_irq_prio_masking())
+		write_sysreg_s(GIC_PRIO_IRQOFF, SYS_ICC_PMR_EL1);
+	else
+		__daif_imm_set(DAIF_IMM_I);
+
+	barrier();
 }
 
 /*
@@ -55,32 +66,29 @@ static inline void arch_local_irq_disable(void)
  */
 static inline unsigned long arch_local_save_flags(void)
 {
-	unsigned long flags;
+	unsigned long flags = daif_to_flags(read_sysreg(daif));
 
-	asm volatile(ALTERNATIVE(
-		"mrs	%0, daif",
-		__mrs_s("%0", SYS_ICC_PMR_EL1),
-		ARM64_HAS_IRQ_PRIO_MASKING)
-		: "=&r" (flags)
-		:
-		: "memory");
+	if (__system_uses_irq_prio_masking())
+		flags |= pmr_to_flags(read_sysreg_s(SYS_ICC_PMR_EL1));
 
 	return flags;
 }
 
-static inline int arch_irqs_disabled_flags(unsigned long flags)
+static inline bool arch_irqs_disabled_flags(unsigned long flags)
 {
-	int res;
+	unsigned long daif = flags_to_daif(flags);
 
-	asm volatile(ALTERNATIVE(
-		"and	%w0, %w1, #" __stringify(PSR_I_BIT),
-		"eor	%w0, %w1, #" __stringify(GIC_PRIO_IRQON),
-		ARM64_HAS_IRQ_PRIO_MASKING)
-		: "=&r" (res)
-		: "r" ((int) flags)
-		: "memory");
+	/*
+	 * If the PMR masks IRQs, set DAIF.I (bit 7). Bit 7 happens to be the
+	 * most significant bit of ICC_PMR_EL1.Priority, and is clear when IRQs
+	 * are priority masked.
+	 */
+	BUILD_BUG_ON(~GIC_PRIO_IRQON & PSR_I_BIT);
+	BUILD_BUG_ON(!(~GIC_PRIO_IRQOFF & PSR_I_BIT));
+	if (__system_uses_irq_prio_masking())
+		daif |= ~flags_to_pmr(flags);
 
-	return res;
+	return daif & PSR_I_BIT;
 }
 
 static inline unsigned long arch_local_irq_save(void)
@@ -89,12 +97,7 @@ static inline unsigned long arch_local_irq_save(void)
 
 	flags = arch_local_save_flags();
 
-	/*
-	 * There are too many states with IRQs disabled, just keep the current
-	 * state if interrupts are already disabled/masked.
-	 */
-	if (!arch_irqs_disabled_flags(flags))
-		arch_local_irq_disable();
+	arch_local_irq_disable();
 
 	return flags;
 }
@@ -104,15 +107,16 @@ static inline unsigned long arch_local_irq_save(void)
  */
 static inline void arch_local_irq_restore(unsigned long flags)
 {
-	asm volatile(ALTERNATIVE(
-		"msr	daif, %0",
-		__msr_s(SYS_ICC_PMR_EL1, "%0"),
-		ARM64_HAS_IRQ_PRIO_MASKING)
-		:
-		: "r" (flags)
-		: "memory");
+	barrier();
 
-	pmr_sync();
+	if (__system_uses_irq_prio_masking()) {
+		write_sysreg_s(flags_to_pmr(flags), SYS_ICC_PMR_EL1);
+		pmr_sync();
+	}
+
+	write_sysreg(flags_to_daif(flags), daif);
+
+	barrier();
 }
 
 #endif /* __ASM_IRQFLAGS_H */

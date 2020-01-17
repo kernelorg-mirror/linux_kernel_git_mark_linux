@@ -153,8 +153,7 @@ static inline bool gic_prio_masking_enabled(void)
 
 static inline void gic_pmr_mask_irqs(void)
 {
-	BUILD_BUG_ON(GICD_INT_DEF_PRI < (GIC_PRIO_IRQOFF |
-					 GIC_PRIO_PSR_I_SET));
+	BUILD_BUG_ON(GICD_INT_DEF_PRI < GIC_PRIO_IRQOFF);
 	BUILD_BUG_ON(GICD_INT_DEF_PRI >= GIC_PRIO_IRQON);
 	/*
 	 * Need to make sure IRQON allows IRQs when SCR_EL3.FIQ is cleared

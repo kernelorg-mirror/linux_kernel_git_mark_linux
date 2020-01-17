@@ -439,24 +439,6 @@ alternative_endif
 	.endm
 #endif
 
-	.macro	gic_prio_kentry_setup, tmp:req
-#ifdef CONFIG_ARM64_PSEUDO_NMI
-	alternative_if ARM64_HAS_IRQ_PRIO_MASKING
-	mov	\tmp, #(GIC_PRIO_PSR_I_SET | GIC_PRIO_IRQON)
-	msr_s	SYS_ICC_PMR_EL1, \tmp
-	alternative_else_nop_endif
-#endif
-	.endm
-
-	.macro	gic_prio_irq_setup, pmr:req, tmp:req
-#ifdef CONFIG_ARM64_PSEUDO_NMI
-	alternative_if ARM64_HAS_IRQ_PRIO_MASKING
-	orr	\tmp, \pmr, #GIC_PRIO_PSR_I_SET
-	msr_s	SYS_ICC_PMR_EL1, \tmp
-	alternative_else_nop_endif
-#endif
-	.endm
-
 	.text
 
 /*
@@ -586,7 +568,6 @@ ENDPROC(el1_sync)
 	.align	6
 el1_irq:
 	kernel_entry 1
-	gic_prio_irq_setup pmr=x20, tmp=x1
 	enable_da_f
 
 #ifdef CONFIG_ARM64_PSEUDO_NMI
@@ -677,7 +658,6 @@ ENDPROC(el0_error_compat)
 el0_irq:
 	kernel_entry 0
 el0_irq_naked:
-	gic_prio_irq_setup pmr=x20, tmp=x0
 	ct_user_exit_irqoff
 	enable_da_f
 
@@ -701,7 +681,6 @@ ENDPROC(el0_irq)
 el1_error:
 	kernel_entry 1
 	mrs	x1, esr_el1
-	gic_prio_kentry_setup tmp=x2
 	enable_dbg
 	mov	x0, sp
 	bl	do_serror
@@ -712,7 +691,6 @@ el0_error:
 	kernel_entry 0
 el0_error_naked:
 	mrs	x25, esr_el1
-	gic_prio_kentry_setup tmp=x2
 	ct_user_exit_irqoff
 	enable_dbg
 	mov	x0, sp
@@ -738,7 +716,6 @@ work_pending:
  */
 ret_to_user:
 	disable_daif
-	gic_prio_kentry_setup tmp=x3
 	ldr	x1, [tsk, #TSK_TI_FLAGS]
 	and	x2, x1, #_TIF_WORK_MASK
 	cbnz	x2, work_pending
