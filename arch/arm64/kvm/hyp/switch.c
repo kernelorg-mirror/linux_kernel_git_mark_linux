@@ -683,8 +683,9 @@ NOKPROBE_SYMBOL(__kvm_vcpu_run_vhe);
 int kvm_vcpu_run_vhe(struct kvm_vcpu *vcpu)
 {
 	int ret;
+	unsigned long flags;
 
-	local_daif_mask();
+	flags = local_daif_save();
 
 	/*
 	 * Having IRQs masked via PMR when entering the guest means the GIC
@@ -692,7 +693,7 @@ int kvm_vcpu_run_vhe(struct kvm_vcpu *vcpu)
 	 * only way to get out will be via guest exceptions.
 	 * Naturally, we want to avoid this.
 	 *
-	 * local_daif_mask() already sets GIC_PRIO_PSR_I_SET, we just need a
+	 * local_daif_save() already sets GIC_PRIO_PSR_I_SET, we just need a
 	 * dsb to ensure the redistributor is forwards EL2 IRQs to the CPU.
 	 */
 	pmr_sync();
@@ -703,7 +704,7 @@ int kvm_vcpu_run_vhe(struct kvm_vcpu *vcpu)
 	 * local_daif_restore() takes care to properly restore PSTATE.DAIF
 	 * and the GIC PMR if the host is using IRQ priorities.
 	 */
-	local_daif_restore(DAIF_PROCCTX_NOIRQ);
+	local_daif_restore(flags);
 
 	/*
 	 * When we exit from the guest we change a number of CPU configuration
