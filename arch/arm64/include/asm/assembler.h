@@ -21,19 +21,20 @@
 #include <asm/page.h>
 #include <asm/pgtable-hwdef.h>
 #include <asm/ptrace.h>
+#include <asm/sysreg.h>
 #include <asm/thread_info.h>
 
 	.macro save_and_disable_daif, flags
 	mrs	\flags, daif
-	msr	daifset, #0xf
+	msr	daifset, #DAIF_IMM_DAIF
 	.endm
 
 	.macro disable_daif
-	msr	daifset, #0xf
+	msr	daifset, #DAIF_IMM_DAIF
 	.endm
 
 	.macro enable_daif
-	msr	daifclr, #0xf
+	msr	daifclr, #DAIF_IMM_DAIF
 	.endm
 
 	.macro	restore_daif, flags:req
@@ -42,7 +43,7 @@
 
 	/* IRQ is the lowest priority flag, unconditionally unmask the rest. */
 	.macro enable_da_f
-	msr	daifclr, #(8 | 4 | 1)
+	msr	daifclr, #DAIF_IMM_DA_F
 	.endm
 
 /*
@@ -50,7 +51,7 @@
  */
 	.macro	save_and_disable_irq, flags
 	mrs	\flags, daif
-	msr	daifset, #2
+	msr	daifset, #DAIF_IMM_I
 	.endm
 
 	.macro	restore_irq, flags
@@ -58,7 +59,7 @@
 	.endm
 
 	.macro	enable_dbg
-	msr	daifclr, #8
+	msr	daifclr, #DAIF_IMM_D
 	.endm
 
 	.macro	disable_step_tsk, flgs, tmp

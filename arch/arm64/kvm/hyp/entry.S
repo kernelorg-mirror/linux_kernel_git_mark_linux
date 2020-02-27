@@ -15,6 +15,7 @@
 #include <asm/kvm_asm.h>
 #include <asm/kvm_mmu.h>
 #include <asm/kvm_ptrauth.h>
+#include <asm/sysreg.h>
 
 #define CPU_GP_REG_OFFSET(x)	(CPU_GP_REGS + x)
 #define CPU_XREG_OFFSET(x)	CPU_GP_REG_OFFSET(CPU_USER_PT_REGS + 8*x)
@@ -170,7 +171,7 @@ alternative_endif
 	mrs	x4, spsr_el2
 	mov	x5, x0
 
-	msr	daifclr, #4	// Unmask aborts
+	msr	daifclr, #DAIF_IMM_A	// Unmask aborts
 
 	// This is our single instruction exception window. A pending
 	// SError is guaranteed to occur at the earliest when we unmask
@@ -183,7 +184,7 @@ abort_guest_exit_start:
 	.global	abort_guest_exit_end
 abort_guest_exit_end:
 
-	msr	daifset, #4	// Mask aborts
+	msr	daifset, #DAIF_IMM_A	// Mask aborts
 
 	// If the exception took place, restore the EL1 exception
 	// context so that we can report some information.

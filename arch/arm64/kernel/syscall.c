@@ -78,7 +78,7 @@ static void cortex_a76_erratum_1463225_svc_handler(void)
 	reg = read_sysreg(mdscr_el1);
 	val = reg | DBG_MDSCR_SS | DBG_MDSCR_KDE;
 	write_sysreg(val, mdscr_el1);
-	asm volatile("msr daifclr, #8");
+	__daif_imm_clear(DAIF_IMM_D);
 	isb();
 
 	/* We will have taken a single-step exception by this point */

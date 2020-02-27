@@ -94,6 +94,29 @@
 #define SET_PSTATE_UAO(x)		__emit_inst(0xd500401f | PSTATE_UAO | ((!!x) << PSTATE_Imm_shift))
 #define SET_PSTATE_SSBS(x)		__emit_inst(0xd500401f | PSTATE_SSBS | ((!!x) << PSTATE_Imm_shift))
 
+/*
+ * DAIFSet/DAIFClr immediates
+ */
+#define DAIF_IMM_D			BIT(3)
+#define DAIF_IMM_A			BIT(2)
+#define DAIF_IMM_I			BIT(1)
+#define DAIF_IMM_F			BIT(0)
+
+#define DAIF_IMM_DAIF			(DAIF_IMM_D | DAIF_IMM_A | DAIF_IMM_I | DAIF_IMM_F)
+#define DAIF_IMM_DA_F			(DAIF_IMM_D | DAIF_IMM_A | DAIF_IMM_F)
+
+#define __daif_imm_set(bits)				\
+do {							\
+	asm volatile("	msr	daifset, %0\n"	\
+		     : : "i" (bits) : "memory");	\
+} while (0)
+
+#define __daif_imm_clear(bits)				\
+do {							\
+	asm volatile("	msr	daifclr, %0\n"	\
+		     : : "i" (bits) : "memory");	\
+} while (0)
+
 #define __SYS_BARRIER_INSN(CRm, op2, Rt) \
 	__emit_inst(0xd5000000 | sys_insn(0, 3, 3, (CRm), (op2)) | ((Rt) & 0x1f))
 

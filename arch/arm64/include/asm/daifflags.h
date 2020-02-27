@@ -11,6 +11,7 @@
 #include <asm/barrier.h>
 #include <asm/cpufeature.h>
 #include <asm/ptrace.h>
+#include <asm/sysreg.h>
 
 #define DAIF_PROCCTX		0
 #define DAIF_PROCCTX_NOIRQ	PSR_I_BIT
@@ -24,12 +25,7 @@ static inline void local_daif_mask(void)
 	WARN_ON(system_has_prio_mask_debugging() &&
 		(read_sysreg_s(SYS_ICC_PMR_EL1) == (GIC_PRIO_IRQOFF |
 						    GIC_PRIO_PSR_I_SET)));
-
-	asm volatile(
-		"msr	daifset, #0xf		// local_daif_mask\n"
-		:
-		:
-		: "memory");
+	__daif_imm_set(DAIF_IMM_DAIF);
 
 	/* Don't really care for a dsb here, we don't intend to enable IRQs */
 	if (system_uses_irq_prio_masking())
