@@ -131,4 +131,21 @@ static inline void local_daif_inherit(struct pt_regs *regs)
 	 */
 	write_sysreg(flags, daif);
 }
+
+/*
+ * Enter an error context with SError masked, from an arbitrary context where
+ * higher priority exceptions may or may not be masked.
+ *
+ * Masks: SError, IRQ, NMI
+ * Unchanged: Debug, FIQ
+ */
+static inline void local_daif_mask_errctx(void)
+{
+	__daif_imm_set(DAIF_IMM_A | DAIF_IMM_I);
+
+	if (system_uses_irq_prio_masking())
+		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
+
+	trace_hardirqs_off();
+}
 #endif

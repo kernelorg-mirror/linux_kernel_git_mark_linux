@@ -280,7 +280,7 @@ int apei_claim_sea(struct pt_regs *regs)
 	 * SEA can interrupt SError, mask it and describe this as an NMI so
 	 * that APEI defers the handling.
 	 */
-	local_daif_restore(DAIF_ERRCTX);
+	local_daif_mask_errctx();
 	nmi_enter();
 	err = ghes_notify_sea();
 	nmi_exit();
