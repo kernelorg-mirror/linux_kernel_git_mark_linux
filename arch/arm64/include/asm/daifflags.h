@@ -13,9 +13,6 @@
 #include <asm/ptrace.h>
 #include <asm/sysreg.h>
 
-#define DAIF_PROCCTX		0
-#define DAIF_PROCCTX_NOIRQ	PSR_I_BIT
-#define DAIF_ERRCTX		(PSR_I_BIT | PSR_A_BIT)
 #define DAIF_MASK		(PSR_D_BIT | PSR_A_BIT | PSR_I_BIT | PSR_F_BIT)
 
 
@@ -130,6 +127,65 @@ static inline void local_daif_inherit(struct pt_regs *regs)
 	 * use the pmr instead.
 	 */
 	write_sysreg(flags, daif);
+}
+
+/*
+ * Enter a process context for the first time, starting from a context with all
+ * exceptions masked in DAIF (and PMR in an UNKNOWN state).
+ *
+ * Unmasks: Debug, SError, IRQ, FIQ, NMI
+ */
+static inline void local_daif_init_procctx(void)
+{
+	trace_hardirqs_on();
+
+	if (system_uses_irq_prio_masking()) {
+		gic_write_pmr(GIC_PRIO_IRQON);
+		pmr_sync();
+	}
+
+	__daif_imm_clear(DAIF_IMM_DAIF);
+}
+
+/*
+ * Enter a process context with all exceptions unmasked, starting from a
+ * context with all exceptions masked.
+ *
+ * Unmasks: Debug, SError, IRQ, FIQ, NMI
+ */
+static inline void local_daif_unmask_procctx(void)
+{
+	local_daif_init_procctx();
+}
+
+/*
+ * Enter a process context with only (regular) IRQ masked for the first time,
+ * starting from a context with all exceptions masked in DAIF (and PMR in an
+ * UNKNOWN state).
+ *
+ * Unmasks: Debug, SError, FIQ, NMI
+ */
+static inline void local_daif_init_procctx_noirq(void)
+{
+	if (system_uses_irq_prio_masking()) {
+		gic_write_pmr(GIC_PRIO_IRQOFF);
+		__daif_imm_clear(DAIF_IMM_DAIF);
+	} else {
+		__daif_imm_clear(DAIF_IMM_DA_F);
+	}
+
+	trace_hardirqs_off();
+}
+
+/*
+ * Enter a process context with only (regular) IRQ masked, starting from a
+ * context with all exceptions masked.
+ *
+ * Unmasks: Debug, SError, FIQ, NMI
+ */
+static inline void local_daif_unmask_procctx_noirq(void)
+{
+	local_daif_init_procctx_noirq();
 }
 
 /*

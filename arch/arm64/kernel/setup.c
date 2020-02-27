@@ -307,9 +307,10 @@ void __init setup_arch(char **cmdline_p)
 	/*
 	 * Unmask asynchronous aborts and fiq after bringing up possible
 	 * earlycon. (Report possible System Errors once we can report this
-	 * occurred).
+	 * occurred). IRQ and pNMI will be unmasked later once IRQ stacks have
+	 * been allocated and pNMI has been detected.
 	 */
-	local_daif_restore(DAIF_PROCCTX_NOIRQ);
+	__daif_imm_clear(DAIF_IMM_DA_F);
 
 	/*
 	 * TTBR0 is only used for the identity mapping at this stage. Make it

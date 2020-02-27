@@ -103,7 +103,7 @@ static void notrace el0_da(struct pt_regs *regs, unsigned long esr)
 	unsigned long far = read_sysreg(far_el1);
 
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	far = untagged_addr(far);
 	do_mem_abort(far, esr, regs);
 }
@@ -122,7 +122,7 @@ static void notrace el0_ia(struct pt_regs *regs, unsigned long esr)
 		arm64_apply_bp_hardening();
 
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	do_mem_abort(far, esr, regs);
 }
 NOKPROBE_SYMBOL(el0_ia);
@@ -130,7 +130,7 @@ NOKPROBE_SYMBOL(el0_ia);
 static void notrace el0_fpsimd_acc(struct pt_regs *regs, unsigned long esr)
 {
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	do_fpsimd_acc(esr, regs);
 }
 NOKPROBE_SYMBOL(el0_fpsimd_acc);
@@ -138,7 +138,7 @@ NOKPROBE_SYMBOL(el0_fpsimd_acc);
 static void notrace el0_sve_acc(struct pt_regs *regs, unsigned long esr)
 {
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	do_sve_acc(esr, regs);
 }
 NOKPROBE_SYMBOL(el0_sve_acc);
@@ -146,7 +146,7 @@ NOKPROBE_SYMBOL(el0_sve_acc);
 static void notrace el0_fpsimd_exc(struct pt_regs *regs, unsigned long esr)
 {
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	do_fpsimd_exc(esr, regs);
 }
 NOKPROBE_SYMBOL(el0_fpsimd_exc);
@@ -154,7 +154,7 @@ NOKPROBE_SYMBOL(el0_fpsimd_exc);
 static void notrace el0_sys(struct pt_regs *regs, unsigned long esr)
 {
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	do_sysinstr(esr, regs);
 }
 NOKPROBE_SYMBOL(el0_sys);
@@ -167,7 +167,7 @@ static void notrace el0_pc(struct pt_regs *regs, unsigned long esr)
 		arm64_apply_bp_hardening();
 
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	do_sp_pc_abort(far, esr, regs);
 }
 NOKPROBE_SYMBOL(el0_pc);
@@ -175,7 +175,7 @@ NOKPROBE_SYMBOL(el0_pc);
 static void notrace el0_sp(struct pt_regs *regs, unsigned long esr)
 {
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	do_sp_pc_abort(regs->sp, esr, regs);
 }
 NOKPROBE_SYMBOL(el0_sp);
@@ -183,7 +183,7 @@ NOKPROBE_SYMBOL(el0_sp);
 static void notrace el0_undef(struct pt_regs *regs)
 {
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	do_undefinstr(regs);
 }
 NOKPROBE_SYMBOL(el0_undef);
@@ -191,7 +191,7 @@ NOKPROBE_SYMBOL(el0_undef);
 static void notrace el0_inv(struct pt_regs *regs, unsigned long esr)
 {
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	bad_el0_sync(regs, 0, esr);
 }
 NOKPROBE_SYMBOL(el0_inv);
@@ -206,7 +206,7 @@ static void notrace el0_dbg(struct pt_regs *regs, unsigned long esr)
 
 	user_exit_irqoff();
 	do_debug_exception(far, esr, regs);
-	local_daif_restore(DAIF_PROCCTX_NOIRQ);
+	local_daif_unmask_procctx_noirq();
 }
 NOKPROBE_SYMBOL(el0_dbg);
 
@@ -271,7 +271,7 @@ NOKPROBE_SYMBOL(el0_sync_handler);
 static void notrace el0_cp15(struct pt_regs *regs, unsigned long esr)
 {
 	user_exit_irqoff();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	do_cp15instr(esr, regs);
 }
 NOKPROBE_SYMBOL(el0_cp15);

@@ -99,7 +99,7 @@ static void el0_svc_common(struct pt_regs *regs, int scno, int sc_nr,
 	regs->syscallno = scno;
 
 	cortex_a76_erratum_1463225_svc_handler();
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_unmask_procctx();
 	user_exit();
 
 	if (has_syscall_work(flags)) {
@@ -130,7 +130,7 @@ static void el0_svc_common(struct pt_regs *regs, int scno, int sc_nr,
 			trace_hardirqs_on();
 			return;
 		}
-		local_daif_restore(DAIF_PROCCTX);
+		local_daif_unmask_procctx();
 	}
 
 trace_exit:

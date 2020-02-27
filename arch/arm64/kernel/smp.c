@@ -255,7 +255,7 @@ asmlinkage notrace void secondary_start_kernel(void)
 	set_cpu_online(cpu, true);
 	complete(&cpu_running);
 
-	local_daif_restore(DAIF_PROCCTX);
+	local_daif_init_procctx();
 
 	/*
 	 * OK, it's off to the idle thread for us

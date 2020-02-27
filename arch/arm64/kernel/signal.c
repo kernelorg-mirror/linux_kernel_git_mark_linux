@@ -914,11 +914,11 @@ asmlinkage void do_notify_resume(struct pt_regs *regs,
 
 		if (thread_flags & _TIF_NEED_RESCHED) {
 			/* Unmask Debug and SError for the next task */
-			local_daif_restore(DAIF_PROCCTX_NOIRQ);
+			local_daif_unmask_procctx_noirq();
 
 			schedule();
 		} else {
-			local_daif_restore(DAIF_PROCCTX);
+			local_daif_unmask_procctx();
 
 			if (thread_flags & _TIF_UPROBE)
 				uprobe_notify_resume(regs);
