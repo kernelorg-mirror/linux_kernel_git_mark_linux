@@ -140,7 +140,7 @@ retry:
 	return error;
 }
 
-SYSCALL_DEFINE2(truncate, const char __user *, path, long, length)
+NATIVE_SYSCALL_DEFINE2(truncate, const char __user *, path, long, length)
 {
 	return do_sys_truncate(path, length);
 }
@@ -200,7 +200,7 @@ out:
 	return error;
 }
 
-SYSCALL_DEFINE2(ftruncate, unsigned int, fd, unsigned long, length)
+NATIVE_SYSCALL_DEFINE2(ftruncate, unsigned int, fd, unsigned long, length)
 {
 	return do_sys_ftruncate(fd, length, 1);
 }
@@ -1166,12 +1166,12 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 }
 
 
-SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
+NATIVE_SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
 {
 	return ksys_open(filename, flags, mode);
 }
 
-SYSCALL_DEFINE4(openat, int, dfd, const char __user *, filename, int, flags,
+NATIVE_SYSCALL_DEFINE4(openat, int, dfd, const char __user *, filename, int, flags,
 		umode_t, mode)
 {
 	if (force_o_largefile())
