@@ -4,15 +4,13 @@
 /*
  * Architecture specific compatibility types
  */
+#include <linux/compiler_types.h>
 #include <linux/types.h>
 #include <linux/sched.h>
 #include <linux/sched/task_stack.h>
 #include <linux/thread_info.h>
 
 #include <asm-generic/compat.h>
-
-#define __TYPE_IS_PTR(t) (!__builtin_types_compatible_p( \
-				typeof(0?(__force t)0:0ULL), u64))
 
 #define __SC_DELOUSE(t,v) ({ \
 	BUILD_BUG_ON(sizeof(t) > 4 && !__TYPE_IS_PTR(t)); \

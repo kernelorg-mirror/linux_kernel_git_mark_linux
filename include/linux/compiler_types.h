@@ -223,6 +223,8 @@ struct ftrace_likely_data {
 #define __TYPE_IS_L(t)	(__TYPE_AS(t, 0L))
 #define __TYPE_IS_UL(t)	(__TYPE_AS(t, 0UL))
 #define __TYPE_IS_LL(t) (__TYPE_AS(t, 0LL) || __TYPE_AS(t, 0ULL))
+#define __TYPE_IS_PTR(t) (!__builtin_types_compatible_p( \
+				typeof(0?(__force t)0:0ULL), u64))
 
 /* Is this type a native word size -- useful for atomic operations */
 #define __native_word(t) \
