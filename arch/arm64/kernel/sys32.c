@@ -52,9 +52,10 @@ COMPAT_SYSCALL_DEFINE3(aarch32_fstatfs64, unsigned int, fd, compat_size_t, sz,
  * Note: off_4k is always in units of 4K. If we can't do the
  * requested offset because it is not page-aligned, we return -EINVAL.
  */
-COMPAT_SYSCALL_DEFINE6(aarch32_mmap2, unsigned long, addr, unsigned long, len,
-		       unsigned long, prot, unsigned long, flags,
-		       unsigned long, fd, unsigned long, off_4k)
+COMPAT_SYSCALL_DEFINE6(aarch32_mmap2, compat_ulong_t, addr,
+		       compat_ulong_t, len, compat_ulong_t, prot,
+		       compat_ulong_t, flags, compat_ulong_t, fd,
+		       compat_ulong_t, off_4k)
 {
 	if (off_4k & (~PAGE_MASK >> 12))
 		return -EINVAL;
@@ -73,14 +74,14 @@ COMPAT_SYSCALL_DEFINE6(aarch32_mmap2, unsigned long, addr, unsigned long, len,
 #define arg_u64(name)	(((u64)name##_hi << 32) | name##_lo)
 
 COMPAT_SYSCALL_DEFINE6(aarch32_pread64, unsigned int, fd, char __user *, buf,
-		       size_t, count, u32, __pad, arg_u32p(pos))
+		       compat_size_t, count, u32, __pad, arg_u32p(pos))
 {
 	return ksys_pread64(fd, buf, count, arg_u64(pos));
 }
 
 COMPAT_SYSCALL_DEFINE6(aarch32_pwrite64, unsigned int, fd,
-		       const char __user *, buf, size_t, count, u32, __pad,
-		       arg_u32p(pos))
+		       const char __user *, buf, compat_size_t, count,
+		       u32, __pad, arg_u32p(pos))
 {
 	return ksys_pwrite64(fd, buf, count, arg_u64(pos));
 }
@@ -98,7 +99,7 @@ COMPAT_SYSCALL_DEFINE4(aarch32_ftruncate64, unsigned int, fd, u32, __pad,
 }
 
 COMPAT_SYSCALL_DEFINE5(aarch32_readahead, int, fd, u32, __pad,
-		       arg_u32p(offset), size_t, count)
+		       arg_u32p(offset), compat_size_t, count)
 {
 	return ksys_readahead(fd, arg_u64(offset), count);
 }
