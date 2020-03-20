@@ -248,6 +248,25 @@ static inline int is_syscall_trace_event(struct trace_event_call *tp_event)
 	static inline long __do_sys##name(__MAP(x,__SC_DECL,__VA_ARGS__))
 #endif /* __SYSCALL_DEFINEx */
 
+#ifndef NATIVE_SYSCALL_DEFINE0
+#define NATIVE_SYSCALL_DEFINE0(sname)	SYSCALL_DEFINE0(sname)
+#endif
+
+#define NATIVE_SYSCALL_DEFINE1(name, ...) NATIVE_SYSCALL_DEFINEx(1, _##name, __VA_ARGS__)
+#define NATIVE_SYSCALL_DEFINE2(name, ...) NATIVE_SYSCALL_DEFINEx(2, _##name, __VA_ARGS__)
+#define NATIVE_SYSCALL_DEFINE3(name, ...) NATIVE_SYSCALL_DEFINEx(3, _##name, __VA_ARGS__)
+#define NATIVE_SYSCALL_DEFINE4(name, ...) NATIVE_SYSCALL_DEFINEx(4, _##name, __VA_ARGS__)
+#define NATIVE_SYSCALL_DEFINE5(name, ...) NATIVE_SYSCALL_DEFINEx(5, _##name, __VA_ARGS__)
+#define NATIVE_SYSCALL_DEFINE6(name, ...) NATIVE_SYSCALL_DEFINEx(6, _##name, __VA_ARGS__)
+
+#define NATIVE_SYSCALL_DEFINEx(x, sname, ...)			\
+	SYSCALL_METADATA(sname, x, __VA_ARGS__)			\
+	__NATIVE_SYSCALL_DEFINEx(x, sname, __VA_ARGS__)
+
+#ifndef __NATIVE_SYSCALL_DEFINEx
+#define __NATIVE_SYSCALL_DEFINEx	__SYSCALL_DEFINEx
+#endif
+
 /*
  * Called before coming back to user-mode. Returning to user-mode with an
  * address limit different than USER_DS can allow to overwrite kernel memory.
