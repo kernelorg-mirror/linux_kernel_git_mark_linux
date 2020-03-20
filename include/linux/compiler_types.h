@@ -219,6 +219,11 @@ struct ftrace_likely_data {
 /* Are two types/vars the same type (ignoring qualifiers)? */
 #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
 
+#define __TYPE_AS(t, v)	__same_type((__force t)0, v)
+#define __TYPE_IS_L(t)	(__TYPE_AS(t, 0L))
+#define __TYPE_IS_UL(t)	(__TYPE_AS(t, 0UL))
+#define __TYPE_IS_LL(t) (__TYPE_AS(t, 0LL) || __TYPE_AS(t, 0ULL))
+
 /* Is this type a native word size -- useful for atomic operations */
 #define __native_word(t) \
 	(sizeof(t) == sizeof(char) || sizeof(t) == sizeof(short) || \
