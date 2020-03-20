@@ -8,6 +8,9 @@
 #ifndef __ASM_SYSCALL_WRAPPER_H
 #define __ASM_SYSCALL_WRAPPER_H
 
+#include <linux/build_bug.h>
+#include <linux/compiler_types.h>
+
 struct pt_regs;
 
 #define SC_ARM64_REGS_TO_ARGS(x, ...)				\
@@ -17,6 +20,9 @@ struct pt_regs;
 
 #ifdef CONFIG_COMPAT
 
+#define SC_COMPAT_ARG_CHECK(t, a) \
+	({ BUILD_BUG_ON(!__TYPE_IS_PTR(t) && sizeof(t) > sizeof(compat_ulong_t)); 0; })
+
 #define COMPAT_SYSCALL_DEFINEx(x, name, ...)						\
 	asmlinkage long __arm64_compat_sys##name(const struct pt_regs *regs);		\
 	ALLOW_ERROR_INJECTION(__arm64_compat_sys##name, ERRNO);				\
@@ -24,6 +30,7 @@ struct pt_regs;
 	static inline long __do_compat_sys##name(__MAP(x,__SC_DECL,__VA_ARGS__));	\
 	asmlinkage long __arm64_compat_sys##name(const struct pt_regs *regs)		\
 	{										\
+		__MAP(x, SC_COMPAT_ARG_CHECK,__VA_ARGS__);				\
 		return __se_compat_sys##name(SC_ARM64_REGS_TO_ARGS(x,__VA_ARGS__));	\
 	}										\
 	static long __se_compat_sys##name(__MAP(x,__SC_LONG,__VA_ARGS__))		\
