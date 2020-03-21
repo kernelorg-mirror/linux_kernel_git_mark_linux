@@ -30,14 +30,14 @@
 
 /*
  * Test whether a block of memory is a valid user space address.
- * Returns 1 if the range is valid, 0 otherwise.
+ * Returns true if the range is valid, false otherwise.
  *
  * This is equivalent to the following test:
  * (u65)addr + (u65)size <= (u65)TASK_SIZE_MAX
  */
-static inline unsigned long __range_ok(const void __user *addr, unsigned long size)
+static inline bool __range_ok(const void __user *addr, unsigned long size)
 {
-	unsigned long ret, limit = TASK_SIZE_MAX - 1;
+	unsigned long iaddr;
 
 	/*
 	 * Asynchronous I/O running in a kernel thread does not have the
@@ -49,24 +49,17 @@ static inline unsigned long __range_ok(const void __user *addr, unsigned long si
 		addr = untagged_addr(addr);
 
 	__chk_user_ptr(addr);
-	asm volatile(
-	// A + B <= C + 1 for all A,B,C, in four easy steps:
-	// 1: X = A + B; X' = X % 2^64
-	"	adds	%0, %3, %2\n"
-	// 2: Set C = 0 if X > 2^64, to guarantee X' > C in step 4
-	"	csel	%1, xzr, %1, hi\n"
-	// 3: Set X' = ~0 if X >= 2^64. For X == 2^64, this decrements X'
-	//    to compensate for the carry flag being set in step 4. For
-	//    X > 2^64, X' merely has to remain nonzero, which it does.
-	"	csinv	%0, %0, xzr, cc\n"
-	// 4: For X < 2^64, this gives us X' - C - 1 <= 0, where the -1
-	//    comes from the carry in being clear. Otherwise, we are
-	//    testing X' - C == 0, subject to the previous adjustments.
-	"	sbcs	xzr, %0, %1\n"
-	"	cset	%0, ls\n"
-	: "=&r" (ret), "+r" (limit) : "Ir" (size), "0" (addr) : "cc");
 
-	return ret;
+	/*
+	 * Many range checks use sizeof(some_type), which is a constant. In
+	 * these cases we can simplify the test to avoid the need to add the
+	 * addr and size.
+	 */
+	iaddr = (unsigned long)addr;
+	if (__builtin_constant_p(size) && size > 0 && size < TASK_SIZE_MAX)
+		return iaddr <= TASK_SIZE_MAX - size;
+
+	return (__uint128_t)iaddr + size <= (__uint128_t)TASK_SIZE_MAX;
 }
 
 #define access_ok(addr, size)	__range_ok(addr, size)
