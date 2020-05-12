@@ -39,7 +39,8 @@
  *  reg |= FIELD_PREP(REG_FIELD_C, c);
  */
 
-#define __bf_shf(x) (__builtin_ffsll(x) - 1)
+#define __bf_shf(x)	(__builtin_ffsll(x) - 1)
+#define __bf_width(x)	(__builtin_popcount(x))
 
 #define __BF_FIELD_CHECK(_mask, _reg, _val, _pfx)			\
 	({								\
@@ -107,6 +108,18 @@
 	({								\
 		__BF_FIELD_CHECK(_mask, _reg, 0U, "FIELD_GET: ");	\
 		(typeof(_mask))(((_reg) & (_mask)) >> __bf_shf(_mask));	\
+	})
+
+/**
+ * FIELD_WIDTH() - determine the width of a field in bits
+ * @mask: shifted mask defining the field's length and position
+ *
+ * FIELD_WIDTH() returns the width of the field in bits.
+ */
+#define FIELD_WIDTH(_mask)						\
+	({								\
+		__BF_FIELD_CHECK_MASK, 0ULL, 0ULL, "FIELD_WIDTH: ");	\
+		__bf_width(_mask);					\
 	})
 
 extern void __compiletime_error("value doesn't fit into mask")
