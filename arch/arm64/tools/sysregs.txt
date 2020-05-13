@@ -1,0 +1,175 @@
+# System register metadata
+
+# Each System register is described by a Sysreg block:
+
+# Sysreg 	<name>	<op0> 	<op1>	<crn>	<crm>	<op2>
+# <field>
+# ...
+# EndSysreg
+
+# Within a Sysreg block, each field can be described as one of:
+
+# Res0	<msb>[:<lsb>]
+
+# Res1	<msb>[:<lsb>]
+
+# Field	<msb>[:<lsb>]	<name>
+
+# Enum	<msb>[:<lsb>]	<name>
+#	<enumval>	<enumname>
+#	...
+# EndEnum
+
+Sysreg	ID_AA64ISAR0	3	0	0	6	0
+Enum	63:60	RNDR
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	59:56	TLB
+	0b0000	NI
+	0b0001	8_4_TLBI_OS
+	0b0010	8_4_TLBI_RANGE
+EndEnum
+Enum	55:52	TS
+	0b0000	NI
+	0b0001	8_4_CONDM
+	0b0010	8_5_CONDM
+EndEnum
+Enum	51:48	FHM
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	47:44	DP
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	43:40	SM4
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	39:36	SM3
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	35:32	SHA3
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	31:28	RDM
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Res0	27:24
+Enum	23:20	ATOMIC
+	0b0000	NI
+	0b0010	SUPPORTED
+EndEnum
+Enum	19:16	CRC32
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	15:12	SHA2
+	0b0000	NI
+	0b0001	SHA256
+	0b0010	SHA512
+EndEnum
+Enum	11:8	SHA1
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	7:4	AES
+	0b0000	NI
+	0b0001	AES
+	0b0010	PMULL
+EndEnum
+Res0	3:0
+EndSysreg
+
+Sysreg	ID_AA64ISAR1_EL1	3	0	0	6	1
+Res0	63:56
+Enum	55:52	I8MM
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	51:48	DGH
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	47:44	BF16
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	43:40	SPECRES
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	39:36	SB
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	35:32	FRINTTS
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	31:28	GPI
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	27:24	GPA
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	23:20	LRCPC
+	0b0000	NI
+	0b0001	8_3_RCPC
+	0b0010	8_4_RCPC
+EndEnum
+Enum	19:16	FCMA
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	15:12	JSCVT
+	0b0000	NI
+	0b0001	SUPPORTED
+EndEnum
+Enum	11:8	API
+	0b0000	NI
+	0b0001	PAC
+	0b0010	EPAC
+	0b0011	EPAC2
+	0b0100	FPAC
+	0b0101	FPAC_COMBINED
+EndEnum
+Enum	7:4	APA
+	0b0000	NI
+	0b0001	PAC
+	0b0010	EPAC
+	0b0011	EPAC2
+	0b0100	FPAC
+	0b0101	FPAC_COMBINED
+EndEnum
+Enum	3:0	DPB
+	0b0000	NI
+	0b0001	8_2_DCPOP
+	0b0010	8_2_DCCVADP
+EndEnum
+EndSysreg
+
+
+Sysreg	SCTLR_EL2	3	0	1	0	0
+Res0	63:45
+Field	44	DSSBS
+Field	43	ATA
+Res0	42
+Enum	41:40	TCF
+	0b00	NONE
+	0b01	SYNC
+	0b10	ASYNC
+EndEnum
+Res0	39:38
+Field	37	IFTSB
+Field	36	BT
+Res0	35:32
+Field	31	ENIA
+Field	30	ENIB
+EndSysreg
