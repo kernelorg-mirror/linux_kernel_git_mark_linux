@@ -54,14 +54,6 @@ static void notrace el1_dbg(struct pt_regs *regs, unsigned long esr)
 {
 	unsigned long far = read_sysreg(far_el1);
 
-	/*
-	 * The CPU masked interrupts, and we are leaving them masked during
-	 * do_debug_exception(). Update PMR as if we had called
-	 * local_mask_daif().
-	 */
-	if (system_uses_irq_prio_masking())
-		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
-
 	do_debug_exception(far, esr, regs);
 }
 NOKPROBE_SYMBOL(el1_dbg);
@@ -209,9 +201,6 @@ static void notrace el0_dbg(struct pt_regs *regs, unsigned long esr)
 	/* Only watchpoints write FAR_EL1, otherwise its UNKNOWN */
 	unsigned long far = read_sysreg(far_el1);
 
-	if (system_uses_irq_prio_masking())
-		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
-
 	user_exit_irqoff();
 	do_debug_exception(far, esr, regs);
 	local_daif_restore(DAIF_PROCCTX_NOIRQ);
@@ -220,9 +209,6 @@ NOKPROBE_SYMBOL(el0_dbg);
 
 static void notrace el0_svc(struct pt_regs *regs)
 {
-	if (system_uses_irq_prio_masking())
-		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
-
 	do_el0_svc(regs);
 }
 NOKPROBE_SYMBOL(el0_svc);
@@ -289,9 +275,6 @@ NOKPROBE_SYMBOL(el0_cp15);
 
 static void notrace el0_svc_compat(struct pt_regs *regs)
 {
-	if (system_uses_irq_prio_masking())
-		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
-
 	do_el0_svc_compat(regs);
 }
 NOKPROBE_SYMBOL(el0_svc_compat);
