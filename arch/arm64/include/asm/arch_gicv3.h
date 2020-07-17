@@ -148,7 +148,7 @@ static inline u32 gic_read_rpr(void)
 
 static inline bool gic_prio_masking_enabled(void)
 {
-	return system_uses_irq_prio_masking();
+	return false;
 }
 
 static inline void gic_pmr_mask_irqs(void)
