@@ -257,9 +257,6 @@ void __show_regs(struct pt_regs *regs)
 
 	printk("sp : %016llx\n", sp);
 
-	if (system_uses_irq_prio_masking())
-		printk("pmr_save: %08llx\n", regs->pmr_save);
-
 	i = top_reg;
 
 	while (i >= 0) {
@@ -401,9 +398,6 @@ int copy_thread_tls(unsigned long clone_flags, unsigned long stack_start,
 
 		if (arm64_get_ssbd_state() == ARM64_SSBD_FORCE_DISABLE)
 			set_ssbs_bit(childregs);
-
-		if (system_uses_irq_prio_masking())
-			childregs->pmr_save = GIC_PRIO_IRQON;
 
 		p->thread.cpu_context.x19 = stack_start;
 		p->thread.cpu_context.x20 = stk_sz;

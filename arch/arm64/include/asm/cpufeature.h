@@ -675,22 +675,10 @@ static inline bool system_supports_generic_auth(void)
 		cpus_have_const_cap(ARM64_HAS_GENERIC_AUTH);
 }
 
-static inline bool system_uses_irq_prio_masking(void)
-{
-	return IS_ENABLED(CONFIG_ARM64_PSEUDO_NMI) &&
-	       cpus_have_const_cap(ARM64_HAS_IRQ_PRIO_MASKING);
-}
-
 static inline bool system_supports_mte(void)
 {
 	return IS_ENABLED(CONFIG_ARM64_MTE) &&
 		cpus_have_const_cap(ARM64_MTE);
-}
-
-static inline bool system_has_prio_mask_debugging(void)
-{
-	return IS_ENABLED(CONFIG_ARM64_DEBUG_PRIORITY_MASKING) &&
-	       system_uses_irq_prio_masking();
 }
 
 static inline bool system_supports_bti(void)
