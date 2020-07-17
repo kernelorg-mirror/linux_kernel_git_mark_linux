@@ -1672,22 +1672,6 @@ static void cpu_enable_e0pd(struct arm64_cpu_capabilities const *cap)
 }
 #endif /* CONFIG_ARM64_E0PD */
 
-#ifdef CONFIG_ARM64_PSEUDO_NMI
-static bool enable_pseudo_nmi;
-
-static int __init early_enable_pseudo_nmi(char *p)
-{
-	return strtobool(p, &enable_pseudo_nmi);
-}
-early_param("irqchip.gicv3_pseudo_nmi", early_enable_pseudo_nmi);
-
-static bool can_use_gic_priorities(const struct arm64_cpu_capabilities *entry,
-				   int scope)
-{
-	return enable_pseudo_nmi && has_useable_gicv3_cpuif(entry, scope);
-}
-#endif
-
 #ifdef CONFIG_ARM64_BTI
 static void bti_enable(const struct arm64_cpu_capabilities *__unused)
 {
@@ -2113,21 +2097,6 @@ static const struct arm64_cpu_capabilities arm64_features[] = {
 		.matches = has_generic_auth,
 	},
 #endif /* CONFIG_ARM64_PTR_AUTH */
-#ifdef CONFIG_ARM64_PSEUDO_NMI
-	{
-		/*
-		 * Depends on having GICv3
-		 */
-		.desc = "IRQ priority masking",
-		.capability = ARM64_HAS_IRQ_PRIO_MASKING,
-		.type = ARM64_CPUCAP_STRICT_BOOT_CPU_FEATURE,
-		.matches = can_use_gic_priorities,
-		.sys_reg = SYS_ID_AA64PFR0_EL1,
-		.field_pos = ID_AA64PFR0_GIC_SHIFT,
-		.sign = FTR_UNSIGNED,
-		.min_field_value = 1,
-	},
-#endif
 #ifdef CONFIG_ARM64_E0PD
 	{
 		.desc = "E0PD",
