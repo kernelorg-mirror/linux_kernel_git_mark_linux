@@ -6,8 +6,13 @@
  */
 
 #include <linux/context_tracking.h>
+#include <linux/hardirq.h>
+#include <linux/irq.h>
+#include <linux/irqflags.h>
 #include <linux/linkage.h>
 #include <linux/lockdep.h>
+#include <linux/percpu.h>
+#include <linux/preempt.h>
 #include <linux/ptrace.h>
 #include <linux/sched.h>
 #include <linux/sched/debug.h>
@@ -19,6 +24,7 @@
 #include <asm/exception.h>
 #include <asm/kprobes.h>
 #include <asm/mmu.h>
+#include <asm/stacktrace.h>
 #include <asm/sysreg.h>
 
 static void notrace el1_abort(struct pt_regs *regs, unsigned long esr)
@@ -329,8 +335,11 @@ asmlinkage void notrace el0_sync_compat_handler(struct pt_regs *regs)
 NOKPROBE_SYMBOL(el0_sync_compat_handler);
 #endif /* CONFIG_COMPAT */
 
-asmlinkage void __sched arm64_preempt_schedule_irq(void)
+static void __sched el1_preempt(void)
 {
+	if (!IS_ENABLED(CONFIG_PREEMPTION) || preempt_count())
+		return;
+
 	lockdep_assert_irqs_disabled();
 
 	/*
@@ -344,3 +353,41 @@ asmlinkage void __sched arm64_preempt_schedule_irq(void)
 	if (system_capabilities_finalized())
 		preempt_schedule_irq();
 }
+
+static void invoke_irq_handler(struct pt_regs *regs)
+{
+	if (on_thread_stack())
+		call_on_irq_stack(regs, handle_arch_irq);
+	else
+		handle_arch_irq(regs);
+}
+NOKPROBE_SYMBOL(invoke_irq_handler);
+
+asmlinkage void notrace el1_irq_handler(struct pt_regs *regs)
+{
+	trace_hardirqs_off();
+	invoke_irq_handler(regs);
+	el1_preempt();
+	trace_hardirqs_on();
+}
+NOKPROBE_SYMBOL(el1_irq_handler);
+
+static inline void notrace do_el0_irq_bp_hardening(struct pt_regs *regs)
+{
+	if (!IS_ENABLED(CONFIG_HARDEN_BRANCH_PREDICTOR))
+		return;
+	if (regs->pc & BIT(55))
+		arm64_apply_bp_hardening();
+}
+NOKPROBE_SYMBOL(do_el0_irq_bp_hardening);
+
+asmlinkage void notrace el0_irq_handler(struct pt_regs *regs)
+{
+	user_exit_irqoff();
+	local_daif_restore(DAIF_PROCCTX_NOIRQ);
+	trace_hardirqs_off();
+	do_el0_irq_bp_hardening(regs);
+	invoke_irq_handler(regs);
+	trace_hardirqs_on();
+}
+NOKPROBE_SYMBOL(el0_irq_handler);

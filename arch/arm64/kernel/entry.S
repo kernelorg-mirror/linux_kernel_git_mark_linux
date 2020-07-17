@@ -384,62 +384,8 @@ SYM_CODE_START_LOCAL(__swpan_exit_el0)
 SYM_CODE_END(__swpan_exit_el0)
 #endif
 
-	.macro	irq_stack_entry
-	mov	x19, sp			// preserve the original sp
-#ifdef CONFIG_SHADOW_CALL_STACK
-	mov	x24, scs_sp		// preserve the original shadow stack
-#endif
-
-	/*
-	 * Compare sp with the base of the task stack.
-	 * If the top ~(THREAD_SIZE - 1) bits match, we are on a task stack,
-	 * and should switch to the irq stack.
-	 */
-	ldr	x25, [tsk, TSK_STACK]
-	eor	x25, x25, x19
-	and	x25, x25, #~(THREAD_SIZE - 1)
-	cbnz	x25, 9998f
-
-	ldr_this_cpu x25, irq_stack_ptr, x26
-	mov	x26, #IRQ_STACK_SIZE
-	add	x26, x25, x26
-
-	/* switch to the irq stack */
-	mov	sp, x26
-
-#ifdef CONFIG_SHADOW_CALL_STACK
-	/* also switch to the irq shadow stack */
-	adr_this_cpu scs_sp, irq_shadow_call_stack, x26
-#endif
-
-9998:
-	.endm
-
-	/*
-	 * The callee-saved regs (x19-x29) should be preserved between
-	 * irq_stack_entry and irq_stack_exit, but note that kernel_entry
-	 * uses x20-x23 to store data for later use.
-	 */
-	.macro	irq_stack_exit
-	mov	sp, x19
-#ifdef CONFIG_SHADOW_CALL_STACK
-	mov	scs_sp, x24
-#endif
-	.endm
-
 /* GPRs used by entry code */
 tsk	.req	x28		// current thread_info
-
-/*
- * Interrupt handling.
- */
-	.macro	irq_handler
-	ldr_l	x1, handle_arch_irq
-	mov	x0, sp
-	irq_stack_entry
-	blr	x1
-	irq_stack_exit
-	.endm
 
 	.text
 
@@ -570,25 +516,8 @@ SYM_CODE_END(el1_sync)
 	.align	6
 SYM_CODE_START_LOCAL_NOALIGN(el1_irq)
 	kernel_entry 1
-	enable_da_f
-
-#ifdef CONFIG_TRACE_IRQFLAGS
-	bl	trace_hardirqs_off
-#endif
-
-	irq_handler
-
-#ifdef CONFIG_PREEMPTION
-	ldr	x24, [tsk, #TSK_TI_PREEMPT]	// get preempt count
-	cbnz	x24, 1f				// preempt count != 0
-	bl	arm64_preempt_schedule_irq	// irq en/disable is done inside
-1:
-#endif
-
-#ifdef CONFIG_TRACE_IRQFLAGS
-	bl	trace_hardirqs_on
-#endif
-
+	mov	x0, sp
+	bl	el1_irq_handler
 	kernel_exit 1
 SYM_CODE_END(el1_irq)
 
@@ -615,7 +544,9 @@ SYM_CODE_END(el0_sync_compat)
 	.align	6
 SYM_CODE_START_LOCAL_NOALIGN(el0_irq_compat)
 	kernel_entry 0, 32
-	b	el0_irq_naked
+	mov	x0, sp
+	bl	el0_irq_handler
+	b	ret_to_user
 SYM_CODE_END(el0_irq_compat)
 
 SYM_CODE_START_LOCAL_NOALIGN(el0_error_compat)
@@ -627,24 +558,8 @@ SYM_CODE_END(el0_error_compat)
 	.align	6
 SYM_CODE_START_LOCAL_NOALIGN(el0_irq)
 	kernel_entry 0
-el0_irq_naked:
-	ct_user_exit_irqoff
-	enable_da_f
-
-#ifdef CONFIG_TRACE_IRQFLAGS
-	bl	trace_hardirqs_off
-#endif
-
-#ifdef CONFIG_HARDEN_BRANCH_PREDICTOR
-	tbz	x22, #55, 1f
-	bl	do_el0_irq_bp_hardening
-1:
-#endif
-	irq_handler
-
-#ifdef CONFIG_TRACE_IRQFLAGS
-	bl	trace_hardirqs_on
-#endif
+	mov	x0, sp
+	bl	el0_irq_handler
 	b	ret_to_user
 SYM_CODE_END(el0_irq)
 
