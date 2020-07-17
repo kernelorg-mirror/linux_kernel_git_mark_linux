@@ -170,20 +170,6 @@ int __cpu_up(unsigned int cpu, struct task_struct *idle)
 	return -EIO;
 }
 
-static void init_gic_priority_masking(void)
-{
-	u32 cpuflags;
-
-	if (WARN_ON(!gic_enable_sre()))
-		return;
-
-	cpuflags = read_sysreg(daif);
-
-	WARN_ON(!(cpuflags & PSR_I_BIT));
-
-	gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
-}
-
 /*
  * This is the secondary CPU boot entry.  We're using this CPUs
  * idle thread stack, but a set of temporary page tables.
@@ -210,9 +196,6 @@ asmlinkage notrace void secondary_start_kernel(void)
 	 * point to zero page to avoid speculatively fetching new entries.
 	 */
 	cpu_uninstall_idmap();
-
-	if (system_uses_irq_prio_masking())
-		init_gic_priority_masking();
 
 	preempt_disable();
 	trace_hardirqs_off();
@@ -445,10 +428,6 @@ void __init smp_prepare_boot_cpu(void)
 	 * and/or scheduling is enabled.
 	 */
 	apply_boot_alternatives();
-
-	/* Conditionally switch to GIC PMR for interrupt masking */
-	if (system_uses_irq_prio_masking())
-		init_gic_priority_masking();
 }
 
 static u64 __init of_get_cpu_mpidr(struct device_node *dn)
