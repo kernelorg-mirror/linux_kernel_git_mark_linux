@@ -551,7 +551,9 @@ SYM_CODE_END(el0_irq_compat)
 
 SYM_CODE_START_LOCAL_NOALIGN(el0_error_compat)
 	kernel_entry 0, 32
-	b	el0_error_naked
+	mov	x0, sp
+	bl	el0_error_handler
+	b	ret_to_user
 SYM_CODE_END(el0_error_compat)
 #endif
 
@@ -565,23 +567,15 @@ SYM_CODE_END(el0_irq)
 
 SYM_CODE_START_LOCAL(el1_error)
 	kernel_entry 1
-	mrs	x1, esr_el1
-	enable_dbg
 	mov	x0, sp
-	bl	do_serror
+	bl	el1_error_handler
 	kernel_exit 1
 SYM_CODE_END(el1_error)
 
 SYM_CODE_START_LOCAL(el0_error)
 	kernel_entry 0
-el0_error_naked:
-	mrs	x25, esr_el1
-	ct_user_exit_irqoff
-	enable_dbg
 	mov	x0, sp
-	mov	x1, x25
-	bl	do_serror
-	enable_da_f
+	bl	el0_error_handler
 	b	ret_to_user
 SYM_CODE_END(el0_error)
 

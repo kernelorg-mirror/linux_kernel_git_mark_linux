@@ -49,4 +49,5 @@ void bad_el0_sync(struct pt_regs *regs, int reason, unsigned int esr);
 void do_cp15instr(unsigned int esr, struct pt_regs *regs);
 void do_el0_svc(struct pt_regs *regs);
 void do_el0_svc_compat(struct pt_regs *regs);
+void do_serror(struct pt_regs *regs, unsigned int esr);
 #endif	/* __ASM_EXCEPTION_H */
