@@ -17,7 +17,6 @@
 #include <linux/uaccess.h>
 #include <linux/sizes.h>
 #include <linux/string.h>
-#include <linux/tracehook.h>
 #include <linux/ratelimit.h>
 #include <linux/syscalls.h>
 
@@ -836,7 +835,7 @@ static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
  * the kernel can handle, and then we build all the user-level signal handling
  * stack-frames in one go after that.
  */
-static void do_signal(struct pt_regs *regs)
+void do_signal(struct pt_regs *regs)
 {
 	unsigned long continue_addr = 0, restart_addr = 0;
 	int retval = 0;
@@ -905,49 +904,6 @@ static void do_signal(struct pt_regs *regs)
 	}
 
 	restore_saved_sigmask();
-}
-
-asmlinkage void do_notify_resume(struct pt_regs *regs,
-				 unsigned long thread_flags)
-{
-	/*
-	 * The assembly code enters us with IRQs off, but it hasn't
-	 * informed the tracing code of that for efficiency reasons.
-	 * Update the trace code with the current status.
-	 */
-	trace_hardirqs_off();
-
-	do {
-		/* Check valid user FS if needed */
-		addr_limit_user_check();
-
-		if (thread_flags & _TIF_NEED_RESCHED) {
-			/* Unmask Debug and SError for the next task */
-			local_daif_restore(DAIF_PROCCTX_NOIRQ);
-
-			schedule();
-		} else {
-			local_daif_restore(DAIF_PROCCTX);
-
-			if (thread_flags & _TIF_UPROBE)
-				uprobe_notify_resume(regs);
-
-			if (thread_flags & _TIF_SIGPENDING)
-				do_signal(regs);
-
-			if (thread_flags & _TIF_NOTIFY_RESUME) {
-				clear_thread_flag(TIF_NOTIFY_RESUME);
-				tracehook_notify_resume(regs);
-				rseq_handle_notify_resume(NULL, regs);
-			}
-
-			if (thread_flags & _TIF_FOREIGN_FPSTATE)
-				fpsimd_restore_current_state();
-		}
-
-		local_daif_mask();
-		thread_flags = READ_ONCE(current_thread_info()->flags);
-	} while (thread_flags & _TIF_WORK_MASK);
 }
 
 unsigned long __ro_after_init signal_minsigstksz;

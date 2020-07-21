@@ -16,16 +16,63 @@
 #include <linux/ptrace.h>
 #include <linux/sched.h>
 #include <linux/sched/debug.h>
+#include <linux/syscalls.h>
 #include <linux/thread_info.h>
+#include <linux/tracehook.h>
+#include <linux/uprobes.h>
 
 #include <asm/cpufeature.h>
 #include <asm/daifflags.h>
 #include <asm/esr.h>
 #include <asm/exception.h>
+#include <asm/fpsimd.h>
 #include <asm/kprobes.h>
 #include <asm/mmu.h>
 #include <asm/stacktrace.h>
 #include <asm/sysreg.h>
+
+asmlinkage void do_notify_resume(struct pt_regs *regs,
+				 unsigned long thread_flags)
+{
+	/*
+	 * The assembly code enters us with IRQs off, but it hasn't
+	 * informed the tracing code of that for efficiency reasons.
+	 * Update the trace code with the current status.
+	 */
+	trace_hardirqs_off();
+
+	do {
+		/* Check valid user FS if needed */
+		addr_limit_user_check();
+
+		if (thread_flags & _TIF_NEED_RESCHED) {
+			/* Unmask Debug and SError for the next task */
+			local_daif_restore(DAIF_PROCCTX_NOIRQ);
+
+			schedule();
+		} else {
+			local_daif_restore(DAIF_PROCCTX);
+
+			if (thread_flags & _TIF_UPROBE)
+				uprobe_notify_resume(regs);
+
+			if (thread_flags & _TIF_SIGPENDING)
+				do_signal(regs);
+
+			if (thread_flags & _TIF_NOTIFY_RESUME) {
+				clear_thread_flag(TIF_NOTIFY_RESUME);
+				tracehook_notify_resume(regs);
+				rseq_handle_notify_resume(NULL, regs);
+			}
+
+			if (thread_flags & _TIF_FOREIGN_FPSTATE)
+				fpsimd_restore_current_state();
+		}
+
+		local_daif_mask();
+		thread_flags = READ_ONCE(current_thread_info()->flags);
+	} while (thread_flags & _TIF_WORK_MASK);
+}
 
 static void notrace __el1_prepare_entry(struct pt_regs *regs)
 {
