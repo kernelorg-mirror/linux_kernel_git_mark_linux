@@ -127,7 +127,8 @@ void kcsan_report_hit_local(const volatile void *ptr, size_t size, int access_ty
 			     int watchpoint_idx);
 void kcsan_report_hit_remote(const volatile void *ptr, size_t size, int access_type,
 			     enum kcsan_value_change value_change,
-			     int watchpoint_idx);
-void kcsan_report_modified(const volatile void *ptr, size_t size, int access_type);
+			     int watchpoint_idx, u64 old, u64 new, u64 mask);
+void kcsan_report_modified(const volatile void *ptr, size_t size, int access_type,
+			   u64 old, u64 new, u64 mask);
 
 #endif /* _KERNEL_KCSAN_KCSAN_H */
