@@ -188,13 +188,6 @@ alternative_else_nop_endif
 	ldr_this_cpu	tsk, __entry_task, x20
 	msr	sp_el0, tsk
 
-	/*
-	 * Ensure MDSCR_EL1.SS is clear, since we can unmask debug exceptions
-	 * when scheduling.
-	 */
-	ldr	x19, [tsk, #TSK_TI_FLAGS]
-	disable_step_tsk x19, x20
-
 	apply_ssbd 1, x22, x23
 
 	ptrauth_keys_install_kernel tsk, x20, x22, x23
@@ -596,8 +589,6 @@ SYM_CODE_END(el0_error_compat)
  * "slow" syscall return path.
  */
 SYM_CODE_START_LOCAL(ret_to_user)
-	ldr	x1, [tsk, #TSK_TI_FLAGS]
-	enable_step_tsk x1, x2
 #ifdef CONFIG_GCC_PLUGIN_STACKLEAK
 	bl	stackleak_erase
 #endif

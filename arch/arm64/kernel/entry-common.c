@@ -23,6 +23,7 @@
 
 #include <asm/cpufeature.h>
 #include <asm/daifflags.h>
+#include <asm/debug-monitors.h>
 #include <asm/esr.h>
 #include <asm/exception.h>
 #include <asm/fpsimd.h>
@@ -79,6 +80,14 @@ NOKPROBE_SYMBOL(__el1_prepare_return);
 
 static void notrace __el0_prepare_entry(struct pt_regs *regs)
 {
+	/*
+	 * Ensure MDSCR_EL1.SS is clear, since we can unmask debug exceptions
+	 * when scheduling.
+	 */
+	if (unlikely(test_thread_flag(TIF_SINGLESTEP))) {
+		__disable_single_step_nosync();
+		isb();
+	}
 }
 NOKPROBE_SYMBOL(__el0_prepare_entry);
 
