@@ -29,22 +29,6 @@
 #include <asm/asm-uaccess.h>
 #include <asm/unistd.h>
 
-/*
- * Context tracking subsystem.  Used to instrument transitions
- * between user and kernel mode.
- */
-	.macro ct_user_exit_irqoff
-#ifdef CONFIG_CONTEXT_TRACKING
-	bl	enter_from_user_mode
-#endif
-	.endm
-
-	.macro ct_user_enter
-#ifdef CONFIG_CONTEXT_TRACKING
-	bl	context_tracking_user_enter
-#endif
-	.endm
-
 	.macro	clear_gp_regs
 	.irp	n,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29
 	mov	x\n, xzr
@@ -254,9 +238,6 @@ alternative_else_nop_endif
 	.endif
 
 	ldp	x21, x22, [sp, #S_PC]		// load ELR, SPSR
-	.if	\el == 0
-	ct_user_enter
-	.endif
 
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN
 alternative_if_not ARM64_HAS_PAN

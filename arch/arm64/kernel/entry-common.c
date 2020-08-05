@@ -101,6 +101,8 @@ static void notrace __el0_prepare_return(struct pt_regs *regs)
 	if (unlikely(thread_flags & _TIF_WORK_MASK))
 		do_notify_resume(regs, thread_flags);
 
+	user_enter();
+
 	/* enabled while in userspace */
 	trace_hardirqs_on();
 }
