@@ -781,6 +781,7 @@ SYM_CODE_START(ret_from_fork)
 	mov	x0, x20
 	blr	x19
 1:	get_current_task tsk
+	bl	prepare_ret_from_fork
 	b	ret_to_user
 SYM_CODE_END(ret_from_fork)
 NOKPROBE(ret_from_fork)

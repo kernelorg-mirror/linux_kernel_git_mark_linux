@@ -27,6 +27,47 @@
 #include <asm/stacktrace.h>
 #include <asm/sysreg.h>
 
+static void notrace __el1_prepare_entry(struct pt_regs *regs)
+{
+}
+NOKPROBE_SYMBOL(__el1_prepare_entry);
+
+static void notrace __el1_prepare_return(struct pt_regs *regs)
+{
+}
+NOKPROBE_SYMBOL(__el1_prepare_return);
+
+static void notrace __el0_prepare_entry(struct pt_regs *regs)
+{
+}
+NOKPROBE_SYMBOL(__el0_prepare_entry);
+
+static void notrace __el0_prepare_return(struct pt_regs *regs)
+{
+}
+NOKPROBE_SYMBOL(__el0_prepare_return);
+
+asmlinkage void notrace prepare_ret_from_fork(void)
+{
+	__el0_prepare_return(current_pt_regs());
+}
+NOKPROBE_SYMBOL(prepare_ret_from_fork);
+
+#define ELx_HANDLER(el, name, regs)					\
+static __always_inline void notrace __raw_##name(struct pt_regs *regs);	\
+NOKPROBE_SYMBOL(__raw_##name);						\
+asmlinkage void notrace name(struct pt_regs *regs)			\
+{									\
+	__el##el##_prepare_entry(regs);					\
+	__raw_##name(regs);						\
+	__el##el##_prepare_return(regs);				\
+}									\
+NOKPROBE_SYMBOL(name);							\
+static __always_inline void notrace __raw_##name(struct pt_regs *regs)
+
+#define EL1_HANDLER(args...) ELx_HANDLER(1, args)
+#define EL0_HANDLER(args...) ELx_HANDLER(0, args)
+
 static void notrace el1_abort(struct pt_regs *regs, unsigned long esr)
 {
 	unsigned long far = read_sysreg(far_el1);
@@ -68,7 +109,7 @@ static void notrace el1_dbg(struct pt_regs *regs, unsigned long esr)
 }
 NOKPROBE_SYMBOL(el1_dbg);
 
-asmlinkage void notrace el1_sync_handler(struct pt_regs *regs)
+EL1_HANDLER(el1_sync_handler, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -98,7 +139,6 @@ asmlinkage void notrace el1_sync_handler(struct pt_regs *regs)
 		el1_inv(regs, esr);
 	}
 }
-NOKPROBE_SYMBOL(el1_sync_handler);
 
 static void notrace el0_da(struct pt_regs *regs, unsigned long esr)
 {
@@ -223,7 +263,7 @@ static void notrace el0_svc(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(el0_svc);
 
-asmlinkage void notrace el0_sync_handler(struct pt_regs *regs)
+EL0_HANDLER(el0_sync_handler, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -272,7 +312,6 @@ asmlinkage void notrace el0_sync_handler(struct pt_regs *regs)
 		el0_inv(regs, esr);
 	}
 }
-NOKPROBE_SYMBOL(el0_sync_handler);
 
 #ifdef CONFIG_COMPAT
 static void notrace el0_cp15(struct pt_regs *regs, unsigned long esr)
@@ -289,7 +328,7 @@ static void notrace el0_svc_compat(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(el0_svc_compat);
 
-asmlinkage void notrace el0_sync_compat_handler(struct pt_regs *regs)
+EL0_HANDLER(el0_sync_compat_handler, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -332,7 +371,6 @@ asmlinkage void notrace el0_sync_compat_handler(struct pt_regs *regs)
 		el0_inv(regs, esr);
 	}
 }
-NOKPROBE_SYMBOL(el0_sync_compat_handler);
 #endif /* CONFIG_COMPAT */
 
 static void __sched el1_preempt(void)
@@ -363,14 +401,13 @@ static void invoke_irq_handler(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(invoke_irq_handler);
 
-asmlinkage void notrace el1_irq_handler(struct pt_regs *regs)
+EL1_HANDLER(el1_irq_handler, regs)
 {
 	trace_hardirqs_off();
 	invoke_irq_handler(regs);
 	el1_preempt();
 	trace_hardirqs_on();
 }
-NOKPROBE_SYMBOL(el1_irq_handler);
 
 static inline void notrace do_el0_irq_bp_hardening(struct pt_regs *regs)
 {
@@ -381,7 +418,7 @@ static inline void notrace do_el0_irq_bp_hardening(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(do_el0_irq_bp_hardening);
 
-asmlinkage void notrace el0_irq_handler(struct pt_regs *regs)
+EL0_HANDLER(el0_irq_handler, regs)
 {
 	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX_NOIRQ);
@@ -390,18 +427,16 @@ asmlinkage void notrace el0_irq_handler(struct pt_regs *regs)
 	invoke_irq_handler(regs);
 	trace_hardirqs_on();
 }
-NOKPROBE_SYMBOL(el0_irq_handler);
 
-asmlinkage void el1_error_handler(struct pt_regs *regs)
+EL1_HANDLER(el1_error_handler, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
 	local_daif_restore(DAIF_ERRCTX);
 	do_serror(regs, esr);
 }
-NOKPROBE_SYMBOL(el1_error_handler);
 
-asmlinkage void el0_error_handler(struct pt_regs *regs)
+EL0_HANDLER(el0_error_handler, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -409,4 +444,3 @@ asmlinkage void el0_error_handler(struct pt_regs *regs)
 	local_daif_restore(DAIF_ERRCTX);
 	do_serror(regs, esr);
 }
-NOKPROBE_SYMBOL(el0_error_handler);
