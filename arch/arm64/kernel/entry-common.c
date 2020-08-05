@@ -34,13 +34,6 @@
 asmlinkage void do_notify_resume(struct pt_regs *regs,
 				 unsigned long thread_flags)
 {
-	/*
-	 * The assembly code enters us with IRQs off, but it hasn't
-	 * informed the tracing code of that for efficiency reasons.
-	 * Update the trace code with the current status.
-	 */
-	trace_hardirqs_off();
-
 	do {
 		/* Check valid user FS if needed */
 		addr_limit_user_check();
@@ -91,6 +84,16 @@ NOKPROBE_SYMBOL(__el0_prepare_entry);
 
 static void notrace __el0_prepare_return(struct pt_regs *regs)
 {
+	unsigned long thread_flags;
+
+	local_daif_mask();
+
+	thread_flags = READ_ONCE(current_thread_info()->flags);
+	if (unlikely(thread_flags & _TIF_WORK_MASK))
+		do_notify_resume(regs, thread_flags);
+
+	/* enabled while in userspace */
+	trace_hardirqs_on();
 }
 NOKPROBE_SYMBOL(__el0_prepare_return);
 
