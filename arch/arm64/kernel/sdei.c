@@ -216,6 +216,16 @@ static __kprobes unsigned long _sdei_handler(struct pt_regs *regs,
 	return vbar + 0x480;
 }
 
+static void __kprobes notrace __sdei_pstate_entry(void)
+{
+	if (system_uses_hw_pan())
+		set_pstate_pan(1);
+	else if (cpu_has_pan())
+		set_pstate_pan(0);
+
+	if (cpu_has_uao())
+		set_pstate_uao(0);
+}
 
 asmlinkage __kprobes notrace unsigned long
 __sdei_handler(struct pt_regs *regs, struct sdei_registered_event *arg)
@@ -224,12 +234,11 @@ __sdei_handler(struct pt_regs *regs, struct sdei_registered_event *arg)
 	mm_segment_t orig_addr_limit;
 
 	/*
-	 * We didn't take an exception to get here, so the HW hasn't set PAN or
-	 * cleared UAO, and the exception entry code hasn't reset addr_limit.
-	 * Set PAN, then use force_uaccess_begin() to clear UAO and reset
-	 * addr_limit.
+	 * We didn't take an exception to get here, so the HW hasn't
+	 * set/cleared bits in PSTATE that we may rely on. Intialize PAN/UAO,
+	 * then use force_uaccess_begin() to reset addr_limit.
 	 */
-	__uaccess_enable_hw_pan();
+	__sdei_pstate_entry();
 	orig_addr_limit = force_uaccess_begin();
 
 	nmi_enter();
