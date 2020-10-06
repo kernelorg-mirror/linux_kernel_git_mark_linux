@@ -7,7 +7,7 @@
 
 #include <asm/memory.h>
 
-phys_addr_t __virt_to_phys(unsigned long x)
+noinstr phys_addr_t __virt_to_phys(unsigned long x)
 {
 	WARN(!__is_lm_address(__tag_reset(x)),
 	     "virt_to_phys used for non-linear address: %pK (%pS)\n",
@@ -18,7 +18,7 @@ phys_addr_t __virt_to_phys(unsigned long x)
 }
 EXPORT_SYMBOL(__virt_to_phys);
 
-phys_addr_t __phys_addr_symbol(unsigned long x)
+noinstr phys_addr_t __phys_addr_symbol(unsigned long x)
 {
 	/*
 	 * This is bounds checking against the kernel image only.
