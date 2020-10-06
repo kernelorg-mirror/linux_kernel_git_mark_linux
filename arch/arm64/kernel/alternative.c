@@ -156,8 +156,6 @@ static void __apply_alternatives(struct alt_region *region, bool is_module,
 		else
 			BUG_ON(alt->alt_len != alt->orig_len);
 
-		pr_info_once("patching kernel code\n");
-
 		origptr = ALT_ORIG_PTR(alt);
 		updptr = is_module ? origptr : lm_alias(origptr);
 		nr_inst = alt->orig_len / AARCH64_INSN_SIZE;
@@ -225,6 +223,8 @@ static int __apply_alternatives_multi_stop(void *unused)
 
 void __init apply_alternatives_all(void)
 {
+	pr_info("patching kernel code\n");
+
 	/* better not try code patching on a live SMP system */
 	stop_machine(__apply_alternatives_multi_stop, NULL, cpu_online_mask);
 }
