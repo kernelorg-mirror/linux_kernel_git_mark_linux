@@ -117,12 +117,10 @@ static void patch_alternative(struct alt_instr *alt,
  */
 static void clean_dcache_range_nopatch(u64 start, u64 end)
 {
-	u64 cur, d_size, ctr_el0;
+	/* Architectural minimum D-cache line size */
+	const u64 d_size = 4;
+	u64 cur = start & ~(d_size - 1);
 
-	ctr_el0 = read_sanitised_ftr_reg(SYS_CTR_EL0);
-	d_size = 4 << cpuid_feature_extract_unsigned_field(ctr_el0,
-							   CTR_DMINLINE_SHIFT);
-	cur = start & ~(d_size - 1);
 	do {
 		/*
 		 * We must clean+invalidate to the PoC in order to avoid
