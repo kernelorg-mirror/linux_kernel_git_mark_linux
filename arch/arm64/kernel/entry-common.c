@@ -124,6 +124,13 @@ asmlinkage void notrace el1_sync_handler(struct pt_regs *regs)
 }
 NOKPROBE_SYMBOL(el1_sync_handler);
 
+asmlinkage void notrace enter_from_user_mode(void)
+{
+	CT_WARN_ON(ct_state() != CONTEXT_USER);
+	user_exit_irqoff();
+}
+NOKPROBE_SYMBOL(enter_from_user_mode);
+
 static void notrace el0_da(struct pt_regs *regs, unsigned long esr)
 {
 	unsigned long far = read_sysreg(far_el1);
