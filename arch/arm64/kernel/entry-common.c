@@ -158,16 +158,26 @@ NOKPROBE_SYMBOL(el1_sync_handler);
 
 asmlinkage void notrace enter_from_user_mode(void)
 {
+	lockdep_hardirqs_off(CALLER_ADDR0);
 	CT_WARN_ON(ct_state() != CONTEXT_USER);
 	user_exit_irqoff();
+	trace_hardirqs_off_finish();
 }
 NOKPROBE_SYMBOL(enter_from_user_mode);
+
+asmlinkage void notrace exit_to_user_mode(void)
+{
+	trace_hardirqs_on_prepare();
+	lockdep_hardirqs_on_prepare(CALLER_ADDR0);
+	user_enter_irqoff();
+	lockdep_hardirqs_on(CALLER_ADDR0);
+}
+NOKPROBE_SYMBOL(exit_to_user_mode)
 
 static void notrace el0_da(struct pt_regs *regs, unsigned long esr)
 {
 	unsigned long far = read_sysreg(far_el1);
 
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	far = untagged_addr(far);
 	do_mem_abort(far, esr, regs);
@@ -186,7 +196,6 @@ static void notrace el0_ia(struct pt_regs *regs, unsigned long esr)
 	if (!is_ttbr0_addr(far))
 		arm64_apply_bp_hardening();
 
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_mem_abort(far, esr, regs);
 }
@@ -194,7 +203,6 @@ NOKPROBE_SYMBOL(el0_ia);
 
 static void notrace el0_fpsimd_acc(struct pt_regs *regs, unsigned long esr)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_fpsimd_acc(esr, regs);
 }
@@ -202,7 +210,6 @@ NOKPROBE_SYMBOL(el0_fpsimd_acc);
 
 static void notrace el0_sve_acc(struct pt_regs *regs, unsigned long esr)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_sve_acc(esr, regs);
 }
@@ -210,7 +217,6 @@ NOKPROBE_SYMBOL(el0_sve_acc);
 
 static void notrace el0_fpsimd_exc(struct pt_regs *regs, unsigned long esr)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_fpsimd_exc(esr, regs);
 }
@@ -218,7 +224,6 @@ NOKPROBE_SYMBOL(el0_fpsimd_exc);
 
 static void notrace el0_sys(struct pt_regs *regs, unsigned long esr)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_sysinstr(esr, regs);
 }
@@ -231,7 +236,6 @@ static void notrace el0_pc(struct pt_regs *regs, unsigned long esr)
 	if (!is_ttbr0_addr(instruction_pointer(regs)))
 		arm64_apply_bp_hardening();
 
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_sp_pc_abort(far, esr, regs);
 }
@@ -239,7 +243,6 @@ NOKPROBE_SYMBOL(el0_pc);
 
 static void notrace el0_sp(struct pt_regs *regs, unsigned long esr)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_sp_pc_abort(regs->sp, esr, regs);
 }
@@ -247,7 +250,6 @@ NOKPROBE_SYMBOL(el0_sp);
 
 static void notrace el0_undef(struct pt_regs *regs)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_undefinstr(regs);
 }
@@ -255,7 +257,6 @@ NOKPROBE_SYMBOL(el0_undef);
 
 static void notrace el0_bti(struct pt_regs *regs)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_bti(regs);
 }
@@ -263,7 +264,6 @@ NOKPROBE_SYMBOL(el0_bti);
 
 static void notrace el0_inv(struct pt_regs *regs, unsigned long esr)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	bad_el0_sync(regs, 0, esr);
 }
@@ -277,7 +277,6 @@ static void notrace el0_dbg(struct pt_regs *regs, unsigned long esr)
 	if (system_uses_irq_prio_masking())
 		gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
 
-	user_exit_irqoff();
 	do_debug_exception(far, esr, regs);
 	local_daif_restore(DAIF_PROCCTX_NOIRQ);
 }
@@ -294,7 +293,6 @@ NOKPROBE_SYMBOL(el0_svc);
 
 static void notrace el0_fpac(struct pt_regs *regs, unsigned long esr)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_ptrauth_fault(regs, esr);
 }
@@ -303,6 +301,8 @@ NOKPROBE_SYMBOL(el0_fpac);
 asmlinkage void notrace el0_sync_handler(struct pt_regs *regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
+
+	enter_from_user_mode();
 
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC64:
@@ -357,7 +357,6 @@ NOKPROBE_SYMBOL(el0_sync_handler);
 #ifdef CONFIG_COMPAT
 static void notrace el0_cp15(struct pt_regs *regs, unsigned long esr)
 {
-	user_exit_irqoff();
 	local_daif_restore(DAIF_PROCCTX);
 	do_cp15instr(esr, regs);
 }
@@ -375,6 +374,8 @@ NOKPROBE_SYMBOL(el0_svc_compat);
 asmlinkage void notrace el0_sync_compat_handler(struct pt_regs *regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
+
+	enter_from_user_mode();
 
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC32:
