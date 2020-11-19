@@ -39,6 +39,8 @@ NOKPROBE_SYMBOL(trace_hardirqs_on_prepare);
 
 void trace_hardirqs_on(void)
 {
+	RCU_LOCKDEP_WARN(!rcu_is_watching(), "RCU not watching trace_hardirqs_on()");
+
 	if (this_cpu_read(tracing_irq_cpu)) {
 		if (!in_nmi())
 			trace_irq_enable_rcuidle(CALLER_ADDR0, CALLER_ADDR1);
@@ -73,6 +75,8 @@ NOKPROBE_SYMBOL(trace_hardirqs_off_finish);
 
 void trace_hardirqs_off(void)
 {
+	RCU_LOCKDEP_WARN(!rcu_is_watching(), "RCU not watching trace_hardirqs_off()");
+
 	lockdep_hardirqs_off(CALLER_ADDR0);
 
 	if (!this_cpu_read(tracing_irq_cpu)) {
