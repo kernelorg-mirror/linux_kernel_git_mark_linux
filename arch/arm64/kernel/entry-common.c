@@ -220,6 +220,7 @@ NOKPROBE_SYMBOL(enter_from_user_mode);
 
 asmlinkage void notrace exit_to_user_mode(void)
 {
+	lockdep_sys_exit();
 	trace_hardirqs_on_prepare();
 	lockdep_hardirqs_on_prepare(CALLER_ADDR0);
 	user_enter_irqoff();
