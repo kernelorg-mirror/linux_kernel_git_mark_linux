@@ -47,12 +47,50 @@ void noinstr arm64_exit_nmi(struct pt_regs *regs)
 	__nmi_exit();
 }
 
+static void noinstr enter_from_kernel_mode(struct pt_regs *regs)
+{
+	regs->exit_rcu = false;
+
+	if (!IS_ENABLED(CONFIG_TINY_RCU) && is_idle_task(current)) {
+		lockdep_hardirqs_off(CALLER_ADDR0);
+		rcu_irq_enter();
+		trace_hardirqs_off_finish();
+
+		regs->exit_rcu = true;
+		return;
+	}
+
+	lockdep_hardirqs_off(CALLER_ADDR0);
+	rcu_irq_enter_check_tick();
+	trace_hardirqs_off_finish();
+}
+
+static void noinstr exit_to_kernel_mode(struct pt_regs *regs)
+{
+	lockdep_assert_irqs_disabled();
+
+	if (interrupts_enabled(regs)) {
+		if (regs->exit_rcu) {
+			trace_hardirqs_on_prepare();
+			lockdep_hardirqs_on_prepare(CALLER_ADDR0);
+			rcu_irq_exit();
+			lockdep_hardirqs_on(CALLER_ADDR0);
+			return;
+		}
+
+		trace_hardirqs_on();
+	} else {
+		if (regs->exit_rcu)
+			rcu_irq_exit();
+	}
+}
+
 asmlinkage void noinstr enter_el1_irq_or_nmi(struct pt_regs *regs)
 {
 	if (IS_ENABLED(CONFIG_ARM64_PSEUDO_NMI) && !interrupts_enabled(regs))
 		arm64_enter_nmi(regs);
 	else
-		trace_hardirqs_off();
+		enter_from_kernel_mode(regs);
 }
 
 asmlinkage void noinstr exit_el1_irq_or_nmi(struct pt_regs *regs)
@@ -60,16 +98,19 @@ asmlinkage void noinstr exit_el1_irq_or_nmi(struct pt_regs *regs)
 	if (IS_ENABLED(CONFIG_ARM64_PSEUDO_NMI) && !interrupts_enabled(regs))
 		arm64_exit_nmi(regs);
 	else
-		trace_hardirqs_on();
+		exit_to_kernel_mode(regs);
 }
 
 static void notrace el1_abort(struct pt_regs *regs, unsigned long esr)
 {
 	unsigned long far = read_sysreg(far_el1);
 
+	enter_from_kernel_mode(regs);
 	local_daif_inherit(regs);
 	far = untagged_addr(far);
 	do_mem_abort(far, esr, regs);
+	local_daif_mask();
+	exit_to_kernel_mode(regs);
 }
 NOKPROBE_SYMBOL(el1_abort);
 
@@ -77,22 +118,31 @@ static void notrace el1_pc(struct pt_regs *regs, unsigned long esr)
 {
 	unsigned long far = read_sysreg(far_el1);
 
+	enter_from_kernel_mode(regs);
 	local_daif_inherit(regs);
 	do_sp_pc_abort(far, esr, regs);
+	local_daif_mask();
+	exit_to_kernel_mode(regs);
 }
 NOKPROBE_SYMBOL(el1_pc);
 
 static void notrace el1_undef(struct pt_regs *regs)
 {
+	enter_from_kernel_mode(regs);
 	local_daif_inherit(regs);
 	do_undefinstr(regs);
+	local_daif_mask();
+	exit_to_kernel_mode(regs);
 }
 NOKPROBE_SYMBOL(el1_undef);
 
 static void notrace el1_inv(struct pt_regs *regs, unsigned long esr)
 {
+	enter_from_kernel_mode(regs);
 	local_daif_inherit(regs);
 	bad_mode(regs, 0, esr);
+	local_daif_mask();
+	exit_to_kernel_mode(regs);
 }
 NOKPROBE_SYMBOL(el1_inv);
 
@@ -116,8 +166,11 @@ NOKPROBE_SYMBOL(el1_dbg);
 
 static void notrace el1_fpac(struct pt_regs *regs, unsigned long esr)
 {
+	enter_from_kernel_mode(regs);
 	local_daif_inherit(regs);
 	do_ptrauth_fault(regs, esr);
+	local_daif_mask();
+	exit_to_kernel_mode(regs);
 }
 NOKPROBE_SYMBOL(el1_fpac);
 

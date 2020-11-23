@@ -196,7 +196,7 @@ struct pt_regs {
 
 	/*: TODO: move this into a separate entry state structure */
 	u64 lockdep_hardirqs;
-	u64 unused3;
+	u64 exit_rcu;
 };
 
 static inline bool in_syscall(struct pt_regs const *regs)
