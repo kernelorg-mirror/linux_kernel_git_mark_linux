@@ -31,6 +31,8 @@ static inline u32 disr_to_esr(u64 disr)
 	return esr;
 }
 
+void arm64_enter_nmi(struct pt_regs *regs);
+void arm64_exit_nmi(struct pt_regs *regs);
 asmlinkage void enter_from_user_mode(void);
 void do_mem_abort(unsigned long addr, unsigned int esr, struct pt_regs *regs);
 void do_undefinstr(struct pt_regs *regs);

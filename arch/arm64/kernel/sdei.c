@@ -228,11 +228,11 @@ __sdei_handler(struct pt_regs *regs, struct sdei_registered_event *arg)
 {
 	unsigned long ret;
 
-	nmi_enter();
+	arm64_enter_nmi();
 
 	ret = _sdei_handler(regs, arg);
 
-	nmi_exit();
+	arm64_exit_nmi();
 
 	return ret;
 }

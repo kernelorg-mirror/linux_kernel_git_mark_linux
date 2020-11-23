@@ -34,6 +34,7 @@
 #include <asm/daifflags.h>
 #include <asm/debug-monitors.h>
 #include <asm/esr.h>
+#include <asm/exception.h>
 #include <asm/extable.h>
 #include <asm/insn.h>
 #include <asm/kprobes.h>
@@ -794,6 +795,8 @@ asmlinkage void handle_bad_stack(struct pt_regs *regs)
 	unsigned int esr = read_sysreg(esr_el1);
 	unsigned long far = read_sysreg(far_el1);
 
+	arm64_enter_nmi(regs);
+
 	console_verbose();
 	pr_emerg("Insufficient stack space to handle exception!");
 
@@ -867,13 +870,13 @@ bool arm64_is_fatal_ras_serror(struct pt_regs *regs, unsigned int esr)
 
 asmlinkage void do_serror(struct pt_regs *regs, unsigned int esr)
 {
-	nmi_enter();
+	arm64_enter_nmi(regs);
 
 	/* non-RAS errors are not containable */
 	if (!arm64_is_ras_serror(esr) || arm64_is_fatal_ras_serror(regs, esr))
 		arm64_serror_panic(regs, esr);
 
-	nmi_exit();
+	arm64_exit_nmi(regs);
 }
 
 /* GENERIC_BUG traps */
