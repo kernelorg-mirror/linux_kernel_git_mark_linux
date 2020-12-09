@@ -220,10 +220,25 @@ do {						\
 
 #else /* !CONFIG_TRACE_IRQFLAGS */
 
+#ifdef CONFIG_DEBUG_IRQFLAGS
+extern void warn_bogus_irq_restore();
+#define check_bogus_irq_restore()			\
+	do {						\
+		if (unlikely(!raw_irqs_disabled()))	\
+			warn_bogus_irq_restore();	\
+	} while (0)
+#else
+#define check_bogus_irq_restore() do { } while (0)
+#endif
+
 #define local_irq_enable()	do { raw_local_irq_enable(); } while (0)
 #define local_irq_disable()	do { raw_local_irq_disable(); } while (0)
 #define local_irq_save(flags)	do { raw_local_irq_save(flags); } while (0)
-#define local_irq_restore(flags) do { raw_local_irq_restore(flags); } while (0)
+#define local_irq_restore(flags)		\
+	do {					\
+		check_bogus_irq_restore();	\
+		raw_local_irq_restore(flags);	\
+	} while (0)
 #define safe_halt()		do { raw_safe_halt(); } while (0)
 
 #endif /* CONFIG_TRACE_IRQFLAGS */
