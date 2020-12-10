@@ -6,6 +6,7 @@
  * kernel/irq/. Do not even think about using any information outside
  * of this file for your non core code.
  */
+#include <linux/bug.h>
 #include <linux/irqdesc.h>
 #include <linux/kernel_stat.h>
 #include <linux/pm_runtime.h>
@@ -122,17 +123,45 @@ static inline irqreturn_t __handle_irqaction(unsigned int irq,
 	return res;
 }
 
+#ifdef CONFIG_DETECT_SLOW_IRQ_HANDLER
+static inline irqreturn_t __handle_irqaction_timed(unsigned int irq,
+						   struct irqaction *action,
+						   void *dev_id)
+{
+	u64 timeout = CONFIG_DEFAULT_IRQ_HANDLER_TIMEOUT;
+	u64 start, end, duration;
+	int res;
+
+	start = local_clock();
+	res = __handle_irqaction(irq, action, dev_id);
+	end = local_clock();
+
+	duration = end - start;
+	WARN(duration > timeout, "IRQ %d handler %pS took %llu ns\n",
+	     irq, action->handler, duration);
+
+	return res;
+}
+#else
+static inline irqreturn_t __handle_irqaction_timed(unsigned int irq,
+						   struct irqaction *action,
+						   void *dev_id)
+{
+	return __handle_irqaction(irq, action, dev_id);
+}
+#endif
+
 static inline irqreturn_t handle_irqaction(unsigned int irq,
 					   struct irqaction *action)
 {
-	return __handle_irqaction(irq, action, action->dev_id);
+	return __handle_irqaction_timed(irq, action, action->dev_id);
 }
 
 static inline irqreturn_t handle_irqaction_percpu_devid(unsigned int irq,
 							struct irqaction *action)
 {
-	return __handle_irqaction(irq, action,
-				  raw_cpu_ptr(action->percpu_dev_id));
+	return __handle_irqaction_timed(irq, action,
+					raw_cpu_ptr(action->percpu_dev_id));
 }
 
 /* Resending of interrupts :*/
