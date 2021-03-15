@@ -623,12 +623,21 @@ SYM_CODE_START_LOCAL_NOALIGN(el1_irq)
 	kernel_exit 1
 SYM_CODE_END(el1_irq)
 
+	.align 6
 SYM_CODE_START_LOCAL_NOALIGN(el1_fiq)
 	kernel_entry 1
 	mov	x0, sp
 	bl	el1_fiq_handler
 	kernel_exit 1
 SYM_CODE_END(el1_fiq)
+
+	.align 6
+SYM_CODE_START_LOCAL_NOALIGN(el1_error)
+	kernel_entry 1
+	mov	x0, sp
+	bl	el1_error_handler
+	kernel_exit 1
+SYM_CODE_END(el1_error)
 
 /*
  * EL0 mode handlers.
@@ -640,6 +649,30 @@ SYM_CODE_START_LOCAL_NOALIGN(el0_sync)
 	bl	el0_sync_handler
 	b	ret_to_user
 SYM_CODE_END(el0_sync)
+
+	.align	6
+SYM_CODE_START_LOCAL_NOALIGN(el0_irq)
+	kernel_entry 0
+	mov	x0, sp
+	bl	el0_irq_handler
+	b	ret_to_user
+SYM_CODE_END(el0_irq)
+
+	.align 6
+SYM_CODE_START_LOCAL_NOALIGN(el0_fiq)
+	kernel_entry 0
+	mov	x0, sp
+	bl	el0_fiq_handler
+	b	ret_to_user
+SYM_CODE_END(el0_fiq)
+
+	.align 6
+SYM_CODE_START_LOCAL_NOALIGN(el0_error)
+	kernel_entry 0
+	mov	x0, sp
+	bl	el0_error_handler
+	b	ret_to_user
+SYM_CODE_END(el0_error)
 
 #ifdef CONFIG_COMPAT
 	.align	6
@@ -658,6 +691,7 @@ SYM_CODE_START_LOCAL_NOALIGN(el0_irq_compat)
 	b	ret_to_user
 SYM_CODE_END(el0_irq_compat)
 
+	.align 6
 SYM_CODE_START_LOCAL_NOALIGN(el0_fiq_compat)
 	kernel_entry 0, 32
 	mov	x0, sp
@@ -665,6 +699,7 @@ SYM_CODE_START_LOCAL_NOALIGN(el0_fiq_compat)
 	b	ret_to_user
 SYM_CODE_END(el0_fiq_compat)
 
+	.align 6
 SYM_CODE_START_LOCAL_NOALIGN(el0_error_compat)
 	kernel_entry 0, 32
 	mov	x0, sp
@@ -672,35 +707,6 @@ SYM_CODE_START_LOCAL_NOALIGN(el0_error_compat)
 	b	ret_to_user
 SYM_CODE_END(el0_error_compat)
 #endif
-
-	.align	6
-SYM_CODE_START_LOCAL_NOALIGN(el0_irq)
-	kernel_entry 0
-	mov	x0, sp
-	bl	el0_irq_handler
-	b	ret_to_user
-SYM_CODE_END(el0_irq)
-
-SYM_CODE_START_LOCAL_NOALIGN(el0_fiq)
-	kernel_entry 0
-	mov	x0, sp
-	bl	el0_fiq_handler
-	b	ret_to_user
-SYM_CODE_END(el0_fiq)
-
-SYM_CODE_START_LOCAL(el1_error)
-	kernel_entry 1
-	mov	x0, sp
-	bl	el1_error_handler
-	kernel_exit 1
-SYM_CODE_END(el1_error)
-
-SYM_CODE_START_LOCAL(el0_error)
-	kernel_entry 0
-	mov	x0, sp
-	bl	el0_error_handler
-	b	ret_to_user
-SYM_CODE_END(el0_error)
 
 /*
  * "slow" syscall return path.
