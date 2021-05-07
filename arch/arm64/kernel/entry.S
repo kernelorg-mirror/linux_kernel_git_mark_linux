@@ -612,7 +612,7 @@ SYM_CODE_START_LOCAL_NOALIGN(el1_sync)
 	kernel_entry 1
 	mov	x0, sp
 	bl	el1_sync_handler
-	kernel_exit 1
+	b	ret_to_kernel
 SYM_CODE_END(el1_sync)
 
 	.align	6
@@ -620,7 +620,7 @@ SYM_CODE_START_LOCAL_NOALIGN(el1_irq)
 	kernel_entry 1
 	mov	x0, sp
 	bl	el1_irq_handler
-	kernel_exit 1
+	b	ret_to_kernel
 SYM_CODE_END(el1_irq)
 
 	.align 6
@@ -628,7 +628,7 @@ SYM_CODE_START_LOCAL_NOALIGN(el1_fiq)
 	kernel_entry 1
 	mov	x0, sp
 	bl	el1_fiq_handler
-	kernel_exit 1
+	b	ret_to_kernel
 SYM_CODE_END(el1_fiq)
 
 	.align 6
@@ -636,8 +636,12 @@ SYM_CODE_START_LOCAL_NOALIGN(el1_error)
 	kernel_entry 1
 	mov	x0, sp
 	bl	el1_error_handler
-	kernel_exit 1
+	b	ret_to_kernel
 SYM_CODE_END(el1_error)
+
+SYM_CODE_START_LOCAL(ret_to_kernel)
+	kernel_exit 1
+SYM_CODE_END(ret_to_kernel)
 
 /*
  * EL0 mode handlers.
