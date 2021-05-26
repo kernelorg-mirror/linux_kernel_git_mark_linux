@@ -153,8 +153,6 @@ static void __nocfi __apply_alternatives(struct alt_region *region, bool is_modu
 		else
 			BUG_ON(alt->alt_len != alt->orig_len);
 
-		pr_info_once("patching kernel code\n");
-
 		origptr = ALT_ORIG_PTR(alt);
 		updptr = is_module ? origptr : lm_alias(origptr);
 		nr_inst = alt->orig_len / AARCH64_INSN_SIZE;
@@ -206,6 +204,8 @@ static int __apply_alternatives_stopped(void *unused)
 
 void __init apply_alternatives_all(void)
 {
+	pr_info("applying alternatives\n");
+
 	/* better not try code patching on a live SMP system */
 	patch_machine(__apply_alternatives_stopped, NULL);
 }
@@ -221,6 +221,8 @@ void __init apply_boot_alternatives(void)
 		.begin	= (struct alt_instr *)__alt_instructions,
 		.end	= (struct alt_instr *)__alt_instructions_end,
 	};
+
+	pr_info("applying boot-time alternatives\n");
 
 	/* If called on non-boot cpu things could go wrong */
 	WARN_ON(smp_processor_id() != 0);
