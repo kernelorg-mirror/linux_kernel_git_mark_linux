@@ -21,9 +21,6 @@
 #define ALT_ORIG_PTR(a)		__ALT_PTR(a, orig_offset)
 #define ALT_REPL_PTR(a)		__ALT_PTR(a, alt_offset)
 
-/* Volatile, as we may be patching the guts of READ_ONCE() */
-static volatile int all_alternatives_applied;
-
 static DECLARE_BITMAP(applied_alternatives, ARM64_NCAPS);
 
 struct alt_region {
@@ -193,11 +190,17 @@ static void __nocfi __apply_alternatives(struct alt_region *region, bool is_modu
 }
 
 /*
- * We might be patching the stop_machine state machine, so implement a
- * really simple polling protocol here.
+ * Apply alternatives, ensuring that no CPUs are concurrently executing code
+ * being patched.
+ *
+ * We might be patching the stop_machine state machine or READ_ONCE(), so
+ * we implement a simple polling protocol.
  */
 static int __apply_alternatives_multi_stop(void *unused)
 {
+	/* Volatile, as we may be patching the guts of READ_ONCE() */
+	static volatile int all_alternatives_applied;
+	static atomic_t stopped_cpus = ATOMIC_INIT(0);
 	struct alt_region region = {
 		.begin	= (struct alt_instr *)__alt_instructions,
 		.end	= (struct alt_instr *)__alt_instructions_end,
@@ -205,11 +208,15 @@ static int __apply_alternatives_multi_stop(void *unused)
 
 	/* We always have a CPU 0 at this point (__init) */
 	if (smp_processor_id()) {
+		arch_atomic_inc(&stopped_cpus);
 		while (!all_alternatives_applied)
 			cpu_relax();
 		isb();
 	} else {
 		DECLARE_BITMAP(remaining_capabilities, ARM64_NPATCHABLE);
+
+		while (arch_atomic_read(&stopped_cpus) != num_online_cpus() - 1)
+			cpu_relax();
 
 		bitmap_complement(remaining_capabilities, boot_capabilities,
 				  ARM64_NPATCHABLE);
