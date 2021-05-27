@@ -14,8 +14,8 @@
 #include <asm/alternative.h>
 #include <asm/cpufeature.h>
 #include <asm/insn.h>
+#include <asm/patching.h>
 #include <asm/sections.h>
-#include <linux/stop_machine.h>
 
 #define __ALT_PTR(a, f)		((void *)&(a)->f + (a)->f)
 #define ALT_ORIG_PTR(a)		__ALT_PTR(a, orig_offset)
@@ -189,43 +189,17 @@ static void __nocfi __apply_alternatives(struct alt_region *region, bool is_modu
 	}
 }
 
-/*
- * Apply alternatives, ensuring that no CPUs are concurrently executing code
- * being patched.
- *
- * We might be patching the stop_machine state machine or READ_ONCE(), so
- * we implement a simple polling protocol.
- */
-static int __apply_alternatives_multi_stop(void *unused)
+static int __apply_alternatives_stopped(void *unused)
 {
-	/* Volatile, as we may be patching the guts of READ_ONCE() */
-	static volatile int all_alternatives_applied;
-	static atomic_t stopped_cpus = ATOMIC_INIT(0);
 	struct alt_region region = {
 		.begin	= (struct alt_instr *)__alt_instructions,
 		.end	= (struct alt_instr *)__alt_instructions_end,
 	};
+	DECLARE_BITMAP(remaining_capabilities, ARM64_NPATCHABLE);
 
-	/* We always have a CPU 0 at this point (__init) */
-	if (smp_processor_id()) {
-		arch_atomic_inc(&stopped_cpus);
-		while (!all_alternatives_applied)
-			cpu_relax();
-		isb();
-	} else {
-		DECLARE_BITMAP(remaining_capabilities, ARM64_NPATCHABLE);
-
-		while (arch_atomic_read(&stopped_cpus) != num_online_cpus() - 1)
-			cpu_relax();
-
-		bitmap_complement(remaining_capabilities, boot_capabilities,
-				  ARM64_NPATCHABLE);
-
-		BUG_ON(all_alternatives_applied);
-		__apply_alternatives(&region, false, remaining_capabilities);
-		/* Barriers provided by the cache flushing */
-		all_alternatives_applied = 1;
-	}
+	bitmap_complement(remaining_capabilities, boot_capabilities,
+			  ARM64_NPATCHABLE);
+	__apply_alternatives(&region, false, remaining_capabilities);
 
 	return 0;
 }
@@ -233,7 +207,7 @@ static int __apply_alternatives_multi_stop(void *unused)
 void __init apply_alternatives_all(void)
 {
 	/* better not try code patching on a live SMP system */
-	stop_machine(__apply_alternatives_multi_stop, NULL, cpu_online_mask);
+	patch_machine(__apply_alternatives_stopped, NULL);
 }
 
 /*

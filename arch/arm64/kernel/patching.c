@@ -105,31 +105,88 @@ int __kprobes aarch64_insn_patch_text_nosync(void *addr, u32 insn)
 	return ret;
 }
 
+struct patch_machine_info {
+	patch_machine_func_t func;
+	void *arg;
+	int cpu;
+	atomic_t active;
+	volatile int done;
+};
+
+/*
+ * Run a code patching function on a single CPU, ensuring that no CPUs are
+ * concurrently executing code being patched.
+ *
+ * We wait for other CPUs to become quiescent before starting patching, and
+ * wait until patching is completed before other CPUs are woken.
+ *
+ * The patching function is responsible for any barriers necessary to make new
+ * instructions visible to other CPUs. The other CPUs will issue an ISB upon
+ * being woken to ensure they use the new instructions.
+ */
+static int noinstr do_patch_machine(void *arg)
+{
+	struct patch_machine_info *pmi = arg;
+	int cpu = smp_processor_id();
+	int ret = 0;
+
+	if (pmi->cpu == cpu) {
+		while (arch_atomic_read(&pmi->active))
+			cpu_relax();
+		ret = pmi->func(pmi->arg);
+		pmi->done = 1;
+	} else {
+		arch_atomic_dec(&pmi->active);
+		while (!pmi->done)
+			cpu_relax();
+		isb();
+	}
+
+	return ret;
+}
+
+/*
+ * Run a code patching function on a single CPU, ensuring that no CPUs are
+ * concurrently executing code being patched.
+ */
+int patch_machine_cpuslocked(patch_machine_func_t func, void *arg)
+{
+	struct patch_machine_info pmi = {
+		.func = func,
+		.arg = arg,
+		.cpu = raw_smp_processor_id(),
+		.active = ATOMIC_INIT(num_online_cpus() - 1),
+		.done = 0,
+	};
+
+	return stop_machine_cpuslocked(do_patch_machine, &pmi, cpu_online_mask);
+}
+
+int patch_machine(patch_machine_func_t func, void *arg)
+{
+	int ret;
+
+	cpus_read_lock();
+	ret = patch_machine_cpuslocked(func, arg);
+	cpus_read_unlock();
+
+	return ret;
+}
+
 struct aarch64_insn_patch {
 	void		**text_addrs;
 	u32		*new_insns;
 	int		insn_cnt;
-	atomic_t	cpu_count;
 };
 
 static int __kprobes aarch64_insn_patch_text_cb(void *arg)
 {
 	int i, ret = 0;
 	struct aarch64_insn_patch *pp = arg;
-	int num_cpus = num_online_cpus();
 
-	/* The last CPU becomes master */
-	if (arch_atomic_inc_return(&pp->cpu_count) == num_cpus) {
-		for (i = 0; ret == 0 && i < pp->insn_cnt; i++)
-			ret = aarch64_insn_patch_text_nosync(pp->text_addrs[i],
-							     pp->new_insns[i]);
-		/* Notify other processors with an additional increment. */
-		atomic_inc(&pp->cpu_count);
-	} else {
-		while (arch_atomic_read(&pp->cpu_count) <= num_cpus)
-			cpu_relax();
-		isb();
-	}
+	for (i = 0; ret == 0 && i < pp->insn_cnt; i++)
+		ret = aarch64_insn_patch_text_nosync(pp->text_addrs[i],
+						     pp->new_insns[i]);
 
 	return ret;
 }
@@ -140,12 +197,10 @@ int __kprobes aarch64_insn_patch_text(void *addrs[], u32 insns[], int cnt)
 		.text_addrs = addrs,
 		.new_insns = insns,
 		.insn_cnt = cnt,
-		.cpu_count = ATOMIC_INIT(0),
 	};
 
 	if (cnt <= 0)
 		return -EINVAL;
 
-	return stop_machine_cpuslocked(aarch64_insn_patch_text_cb, &patch,
-				       cpu_online_mask);
+	return patch_machine_cpuslocked(aarch64_insn_patch_text_cb, &patch);
 }
