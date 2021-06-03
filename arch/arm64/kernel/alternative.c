@@ -115,11 +115,11 @@ static void patch_alternative(struct alt_instr *alt,
  * accidentally call into the cache.S code, which is patched by us at
  * runtime.
  */
-static void clean_dcache_range_nopatch(u64 start, u64 end)
+static void noinstr clean_dcache_range_nopatch(u64 start, u64 end)
 {
 	u64 cur, d_size, ctr_el0;
 
-	ctr_el0 = read_sanitised_ftr_reg(SYS_CTR_EL0);
+	ctr_el0 = arm64_ftr_reg_ctrel0.sys_val;
 	d_size = 4 << cpuid_feature_extract_unsigned_field(ctr_el0,
 							   CTR_DMINLINE_SHIFT);
 	cur = start & ~(d_size - 1);
