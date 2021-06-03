@@ -7,6 +7,7 @@
 #include <linux/uaccess.h>
 
 #include <asm/cacheflush.h>
+#include <asm/daifflags.h>
 #include <asm/fixmap.h>
 #include <asm/insn.h>
 #include <asm/kprobes.h>
@@ -127,8 +128,11 @@ struct patch_machine_info {
 static int noinstr do_patch_machine(void *arg)
 {
 	struct patch_machine_info *pmi = arg;
+	unsigned long flags;
 	int cpu = smp_processor_id();
 	int ret = 0;
+
+	flags = local_daif_save();
 
 	if (pmi->cpu == cpu) {
 		while (arch_atomic_read(&pmi->active))
@@ -141,6 +145,8 @@ static int noinstr do_patch_machine(void *arg)
 			cpu_relax();
 		isb();
 	}
+
+	local_daif_restore(flags);
 
 	return ret;
 }
