@@ -191,10 +191,21 @@ static void noinstr __panic_unhandled(struct pt_regs *regs, const char *vector,
 	panic("Unhandled exception");
 }
 
-#define UNHANDLED(el, regsize, vector)							\
-asmlinkage void noinstr el##_##regsize##_##vector##_handler(struct pt_regs *regs)	\
+#define ENTRY_HANDLER(elx, ht, regsize, vector, regs)					\
+static __always_inline void 								\
+	__do_el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs);	\
+asmlinkage void noinstr									\
+	el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs)		\
 {											\
-	const char *desc = #regsize "-bit " #el " " #vector;				\
+	__do_el##elx##ht##_##regsize##_##vector##_handler(regs);			\
+}											\
+static __always_inline void 								\
+	__do_el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs)
+
+#define ENTRY_UNHANDLED(elx, ht, regsize, vector)					\
+ENTRY_HANDLER(elx, ht, regsize, vector, regs)						\
+{											\
+	const char *desc = #regsize "-bit el" #elx #ht " " #vector;			\
 	__panic_unhandled(regs, desc, read_sysreg(esr_el1));				\
 }
 
@@ -247,10 +258,10 @@ static bool cortex_a76_erratum_1463225_debug_handler(struct pt_regs *regs)
 }
 #endif /* CONFIG_ARM64_ERRATUM_1463225 */
 
-UNHANDLED(el1t, 64, sync)
-UNHANDLED(el1t, 64, irq)
-UNHANDLED(el1t, 64, fiq)
-UNHANDLED(el1t, 64, error)
+ENTRY_UNHANDLED(1, t, 64, sync)
+ENTRY_UNHANDLED(1, t, 64, irq)
+ENTRY_UNHANDLED(1, t, 64, fiq)
+ENTRY_UNHANDLED(1, t, 64, error)
 
 static void noinstr el1_abort(struct pt_regs *regs, unsigned long esr)
 {
@@ -326,7 +337,7 @@ static void noinstr el1_fpac(struct pt_regs *regs, unsigned long esr)
 	exit_to_kernel_mode(regs);
 }
 
-asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs)
+ENTRY_HANDLER(1, h, 64, sync, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -380,17 +391,17 @@ static void noinstr el1_interrupt(struct pt_regs *regs,
 	exit_el1_irq_or_nmi(regs);
 }
 
-asmlinkage void noinstr el1h_64_irq_handler(struct pt_regs *regs)
+ENTRY_HANDLER(1, h, 64, irq, regs)
 {
 	el1_interrupt(regs, handle_arch_irq);
 }
 
-asmlinkage void noinstr el1h_64_fiq_handler(struct pt_regs *regs)
+ENTRY_HANDLER(1, h, 64, fiq, regs)
 {
 	el1_interrupt(regs, handle_arch_fiq);
 }
 
-asmlinkage void noinstr el1h_64_error_handler(struct pt_regs *regs)
+ENTRY_HANDLER(1, h, 64, error, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -518,7 +529,7 @@ static void noinstr el0_fpac(struct pt_regs *regs, unsigned long esr)
 	do_ptrauth_fault(regs, esr);
 }
 
-asmlinkage void noinstr el0t_64_sync_handler(struct pt_regs *regs)
+ENTRY_HANDLER(0, t, 64, sync, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -589,7 +600,7 @@ static void noinstr __el0_irq_handler_common(struct pt_regs *regs)
 	el0_interrupt(regs, handle_arch_irq);
 }
 
-asmlinkage void noinstr el0t_64_irq_handler(struct pt_regs *regs)
+ENTRY_HANDLER(0, t, 64, irq, regs)
 {
 	__el0_irq_handler_common(regs);
 }
@@ -599,7 +610,7 @@ static void noinstr __el0_fiq_handler_common(struct pt_regs *regs)
 	el0_interrupt(regs, handle_arch_fiq);
 }
 
-asmlinkage void noinstr el0t_64_fiq_handler(struct pt_regs *regs)
+ENTRY_HANDLER(0, t, 64, fiq, regs)
 {
 	__el0_fiq_handler_common(regs);
 }
@@ -616,7 +627,7 @@ static void noinstr __el0_error_handler_common(struct pt_regs *regs)
 	local_daif_restore(DAIF_PROCCTX);
 }
 
-asmlinkage void noinstr el0t_64_error_handler(struct pt_regs *regs)
+ENTRY_HANDLER(0, t, 64, error, regs)
 {
 	__el0_error_handler_common(regs);
 }
@@ -636,7 +647,7 @@ static void noinstr el0_svc_compat(struct pt_regs *regs)
 	do_el0_svc_compat(regs);
 }
 
-asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
+ENTRY_HANDLER(0, t, 32, sync, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -680,25 +691,25 @@ asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
 	}
 }
 
-asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs)
+ENTRY_HANDLER(0, t, 32, irq, regs)
 {
 	__el0_irq_handler_common(regs);
 }
 
-asmlinkage void noinstr el0t_32_fiq_handler(struct pt_regs *regs)
+ENTRY_HANDLER(0, t, 32, fiq, regs)
 {
 	__el0_fiq_handler_common(regs);
 }
 
-asmlinkage void noinstr el0t_32_error_handler(struct pt_regs *regs)
+ENTRY_HANDLER(0, t, 32, error, regs)
 {
 	__el0_error_handler_common(regs);
 }
 #else /* CONFIG_COMPAT */
-UNHANDLED(el0t, 32, sync)
-UNHANDLED(el0t, 32, irq)
-UNHANDLED(el0t, 32, fiq)
-UNHANDLED(el0t, 32, error)
+ENTRY_UNHANDLED(0, t, 32, sync)
+ENTRY_UNHANDLED(0, t, 32, irq)
+ENTRY_UNHANDLED(0, t, 32, fiq)
+ENTRY_UNHANDLED(0, t, 32, error)
 #endif /* CONFIG_COMPAT */
 
 #ifdef CONFIG_VMAP_STACK
