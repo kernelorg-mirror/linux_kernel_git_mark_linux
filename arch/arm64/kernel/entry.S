@@ -474,18 +474,6 @@ SYM_CODE_END(__swpan_exit_el0)
 /* GPRs used by entry code */
 tsk	.req	x28		// current thread_info
 
-/*
- * Interrupt handling.
- */
-	.macro	gic_prio_kentry_setup, tmp:req
-#ifdef CONFIG_ARM64_PSEUDO_NMI
-	alternative_if ARM64_HAS_IRQ_PRIO_MASKING
-	mov	\tmp, #(GIC_PRIO_PSR_I_SET | GIC_PRIO_IRQON)
-	msr_s	SYS_ICC_PMR_EL1, \tmp
-	alternative_else_nop_endif
-#endif
-	.endm
-
 	.text
 
 /*
@@ -589,11 +577,6 @@ SYM_CODE_END(ret_to_kernel)
  * "slow" syscall return path.
  */
 SYM_CODE_START_LOCAL(ret_to_user)
-	disable_daif
-	gic_prio_kentry_setup tmp=x3
-#ifdef CONFIG_TRACE_IRQFLAGS
-	bl	trace_hardirqs_off
-#endif
 	ldr	x19, [tsk, #TSK_TI_FLAGS]
 	and	x2, x19, #_TIF_WORK_MASK
 	cbnz	x2, work_pending

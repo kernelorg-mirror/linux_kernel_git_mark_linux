@@ -195,7 +195,10 @@ static __always_inline void __prepare_el1_entry(struct pt_regs *regs) { }
 static __always_inline void __prepare_el1_return(struct pt_regs *regs) { }
 
 static __always_inline void __prepare_el0_entry(struct pt_regs *regs) { }
-static __always_inline void __prepare_el0_return(struct pt_regs *regs) { }
+static __always_inline void __prepare_el0_return(struct pt_regs *regs)
+{
+	local_daif_mask();
+}
 
 asmlinkage void noinstr prepare_el0_return_from_fork(struct pt_regs *regs)
 {
