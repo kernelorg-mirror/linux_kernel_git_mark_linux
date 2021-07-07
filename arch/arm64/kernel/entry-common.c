@@ -75,7 +75,7 @@ static void noinstr exit_to_kernel_mode(struct pt_regs *regs)
 	}
 }
 
-asmlinkage void noinstr enter_from_user_mode(void)
+static void noinstr enter_from_user_mode(void)
 {
 	lockdep_hardirqs_off(CALLER_ADDR0);
 	CT_WARN_ON(ct_state() != CONTEXT_USER);
@@ -83,7 +83,7 @@ asmlinkage void noinstr enter_from_user_mode(void)
 	trace_hardirqs_off_finish();
 }
 
-asmlinkage void noinstr exit_to_user_mode(void)
+static void noinstr exit_to_user_mode(void)
 {
 	mte_check_tfsr_exit();
 
@@ -197,7 +197,15 @@ static __always_inline void __prepare_el1_return(struct pt_regs *regs) { }
 static __always_inline void __prepare_el0_entry(struct pt_regs *regs) { }
 static __always_inline void __prepare_el0_return(struct pt_regs *regs)
 {
+	unsigned long flags;
+
 	local_daif_mask();
+
+	flags = READ_ONCE(current_thread_info()->flags);
+	if (unlikely(flags & _TIF_WORK_MASK))
+		do_notify_resume(regs, flags);
+
+	exit_to_user_mode();
 }
 
 asmlinkage void noinstr prepare_el0_return_from_fork(struct pt_regs *regs)
