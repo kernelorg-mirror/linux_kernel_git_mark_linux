@@ -191,13 +191,26 @@ static void noinstr __panic_unhandled(struct pt_regs *regs, const char *vector,
 	panic("Unhandled exception");
 }
 
+static __always_inline void __prepare_el1_entry(struct pt_regs *regs) { }
+static __always_inline void __prepare_el1_return(struct pt_regs *regs) { }
+
+static __always_inline void __prepare_el0_entry(struct pt_regs *regs) { }
+static __always_inline void __prepare_el0_return(struct pt_regs *regs) { }
+
+asmlinkage void noinstr prepare_el0_return_from_fork(struct pt_regs *regs)
+{
+	__prepare_el0_return(regs);
+}
+
 #define ENTRY_HANDLER(elx, ht, regsize, vector, regs)					\
 static __always_inline void 								\
 	__do_el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs);	\
 asmlinkage void noinstr									\
 	el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs)		\
 {											\
+	__prepare_el##elx##_entry(regs);						\
 	__do_el##elx##ht##_##regsize##_##vector##_handler(regs);			\
+	__prepare_el##elx##_return(regs);						\
 }											\
 static __always_inline void 								\
 	__do_el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs)

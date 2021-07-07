@@ -57,6 +57,8 @@ asmlinkage void call_on_irq_stack(struct pt_regs *regs,
 				  void (*func)(struct pt_regs *));
 asmlinkage void enter_from_user_mode(void);
 asmlinkage void exit_to_user_mode(void);
+asmlinkage void prepare_el0_return_from_fork(struct pt_regs *regs);
+
 void do_mem_abort(unsigned long far, unsigned int esr, struct pt_regs *regs);
 void do_undefinstr(struct pt_regs *regs);
 void do_bti(struct pt_regs *regs);
