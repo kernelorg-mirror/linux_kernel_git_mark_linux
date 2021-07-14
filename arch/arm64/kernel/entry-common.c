@@ -213,24 +213,55 @@ asmlinkage void noinstr prepare_el0_return_from_fork(struct pt_regs *regs)
 	__prepare_el0_return(regs);
 }
 
-#define ENTRY_HANDLER(elx, ht, regsize, vector, regs)					\
+#define __ENTRY_HANDLER_BODY(elx, ht, regsize, vector, regs, args...)			\
+do {											\
+	__prepare_el##elx##_entry(regs);						\
+	__do_el##elx##ht##_##regsize##_##vector##_handler(regs, ##args);		\
+	__prepare_el##elx##_return(regs);						\
+} while (0)
+
+#define ENTRY_HANDLER_WITH_BODY_ARGS(elx, ht, regsize, vector, regs, body, args...)	\
 static __always_inline void 								\
-	__do_el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs);	\
+	__do_el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs, ##args);\
 asmlinkage void noinstr									\
 	el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs)		\
 {											\
-	__prepare_el##elx##_entry(regs);						\
-	__do_el##elx##ht##_##regsize##_##vector##_handler(regs);			\
-	__prepare_el##elx##_return(regs);						\
+	body(elx, ht, regsize, vector, regs);						\
 }											\
 static __always_inline void 								\
-	__do_el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs)
+	__do_el##elx##ht##_##regsize##_##vector##_handler(struct pt_regs *regs, ##args)
+
+#define ENTRY_HANDLER(elx, ht, regsize, vector, regs)					\
+ENTRY_HANDLER_WITH_BODY_ARGS(elx, ht, regsize, vector, regs, __ENTRY_HANDLER_BODY)
+
+#define __ENTRY_HANDLER_BODY_ESR(elx, ht, regsize, vector, regs)			\
+do {											\
+	unsigned long esr = read_sysreg(esr_el1);					\
+	__ENTRY_HANDLER_BODY(elx, ht, regsize, vector, regs, esr);			\
+} while (0)
+
+#define ENTRY_HANDLER_ESR(elx, ht, regsize, vector, regs, esr)				\
+ENTRY_HANDLER_WITH_BODY_ARGS(elx, ht, regsize, vector, regs,				\
+			     __ENTRY_HANDLER_BODY_ESR,					\
+			     unsigned long esr)
+
+#define __ENTRY_HANDLER_BODY_ESR_FAR(elx, ht, regsize, vector, regs)			\
+do {											\
+	unsigned long esr = read_sysreg(esr_el1);					\
+	unsigned long far = read_sysreg(far_el1);					\
+	__ENTRY_HANDLER_BODY(elx, ht, regsize, vector, regs, esr, far);			\
+} while (0)
+
+#define ENTRY_HANDLER_ESR_FAR(elx, ht, regsize, vector, regs, esr, far)			\
+ENTRY_HANDLER_WITH_BODY_ARGS(elx, ht, regsize, vector, regs,				\
+			     __ENTRY_HANDLER_BODY_ESR_FAR,				\
+			     unsigned long esr, unsigned long far)
 
 #define ENTRY_UNHANDLED(elx, ht, regsize, vector)					\
-ENTRY_HANDLER(elx, ht, regsize, vector, regs)						\
+ENTRY_HANDLER_ESR(elx, ht, regsize, vector, regs, esr)					\
 {											\
 	const char *desc = #regsize "-bit el" #elx #ht " " #vector;			\
-	__panic_unhandled(regs, desc, read_sysreg(esr_el1));				\
+	__panic_unhandled(regs, desc, esr);						\
 }
 
 #ifdef CONFIG_ARM64_ERRATUM_1463225
@@ -358,11 +389,8 @@ static void noinstr el1_fpac(struct pt_regs *regs, unsigned long esr)
 	exit_to_kernel_mode(regs);
 }
 
-ENTRY_HANDLER(1, h, 64, sync, regs)
+ENTRY_HANDLER_ESR_FAR(1, h, 64, sync, regs, esr, far)
 {
-	unsigned long esr = read_sysreg(esr_el1);
-	unsigned long far = read_sysreg(far_el1);
-
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_DABT_CUR:
 	case ESR_ELx_EC_IABT_CUR:
@@ -423,10 +451,8 @@ ENTRY_HANDLER(1, h, 64, fiq, regs)
 	el1_interrupt(regs, handle_arch_fiq);
 }
 
-ENTRY_HANDLER(1, h, 64, error, regs)
+ENTRY_HANDLER_ESR(1, h, 64, error, regs, esr)
 {
-	unsigned long esr = read_sysreg(esr_el1);
-
 	local_daif_restore(DAIF_ERRCTX);
 	arm64_enter_nmi(regs);
 	do_serror(regs, esr);
@@ -546,11 +572,8 @@ static void noinstr el0_fpac(struct pt_regs *regs, unsigned long esr)
 	do_ptrauth_fault(regs, esr);
 }
 
-ENTRY_HANDLER(0, t, 64, sync, regs)
+ENTRY_HANDLER_ESR_FAR(0, t, 64, sync, regs, esr, far)
 {
-	unsigned long esr = read_sysreg(esr_el1);
-	unsigned long far = read_sysreg(far_el1);
-
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC64:
 		el0_svc(regs);
@@ -633,10 +656,9 @@ ENTRY_HANDLER(0, t, 64, fiq, regs)
 	__el0_fiq_handler_common(regs);
 }
 
-static void noinstr __el0_error_handler_common(struct pt_regs *regs)
+static void noinstr __el0_error_handler_common(struct pt_regs *regs,
+					       unsigned long esr)
 {
-	unsigned long esr = read_sysreg(esr_el1);
-
 	enter_from_user_mode();
 	local_daif_restore(DAIF_ERRCTX);
 	arm64_enter_nmi(regs);
@@ -645,9 +667,9 @@ static void noinstr __el0_error_handler_common(struct pt_regs *regs)
 	local_daif_restore(DAIF_PROCCTX);
 }
 
-ENTRY_HANDLER(0, t, 64, error, regs)
+ENTRY_HANDLER_ESR(0, t, 64, error, regs, esr)
 {
-	__el0_error_handler_common(regs);
+	__el0_error_handler_common(regs, esr);
 }
 
 #ifdef CONFIG_COMPAT
@@ -665,11 +687,8 @@ static void noinstr el0_svc_compat(struct pt_regs *regs)
 	do_el0_svc_compat(regs);
 }
 
-ENTRY_HANDLER(0, t, 32, sync, regs)
+ENTRY_HANDLER_ESR_FAR(0, t, 32, sync, regs, esr, far)
 {
-	unsigned long esr = read_sysreg(esr_el1);
-	unsigned long far = read_sysreg(far_el1);
-
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC32:
 		el0_svc_compat(regs);
@@ -720,9 +739,9 @@ ENTRY_HANDLER(0, t, 32, fiq, regs)
 	__el0_fiq_handler_common(regs);
 }
 
-ENTRY_HANDLER(0, t, 32, error, regs)
+ENTRY_HANDLER_ESR(0, t, 32, error, regs, esr)
 {
-	__el0_error_handler_common(regs);
+	__el0_error_handler_common(regs, esr);
 }
 #else /* CONFIG_COMPAT */
 ENTRY_UNHANDLED(0, t, 32, sync)
