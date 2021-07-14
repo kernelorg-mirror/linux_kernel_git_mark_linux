@@ -194,7 +194,11 @@ static void noinstr __panic_unhandled(struct pt_regs *regs, const char *vector,
 static __always_inline void __prepare_el1_entry(struct pt_regs *regs) { }
 static __always_inline void __prepare_el1_return(struct pt_regs *regs) { }
 
-static __always_inline void __prepare_el0_entry(struct pt_regs *regs) { }
+static __always_inline void __prepare_el0_entry(struct pt_regs *regs)
+{
+	enter_from_user_mode();
+}
+
 static __always_inline void __prepare_el0_return(struct pt_regs *regs)
 {
 	unsigned long flags;
@@ -462,7 +466,6 @@ ENTRY_HANDLER_ESR(1, h, 64, error, regs, esr)
 static void noinstr el0_da(struct pt_regs *regs, unsigned long esr,
 			   unsigned long far)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_mem_abort(far, esr, regs);
 }
@@ -478,35 +481,30 @@ static void noinstr el0_ia(struct pt_regs *regs, unsigned long esr,
 	if (!is_ttbr0_addr(far))
 		arm64_apply_bp_hardening();
 
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_mem_abort(far, esr, regs);
 }
 
 static void noinstr el0_fpsimd_acc(struct pt_regs *regs, unsigned long esr)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_fpsimd_acc(esr, regs);
 }
 
 static void noinstr el0_sve_acc(struct pt_regs *regs, unsigned long esr)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_sve_acc(esr, regs);
 }
 
 static void noinstr el0_fpsimd_exc(struct pt_regs *regs, unsigned long esr)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_fpsimd_exc(esr, regs);
 }
 
 static void noinstr el0_sys(struct pt_regs *regs, unsigned long esr)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_sysinstr(esr, regs);
 }
@@ -517,35 +515,30 @@ static void noinstr el0_pc(struct pt_regs *regs, unsigned long esr,
 	if (!is_ttbr0_addr(instruction_pointer(regs)))
 		arm64_apply_bp_hardening();
 
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_sp_pc_abort(far, esr, regs);
 }
 
 static void noinstr el0_sp(struct pt_regs *regs, unsigned long esr)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_sp_pc_abort(regs->sp, esr, regs);
 }
 
 static void noinstr el0_undef(struct pt_regs *regs)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_undefinstr(regs);
 }
 
 static void noinstr el0_bti(struct pt_regs *regs)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_bti(regs);
 }
 
 static void noinstr el0_inv(struct pt_regs *regs, unsigned long esr)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	bad_el0_sync(regs, 0, esr);
 }
@@ -553,21 +546,18 @@ static void noinstr el0_inv(struct pt_regs *regs, unsigned long esr)
 static void noinstr el0_dbg(struct pt_regs *regs, unsigned long esr,
 			    unsigned long far)
 {
-	enter_from_user_mode();
 	do_debug_exception(far, esr, regs);
 	local_daif_restore(DAIF_PROCCTX);
 }
 
 static void noinstr el0_svc(struct pt_regs *regs)
 {
-	enter_from_user_mode();
 	cortex_a76_erratum_1463225_svc_handler();
 	do_el0_svc(regs);
 }
 
 static void noinstr el0_fpac(struct pt_regs *regs, unsigned long esr)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_ptrauth_fault(regs, esr);
 }
@@ -626,8 +616,6 @@ ENTRY_HANDLER_ESR_FAR(0, t, 64, sync, regs, esr, far)
 static void noinstr el0_interrupt(struct pt_regs *regs,
 				  void (*handler)(struct pt_regs *))
 {
-	enter_from_user_mode();
-
 	write_sysreg(DAIF_PROCCTX_NOIRQ, daif);
 
 	if (regs->pc & BIT(55))
@@ -659,7 +647,6 @@ ENTRY_HANDLER(0, t, 64, fiq, regs)
 static void noinstr __el0_error_handler_common(struct pt_regs *regs,
 					       unsigned long esr)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_ERRCTX);
 	arm64_enter_nmi(regs);
 	do_serror(regs, esr);
@@ -675,14 +662,12 @@ ENTRY_HANDLER_ESR(0, t, 64, error, regs, esr)
 #ifdef CONFIG_COMPAT
 static void noinstr el0_cp15(struct pt_regs *regs, unsigned long esr)
 {
-	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_cp15instr(esr, regs);
 }
 
 static void noinstr el0_svc_compat(struct pt_regs *regs)
 {
-	enter_from_user_mode();
 	cortex_a76_erratum_1463225_svc_handler();
 	do_el0_svc_compat(regs);
 }
