@@ -287,10 +287,9 @@ ENTRY_UNHANDLED(1, t, 64, irq)
 ENTRY_UNHANDLED(1, t, 64, fiq)
 ENTRY_UNHANDLED(1, t, 64, error)
 
-static void noinstr el1_abort(struct pt_regs *regs, unsigned long esr)
+static void noinstr el1_abort(struct pt_regs *regs, unsigned long esr,
+			      unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
-
 	enter_from_kernel_mode(regs);
 	local_daif_inherit(regs);
 	do_mem_abort(far, esr, regs);
@@ -298,10 +297,9 @@ static void noinstr el1_abort(struct pt_regs *regs, unsigned long esr)
 	exit_to_kernel_mode(regs);
 }
 
-static void noinstr el1_pc(struct pt_regs *regs, unsigned long esr)
+static void noinstr el1_pc(struct pt_regs *regs, unsigned long esr,
+			   unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
-
 	enter_from_kernel_mode(regs);
 	local_daif_inherit(regs);
 	do_sp_pc_abort(far, esr, regs);
@@ -342,10 +340,9 @@ static void noinstr arm64_exit_el1_dbg(struct pt_regs *regs)
 		lockdep_hardirqs_on(CALLER_ADDR0);
 }
 
-static void noinstr el1_dbg(struct pt_regs *regs, unsigned long esr)
+static void noinstr el1_dbg(struct pt_regs *regs, unsigned long esr,
+			    unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
-
 	arm64_enter_el1_dbg(regs);
 	if (!cortex_a76_erratum_1463225_debug_handler(regs))
 		do_debug_exception(far, esr, regs);
@@ -364,18 +361,19 @@ static void noinstr el1_fpac(struct pt_regs *regs, unsigned long esr)
 ENTRY_HANDLER(1, h, 64, sync, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
+	unsigned long far = read_sysreg(far_el1);
 
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_DABT_CUR:
 	case ESR_ELx_EC_IABT_CUR:
-		el1_abort(regs, esr);
+		el1_abort(regs, esr, far);
 		break;
 	/*
 	 * We don't handle ESR_ELx_EC_SP_ALIGN, since we will have hit a
 	 * recursive exception when trying to push the initial pt_regs.
 	 */
 	case ESR_ELx_EC_PC_ALIGN:
-		el1_pc(regs, esr);
+		el1_pc(regs, esr, far);
 		break;
 	case ESR_ELx_EC_SYS64:
 	case ESR_ELx_EC_UNKNOWN:
@@ -385,7 +383,7 @@ ENTRY_HANDLER(1, h, 64, sync, regs)
 	case ESR_ELx_EC_SOFTSTP_CUR:
 	case ESR_ELx_EC_WATCHPT_CUR:
 	case ESR_ELx_EC_BRK64:
-		el1_dbg(regs, esr);
+		el1_dbg(regs, esr, far);
 		break;
 	case ESR_ELx_EC_FPAC:
 		el1_fpac(regs, esr);
@@ -435,19 +433,17 @@ ENTRY_HANDLER(1, h, 64, error, regs)
 	arm64_exit_nmi(regs);
 }
 
-static void noinstr el0_da(struct pt_regs *regs, unsigned long esr)
+static void noinstr el0_da(struct pt_regs *regs, unsigned long esr,
+			   unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
-
 	enter_from_user_mode();
 	local_daif_restore(DAIF_PROCCTX);
 	do_mem_abort(far, esr, regs);
 }
 
-static void noinstr el0_ia(struct pt_regs *regs, unsigned long esr)
+static void noinstr el0_ia(struct pt_regs *regs, unsigned long esr,
+			   unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
-
 	/*
 	 * We've taken an instruction abort from userspace and not yet
 	 * re-enabled IRQs. If the address is a kernel address, apply
@@ -489,10 +485,9 @@ static void noinstr el0_sys(struct pt_regs *regs, unsigned long esr)
 	do_sysinstr(esr, regs);
 }
 
-static void noinstr el0_pc(struct pt_regs *regs, unsigned long esr)
+static void noinstr el0_pc(struct pt_regs *regs, unsigned long esr,
+			   unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
-
 	if (!is_ttbr0_addr(instruction_pointer(regs)))
 		arm64_apply_bp_hardening();
 
@@ -529,11 +524,9 @@ static void noinstr el0_inv(struct pt_regs *regs, unsigned long esr)
 	bad_el0_sync(regs, 0, esr);
 }
 
-static void noinstr el0_dbg(struct pt_regs *regs, unsigned long esr)
+static void noinstr el0_dbg(struct pt_regs *regs, unsigned long esr,
+			    unsigned long far)
 {
-	/* Only watchpoints write FAR_EL1, otherwise its UNKNOWN */
-	unsigned long far = read_sysreg(far_el1);
-
 	enter_from_user_mode();
 	do_debug_exception(far, esr, regs);
 	local_daif_restore(DAIF_PROCCTX);
@@ -556,16 +549,17 @@ static void noinstr el0_fpac(struct pt_regs *regs, unsigned long esr)
 ENTRY_HANDLER(0, t, 64, sync, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
+	unsigned long far = read_sysreg(far_el1);
 
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC64:
 		el0_svc(regs);
 		break;
 	case ESR_ELx_EC_DABT_LOW:
-		el0_da(regs, esr);
+		el0_da(regs, esr, far);
 		break;
 	case ESR_ELx_EC_IABT_LOW:
-		el0_ia(regs, esr);
+		el0_ia(regs, esr, far);
 		break;
 	case ESR_ELx_EC_FP_ASIMD:
 		el0_fpsimd_acc(regs, esr);
@@ -584,7 +578,7 @@ ENTRY_HANDLER(0, t, 64, sync, regs)
 		el0_sp(regs, esr);
 		break;
 	case ESR_ELx_EC_PC_ALIGN:
-		el0_pc(regs, esr);
+		el0_pc(regs, esr, far);
 		break;
 	case ESR_ELx_EC_UNKNOWN:
 		el0_undef(regs);
@@ -596,7 +590,7 @@ ENTRY_HANDLER(0, t, 64, sync, regs)
 	case ESR_ELx_EC_SOFTSTP_LOW:
 	case ESR_ELx_EC_WATCHPT_LOW:
 	case ESR_ELx_EC_BRK64:
-		el0_dbg(regs, esr);
+		el0_dbg(regs, esr, far);
 		break;
 	case ESR_ELx_EC_FPAC:
 		el0_fpac(regs, esr);
@@ -674,16 +668,17 @@ static void noinstr el0_svc_compat(struct pt_regs *regs)
 ENTRY_HANDLER(0, t, 32, sync, regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
+	unsigned long far = read_sysreg(far_el1);
 
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC32:
 		el0_svc_compat(regs);
 		break;
 	case ESR_ELx_EC_DABT_LOW:
-		el0_da(regs, esr);
+		el0_da(regs, esr, far);
 		break;
 	case ESR_ELx_EC_IABT_LOW:
-		el0_ia(regs, esr);
+		el0_ia(regs, esr, far);
 		break;
 	case ESR_ELx_EC_FP_ASIMD:
 		el0_fpsimd_acc(regs, esr);
@@ -692,7 +687,7 @@ ENTRY_HANDLER(0, t, 32, sync, regs)
 		el0_fpsimd_exc(regs, esr);
 		break;
 	case ESR_ELx_EC_PC_ALIGN:
-		el0_pc(regs, esr);
+		el0_pc(regs, esr, far);
 		break;
 	case ESR_ELx_EC_UNKNOWN:
 	case ESR_ELx_EC_CP14_MR:
@@ -708,7 +703,7 @@ ENTRY_HANDLER(0, t, 32, sync, regs)
 	case ESR_ELx_EC_SOFTSTP_LOW:
 	case ESR_ELx_EC_WATCHPT_LOW:
 	case ESR_ELx_EC_BKPT32:
-		el0_dbg(regs, esr);
+		el0_dbg(regs, esr, far);
 		break;
 	default:
 		el0_inv(regs, esr);
