@@ -709,6 +709,16 @@ SYM_FUNC_END(__secondary_too_slow)
 	dsb	sy
 	.endm
 
+	.macro spin_stuck_in_kernel reason, tmp1, tmp2
+	/* Indicate that this CPU can't boot and is stuck in the kernel */
+	update_early_cpu_boot_status \
+		CPU_STUCK_IN_KERNEL | \reason, \tmp1, \tmp2
+.Lspin_stuck\@:
+	wfe
+	wfi
+	b	.Lspin_stuck\@
+	.endm
+
 /*
  * Enable the MMU.
  *
@@ -746,31 +756,22 @@ SYM_FUNC_START(__cpu_secondary_check52bitva)
 #ifdef CONFIG_ARM64_VA_BITS_52
 	ldr_l	x0, vabits_actual
 	cmp	x0, #52
-	b.ne	2f
+	b.ne	1f
 
 	mrs_s	x0, SYS_ID_AA64MMFR2_EL1
 	and	x0, x0, #(0xf << ID_AA64MMFR2_LVA_SHIFT)
-	cbnz	x0, 2f
-
-	update_early_cpu_boot_status \
-		CPU_STUCK_IN_KERNEL | CPU_STUCK_REASON_52_BIT_VA, x0, x1
-1:	wfe
-	wfi
-	b	1b
-
+	cbz	x0, __no_52_bit_va_support
 #endif
-2:	ret
+1:	ret
 SYM_FUNC_END(__cpu_secondary_check52bitva)
 
 SYM_FUNC_START_LOCAL(__no_granule_support)
-	/* Indicate that this CPU can't boot and is stuck in the kernel */
-	update_early_cpu_boot_status \
-		CPU_STUCK_IN_KERNEL | CPU_STUCK_REASON_NO_GRAN, x1, x2
-1:
-	wfe
-	wfi
-	b	1b
+	spin_stuck_in_kernel CPU_STUCK_REASON_NO_GRAN, x1, x2
 SYM_FUNC_END(__no_granule_support)
+
+SYM_FUNC_START_LOCAL(__no_52_bit_va_support)
+	spin_stuck_in_kernel CPU_STUCK_REASON_52_BIT_VA, x0, x1
+SYM_FUNC_END(__no_52_bit_va_support)
 
 #ifdef CONFIG_RELOCATABLE
 SYM_FUNC_START_LOCAL(__relocate_kernel)
