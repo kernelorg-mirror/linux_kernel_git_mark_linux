@@ -683,6 +683,7 @@ SYM_FUNC_END(__secondary_too_slow)
 	str	\tmp2, [\tmp1]
 	dmb	sy
 	dc	ivac, \tmp1			// Invalidate potentially stale cache line
+	dsb	sy
 	.endm
 
 /*
