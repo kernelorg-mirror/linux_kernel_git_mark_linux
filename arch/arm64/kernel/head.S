@@ -256,11 +256,14 @@ SYM_CODE_END(preserve_boot_args)
 	.endm
 
 /*
- * Setup the initial page tables. We only setup the barest amount which is
- * required to get the kernel running. The following sections are required:
- *   - identity mapping to enable the MMU (low address, TTBR0)
- *   - first few MB of the kernel linear mapping to jump to once the MMU has
- *     been enabled
+ * Setup the initial page tables.
+ *
+ * The idmap page tables map the idmap page in TTBR0, with VA == PA. This
+ * covers the interval [__idmap_text_start, __idmap_text_end - 1]
+ *
+ * The initial kernel page tables map the kernel image in TTBR1, with _text
+ * mapped to VA (KIMAGE_VADDR +  KASLR offset). This covers the interval
+ * [_text, _end - 1]
  */
 SYM_FUNC_START_LOCAL(__create_page_tables)
 	mov	x28, lr
@@ -363,7 +366,7 @@ SYM_FUNC_START_LOCAL(__create_page_tables)
 	map_memory x0, x1, x3, x6, x7, x3, x4, x10, x11, x12, x13, x14
 
 	/*
-	 * Map the kernel image (starting with PHYS_OFFSET).
+	 * Map the kernel image
 	 */
 	adrp	x0, init_pg_dir
 	mov_q	x5, KIMAGE_VADDR		// compile time __va(_text)
