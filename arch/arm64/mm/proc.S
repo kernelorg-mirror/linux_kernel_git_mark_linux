@@ -468,9 +468,8 @@ SYM_FUNC_START(__cpu_setup)
 	sub		x9, xzr, x9
 	add		x9, x9, #64
 	tcr_set_t1sz	tcr, x9
-#else
-	ldr_l		x9, idmap_t0sz
 #endif
+	ldr_l		x9, idmap_t0sz
 	tcr_set_t0sz	tcr, x9
 
 	/*
