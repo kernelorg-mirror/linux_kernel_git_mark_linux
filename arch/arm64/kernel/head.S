@@ -37,8 +37,6 @@
 
 #include "efi-header.S"
 
-#define __PHYS_OFFSET	KERNEL_START
-
 #if (PAGE_OFFSET & 0x1fffff) != 0
 #error PAGE_OFFSET must be at least 2MB aligned
 #endif
@@ -52,7 +50,7 @@
  *   x0 = physical address to the FDT blob.
  *
  * This code is mostly position independent so you call this at
- * __pa(PAGE_OFFSET).
+ * __pa(KERNEL_START).
  *
  * Note that the callee-saved registers are used for storing variables
  * that are useful before the MMU is enabled. The allocations are described
@@ -91,7 +89,7 @@
 SYM_CODE_START(primary_entry)
 	bl	preserve_boot_args
 	bl	init_kernel_el			// w0=cpu_boot_mode
-	adrp	x23, __PHYS_OFFSET
+	adrp	x23, KERNEL_START		// __pa(KERNEL_START)
 	and	x23, x23, MIN_KIMG_ALIGN - 1	// KASLR offset, defaults to 0
 	bl	set_cpu_boot_mode_flag
 	bl	__create_page_tables
@@ -420,7 +418,7 @@ SYM_FUNC_END(__create_page_tables)
 /*
  * The following fragment of code is executed with the MMU enabled.
  *
- *   x0 = __PHYS_OFFSET
+ *   x0 = __pa(KERNEL_START)
  */
 SYM_FUNC_START_LOCAL(__primary_switched)
 	adr_l	x4, init_task
@@ -870,7 +868,7 @@ SYM_FUNC_START_LOCAL(__primary_switch)
 	bl	__relocate_kernel
 #ifdef CONFIG_RANDOMIZE_BASE
 	ldr	x8, =__primary_switched
-	adrp	x0, __PHYS_OFFSET
+	adrp	x0, KERNEL_START		// __pa(KERNEL_START)
 	blr	x8
 
 	/*
@@ -893,6 +891,6 @@ SYM_FUNC_START_LOCAL(__primary_switch)
 #endif
 #endif
 	ldr	x8, =__primary_switched
-	adrp	x0, __PHYS_OFFSET
+	adrp	x0, KERNEL_START		// __pa(KERNEL_START)
 	br	x8
 SYM_FUNC_END(__primary_switch)
