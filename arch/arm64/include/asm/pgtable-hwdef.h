@@ -26,12 +26,16 @@
 #define ARM64_HW_PGTABLE_LEVELS(va_bits) (((va_bits) - 4) / (PAGE_SHIFT - 3))
 
 /*
- * Size mapped by an entry at level n ( 0 <= n <= 3)
- * We map (PAGE_SHIFT - 3) at all translation levels and PAGE_SHIFT bits
- * in the final page. The maximum number of translation levels supported by
- * the architecture is 4. Hence, starting at level n, we have further
- * ((4 - n) - 1) levels of translation excluding the offset within the page.
- * So, the total number of bits mapped by an entry at level n is :
+ * Size mapped by an entry at level n (0 <= n <= 3)
+ *
+ * We map PAGE_SHIFT bits within the final page, and each level of translation
+ * table above this maps (PAGE_SHIFT - 3) bits, with the root level potentially
+ * being truncated to fewer bits. The maximum number of translation levels
+ * supported by the architecture is 4.
+ *
+ * Hence, starting at level n, we have further ((4 - n) - 1) levels of
+ * translation excluding the offset within the page. So, the total number of
+ * bits mapped by an entry at level n is:
  *
  *  ((4 - n) - 1) * (PAGE_SHIFT - 3) + PAGE_SHIFT
  *
@@ -40,7 +44,31 @@
  */
 #define ARM64_HW_PGTABLE_LEVEL_SHIFT(n)	((PAGE_SHIFT - 3) * (4 - (n)) + 3)
 
-#define PTRS_PER_PTE		(1 << (PAGE_SHIFT - 3))
+/*
+ * MIN(a, b) that can be used by both C and assembly code.
+ *
+ * The assembler doesn't support ternary integer expressions, and its boolean
+ * comparisons return `-1` for success ratehr than `1` as for the C compiler.
+ */
+#define ASM_SAFE_MIN(a, b) \
+	(((((a) <= (b)) & 1) * (a)) + ((((b) < (a)) & 1) * (b)))
+
+/*
+ * Number of bits translated by a table at level n (0 <= n <= 3)
+ *
+ * We map PAGE_SHIFT bits within the final page, and each level of translation
+ * table above this maps (PAGE_SHIFT - 3) bits, with the root level potentially
+ * being truncated depending on the number of VA bits.
+ *
+ * Hence the number of bits translated at level n is:
+ *
+ * min(PAGE_SHIFT - 3, va_bits - ARM64_HW_PGTABLE_LEVEL_SHIFT(n))
+ */
+#define ARM64_HW_PGTABLE_LEVEL_IDX_BITS(va_bits, n) \
+	ASM_SAFE_MIN(PAGE_SHIFT - 3, va_bits - ARM64_HW_PGTABLE_LEVEL_SHIFT(n))
+
+#define PTE_IDX_BITS		ARM64_HW_PGTABLE_LEVEL_IDX_BITS(VA_BITS, 3)
+#define PTRS_PER_PTE		(1 << PTE_IDX_BITS)
 
 /*
  * PMD_SHIFT determines the size a level 2 page table entry can map.
@@ -49,7 +77,8 @@
 #define PMD_SHIFT		ARM64_HW_PGTABLE_LEVEL_SHIFT(2)
 #define PMD_SIZE		(_AC(1, UL) << PMD_SHIFT)
 #define PMD_MASK		(~(PMD_SIZE-1))
-#define PTRS_PER_PMD		PTRS_PER_PTE
+#define PMD_IDX_BITS		ARM64_HW_PGTABLE_LEVEL_IDX_BITS(VA_BITS, 2)
+#define PTRS_PER_PMD		(1 << PMD_IDX_BITS)
 #endif
 
 /*
@@ -59,17 +88,20 @@
 #define PUD_SHIFT		ARM64_HW_PGTABLE_LEVEL_SHIFT(1)
 #define PUD_SIZE		(_AC(1, UL) << PUD_SHIFT)
 #define PUD_MASK		(~(PUD_SIZE-1))
-#define PTRS_PER_PUD		PTRS_PER_PTE
+#define PUD_IDX_BITS		ARM64_HW_PGTABLE_LEVEL_IDX_BITS(VA_BITS, 1)
+#define PTRS_PER_PUD		(1 << PUD_IDX_BITS)
 #endif
 
 /*
  * PGDIR_SHIFT determines the size a top-level page table entry can map
  * (depending on the configuration, this level can be 0, 1 or 2).
  */
-#define PGDIR_SHIFT		ARM64_HW_PGTABLE_LEVEL_SHIFT(4 - CONFIG_PGTABLE_LEVELS)
+#define PGDIR_LEVEL		(4 - CONFIG_PGTABLE_LEVELS)
+#define PGDIR_SHIFT		ARM64_HW_PGTABLE_LEVEL_SHIFT(PGDIR_LEVEL)
 #define PGDIR_SIZE		(_AC(1, UL) << PGDIR_SHIFT)
 #define PGDIR_MASK		(~(PGDIR_SIZE-1))
-#define PTRS_PER_PGD		(1 << (VA_BITS - PGDIR_SHIFT))
+#define PGDIR_IDX_BITS		ARM64_HW_PGTABLE_LEVEL_IDX_BITS(VA_BITS, PGDIR_LEVEL)
+#define PTRS_PER_PGD		(1 << PGDIR_IDX_BITS)
 
 /*
  * Contiguous page definitions.
