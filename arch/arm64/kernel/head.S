@@ -95,6 +95,7 @@ SYM_CODE_START(primary_entry)
 	bl	__detect_vabits
 	bl	__create_idmap_tables
 	bl	__create_kernel_tables
+	bl	__cpu_check_mmu_support
 	/*
 	 * The following calls CPU setup code, see arch/arm64/mm/proc.S for
 	 * details.
@@ -657,7 +658,7 @@ SYM_FUNC_START_LOCAL(secondary_startup)
 	 * Common entry point for secondary CPUs.
 	 */
 	bl	switch_to_vhe
-	bl	__cpu_secondary_check52bitva
+	bl	__cpu_check_mmu_support
 	bl	__cpu_setup			// initialise processor
 	adrp	x1, swapper_pg_dir
 	bl	__enable_mmu
@@ -732,12 +733,6 @@ SYM_FUNC_END(__secondary_too_slow)
  * If it isn't, park the CPU
  */
 SYM_FUNC_START(__enable_mmu)
-	mrs	x2, ID_AA64MMFR0_EL1
-	ubfx	x2, x2, #ID_AA64MMFR0_TGRAN_SHIFT, 4
-	cmp     x2, #ID_AA64MMFR0_TGRAN_SUPPORTED_MIN
-	b.lt    __no_granule_support
-	cmp     x2, #ID_AA64MMFR0_TGRAN_SUPPORTED_MAX
-	b.gt    __no_granule_support
 	update_early_cpu_boot_status 0, x2, x3
 	adrp	x2, idmap_pg_dir
 	phys_to_ttbr x1, x1
@@ -752,18 +747,38 @@ SYM_FUNC_START(__enable_mmu)
 	ret
 SYM_FUNC_END(__enable_mmu)
 
-SYM_FUNC_START(__cpu_secondary_check52bitva)
+	.macro check_mmu_tgran tmp
+	mrs	\tmp, ID_AA64MMFR0_EL1
+	ubfx	\tmp, \tmp, #ID_AA64MMFR0_TGRAN_SHIFT, 4
+	cmp     \tmp, #ID_AA64MMFR0_TGRAN_SUPPORTED_MIN
+	b.lt    __no_granule_support
+	cmp     \tmp, #ID_AA64MMFR0_TGRAN_SUPPORTED_MAX
+	b.gt    __no_granule_support
+	.endm
+
+	.macro check_mmu_52_bit_va tmp
 #ifdef CONFIG_ARM64_VA_BITS_52
-	ldr_l	x0, vabits_actual
-	cmp	x0, #52
-	b.ne	1f
+	ldr_l	\tmp, vabits_actual
+	cmp	\tmp, #52
+	b.ne	.Lskip_mmu_check\@
 
 	mrs_s	x0, SYS_ID_AA64MMFR2_EL1
 	and	x0, x0, #(0xf << ID_AA64MMFR2_LVA_SHIFT)
 	cbz	x0, __no_52_bit_va_support
+.Lskip_mmu_check\@:
 #endif
-1:	ret
-SYM_FUNC_END(__cpu_secondary_check52bitva)
+	.endm
+
+/*
+ * Check that this CPU's MMU supports the features necessary to safely enable
+ * the MMU with the idmap and kernel page tables, parkign rthe CPU in a spin
+ * loop if any required features are missing.
+ */
+SYM_FUNC_START(__cpu_check_mmu_support)
+	check_mmu_tgran	x0
+	check_mmu_52_bit_va x0
+	ret
+SYM_FUNC_END(__cpu_check_mmu_support)
 
 SYM_FUNC_START_LOCAL(__no_granule_support)
 	spin_stuck_in_kernel CPU_STUCK_REASON_NO_GRAN, x1, x2
