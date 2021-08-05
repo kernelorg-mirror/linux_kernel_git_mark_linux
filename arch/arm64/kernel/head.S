@@ -123,27 +123,40 @@ SYM_CODE_START_LOCAL(preserve_boot_args)
 	b	dcache_inval_poc		// tail call
 SYM_CODE_END(preserve_boot_args)
 
+
 /*
- * Macro to create a table entry to the next page.
+ * Write to a page table entry
  *
- *	tbl:	page table address
- *	virt:	virtual address
- *	shift:	#imm page table shift
- *	ptrs:	#imm pointers per table page
+ * 	ptep:	PA of the page table entry
+ * 	phys:	PA to encode into the entry
+ * 	flags:	non-address bits to encode into the entry
  *
- * Preserves:	virt
- * Corrupts:	ptrs, tmp1, tmp2
- * Returns:	tbl -> next level table page address
+ * Preserves: ptep, phys, flags
+ * Corrupts: tmp
  */
-	.macro	create_table_entry, tbl, virt, shift, ptrs, tmp1, tmp2
-	add	\tmp1, \tbl, #PAGE_SIZE
-	phys_to_pte \tmp2, \tmp1
-	orr	\tmp2, \tmp2, #PMD_TYPE_TABLE	// address of next table and entry type
-	lsr	\tmp1, \virt, #\shift
-	sub	\ptrs, \ptrs, #1
-	and	\tmp1, \tmp1, \ptrs		// table index
-	str	\tmp2, [\tbl, \tmp1, lsl #3]
-	add	\tbl, \tbl, #PAGE_SIZE		// next level table page
+	.macro write_pte ptep, phys, flags, tmp
+	phys_to_pte	\tmp, \phys
+	orr		\tmp, \flags
+	str		\tmp, [\ptep]
+	.endm
+
+/*
+ * Write to a page table entry offset within a table
+ *
+ * 	tbl:	PA of the start of the table
+ * 	phys:	PA to encode into the entry
+ * 	flags:	Non-address bits to encode into the entry
+ * 	virt:	VA the entry should correspond to
+ * 	ptrs:	#imm the number of entries in the table
+ *
+ * Preserves: ptep, phys, flags, virt, shift
+ * Corrupts: tmp1, tmp2
+ */
+	.macro write_pte_offset tbl, phys, flags, virt, shift, ptrs, tmp1, tmp2
+	lsr	\tmp1, \virt, \shift
+	and	\tmp1, \tmp1, #(\ptrs - 1)
+	add	\tmp1, \tbl, \tmp1, lsl #3
+	write_pte \tmp1, \phys, \flags, \tmp2
 	.endm
 
 /*
@@ -267,8 +280,6 @@ SYM_FUNC_START_LOCAL(__create_idmap_tables)
 	adrp	x0, idmap_pg_dir
 	adrp	x3, __idmap_text_start		// __pa(__idmap_text_start)
 
-	mov	x7, SWAPPER_MM_MMUFLAGS
-
 	/*
 	 * VA_BITS may be too small to allow for an ID mapping to be created
 	 * that covers system RAM if that is located sufficiently high in the
@@ -305,9 +316,10 @@ SYM_FUNC_START_LOCAL(__create_idmap_tables)
 #if VA_BITS != EXTRA_SHIFT
 #error "Mismatch between VA_BITS and page size/number of translation levels"
 #endif
-
 	mov	x4, EXTRA_PTRS
-	create_table_entry x0, x3, EXTRA_SHIFT, x4, x5, x6
+	add	x1, x0, #PAGE_SIZE
+	write_pte_offset x0, x1, PMD_TYPE_TABLE, x1, EXTRA_SHIFT, EXTRA_PTRS, x5, x6, x7
+	add	x0, x0, #PAGE_SIZE
 #else
 	/*
 	 * If VA_BITS == 48, we don't have to configure an additional
@@ -319,6 +331,7 @@ SYM_FUNC_START_LOCAL(__create_idmap_tables)
 1:
 	ldr_l	x4, idmap_ptrs_per_pgd
 	adr_l	x6, __idmap_text_end		// __pa(__idmap_text_end)
+	mov	x7, SWAPPER_MM_MMUFLAGS
 
 	map_memory x0, x1, x3, x6, x7, x3, x4, x10, x11, x12, x13, x14
 
