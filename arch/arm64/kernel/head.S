@@ -148,22 +148,22 @@ SYM_CODE_END(preserve_boot_args)
  * or last level entries pointing to physical memory.
  *
  *	tbl:	page table address
- *	rtbl:	pointer to page table or physical memory
+ *	phys:	pointer to page table or physical memory
  *	istart:	index of start of range to populate (inclusive)
  *	iend:	index of end of range to populate (exclusive)
  *	flags:	flags for pagetable entry to or in
- *	inc:	increment to rtbl between each entry
+ *	inc:	increment to phys between each entry
  *	tmp1:	temporary variable
  *
  * Preserves:	tbl, iend, flags, inc
  * Corrupts:	istart, tmp1
- * Returns:	rtbl
+ * Returns:	phys
  */
-	.macro populate_entries, tbl, rtbl, istart, iend, flags, inc, tmp1
-.Lpe\@:	phys_to_pte \tmp1, \rtbl
+	.macro populate_entries, tbl, phys, istart, iend, flags, inc, tmp1
+.Lpe\@:	phys_to_pte \tmp1, \phys
 	orr	\tmp1, \tmp1, \flags	// tmp1 = table entry
 	str	\tmp1, [\tbl, \istart, lsl #3]
-	add	\rtbl, \rtbl, \inc	// rtbl = pa next level
+	add	\phys, \phys, \inc	// phys = pa next level
 	add	\istart, \istart, #1
 	cmp	\istart, \iend
 	b.ls	.Lpe\@
