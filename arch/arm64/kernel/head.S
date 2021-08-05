@@ -144,28 +144,30 @@ SYM_CODE_END(preserve_boot_args)
 	.endm
 
 /*
- * Macro to populate page table entries, these entries can be pointers to the next level
- * or last level entries pointing to physical memory.
+ * Populate a span of adjacent page tables with entries. For non-leaf levels,
+ * each entry points to a table in a span of adjacent page tables at the next
+ * level. For the leaf level these entries point to a span of physical memory
+ * being mapped.
  *
- *	tbl:	page table address
- *	rtbl:	pointer to page table or physical memory
- *	index:	start index to write
- *	eindex:	end index to write - [index, eindex] written to
- *	flags:	flags for pagetable entry to or in
- *	inc:	increment to rtbl between each entry
+ *	tbl:	physical address of the first table in this span
+ *	phys:	physical address of memory or next-level table span
+ *	istart:	index of the first entry to write
+ *	iend:	index of the last entry to write - [index, eindex] written to
+ *	flags:	bits to set in each page table entry
+ *	inc:	increment to phys between each entry
  *	tmp1:	temporary variable
  *
- * Preserves:	tbl, eindex, flags, inc
- * Corrupts:	index, tmp1
- * Returns:	rtbl
+ * Preserves:	tbl, iend, flags, inc
+ * Corrupts:	istart, tmp1
+ * Returns:	phys
  */
-	.macro populate_entries, tbl, rtbl, index, eindex, flags, inc, tmp1
-.Lpe\@:	phys_to_pte \tmp1, \rtbl
+	.macro populate_entries, tbl, phys, istart, iend, flags, inc, tmp1
+.Lpe\@:	phys_to_pte \tmp1, \phys
 	orr	\tmp1, \tmp1, \flags	// tmp1 = table entry
-	str	\tmp1, [\tbl, \index, lsl #3]
-	add	\rtbl, \rtbl, \inc	// rtbl = pa next level
-	add	\index, \index, #1
-	cmp	\index, \eindex
+	str	\tmp1, [\tbl, \istart, lsl #3]
+	add	\phys, \phys, \inc
+	add	\istart, \istart, #1
+	cmp	\istart, \iend
 	b.ls	.Lpe\@
 	.endm
 
