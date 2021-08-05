@@ -149,23 +149,23 @@ SYM_CODE_END(preserve_boot_args)
  *
  *	tbl:	page table address
  *	rtbl:	pointer to page table or physical memory
- *	index:	start index to write
- *	eindex:	end index to write - [index, eindex] written to
+ *	istart:	index of start of range to populate (inclusive)
+ *	iend:	index of end of range to populate (exclusive)
  *	flags:	flags for pagetable entry to or in
  *	inc:	increment to rtbl between each entry
  *	tmp1:	temporary variable
  *
- * Preserves:	tbl, eindex, flags, inc
- * Corrupts:	index, tmp1
+ * Preserves:	tbl, iend, flags, inc
+ * Corrupts:	istart, tmp1
  * Returns:	rtbl
  */
-	.macro populate_entries, tbl, rtbl, index, eindex, flags, inc, tmp1
+	.macro populate_entries, tbl, rtbl, istart, iend, flags, inc, tmp1
 .Lpe\@:	phys_to_pte \tmp1, \rtbl
 	orr	\tmp1, \tmp1, \flags	// tmp1 = table entry
-	str	\tmp1, [\tbl, \index, lsl #3]
+	str	\tmp1, [\tbl, \istart, lsl #3]
 	add	\rtbl, \rtbl, \inc	// rtbl = pa next level
-	add	\index, \index, #1
-	cmp	\index, \eindex
+	add	\istart, \istart, #1
+	cmp	\istart, \iend
 	b.ls	.Lpe\@
 	.endm
 
@@ -174,8 +174,8 @@ SYM_CODE_END(preserve_boot_args)
  * were needed in the previous page table level then the next page table level is assumed
  * to be composed of multiple pages. (This effectively scales the end index).
  *
- *	vstart:	virtual address of start of range
- *	vend:	virtual address of end of range
+ *	vstart:	virtual address of start of range (inclusive)
+ *	vend:	virtual address of end of range (exclusive)
  *	shift:	shift used to transform virtual address into index
  *	ptrs:	number of entries in page table
  *	istart:	index in table corresponding to vstart
@@ -212,8 +212,8 @@ SYM_CODE_END(preserve_boot_args)
  *
  *	tbl:	location of page table
  *	rtbl:	address to be used for first level page table entry (typically tbl + PAGE_SIZE)
- *	vstart:	start address to map
- *	vend:	end address to map - we map [vstart, vend]
+ *	vstart:	virtual address of start of mapping (inclusive)
+ *	vend:	virtual address of start of mapping (exclusive)
  *	flags:	flags to use to map last level entries
  *	phys:	physical address corresponding to vstart - physical memory is contiguous
  *	pgds:	the number of pgd entries
