@@ -189,20 +189,23 @@ SYM_CODE_END(preserve_boot_args)
  * Preserves:	vstart, vend, shift, ptrs
  * Returns:	istart, iend, count
  */
-	.macro compute_indices, vstart, vend, shift, ptrs, istart, iend, count
+	.macro compute_indices, vstart, vend, shift, ptrs, istart, iend, count, tmp
+	// iend = (vend >> shift) & (ptrs - 1)
 	lsr	\iend, \vend, \shift
-	mov	\istart, \ptrs
-	sub	\istart, \istart, #1
-	and	\iend, \iend, \istart	// iend = (vend >> shift) & (ptrs - 1)
-	mov	\istart, \ptrs
-	mul	\istart, \istart, \count
-	add	\iend, \iend, \istart	// iend += count * ptrs
-					// our entries span multiple tables
+	mov	\tmp, \ptrs
+	sub	\tmp, \tmp, #1
+	and	\iend, \iend, \tmp
 
+	// iend += count * ptrs
+	// our entries span multiple tables
+	mov	\tmp, \ptrs
+	madd	\iend, \count, \tmp, \iend
+
+	// istart = (vend >> shift) & (ptrs - 1)
 	lsr	\istart, \vstart, \shift
-	mov	\count, \ptrs
-	sub	\count, \count, #1
-	and	\istart, \istart, \count
+	mov	\tmp, \ptrs
+	sub	\tmp, \tmp, #1
+	and	\istart, \istart, \tmp
 
 	sub	\count, \iend, \istart
 	.endm
@@ -229,25 +232,25 @@ SYM_CODE_END(preserve_boot_args)
 	add \rtbl, \tbl, #PAGE_SIZE
 	mov \sv, \rtbl
 	mov \count, #0
-	compute_indices \vstart, \vend, #PGDIR_SHIFT, \pgds, \istart, \iend, \count
+	compute_indices \vstart, \vend, #PGDIR_SHIFT, \pgds, \istart, \iend, \count, \tmp
 	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp
 	mov \tbl, \sv
 	mov \sv, \rtbl
 
 #if SWAPPER_PGTABLE_LEVELS > 3
-	compute_indices \vstart, \vend, #PUD_SHIFT, #PTRS_PER_PUD, \istart, \iend, \count
+	compute_indices \vstart, \vend, #PUD_SHIFT, #PTRS_PER_PUD, \istart, \iend, \count, \tmp
 	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp
 	mov \tbl, \sv
 	mov \sv, \rtbl
 #endif
 
 #if SWAPPER_PGTABLE_LEVELS > 2
-	compute_indices \vstart, \vend, #SWAPPER_TABLE_SHIFT, #PTRS_PER_PMD, \istart, \iend, \count
+	compute_indices \vstart, \vend, #SWAPPER_TABLE_SHIFT, #PTRS_PER_PMD, \istart, \iend, \count, \tmp
 	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp
 	mov \tbl, \sv
 #endif
 
-	compute_indices \vstart, \vend, #SWAPPER_BLOCK_SHIFT, #PTRS_PER_PTE, \istart, \iend, \count
+	compute_indices \vstart, \vend, #SWAPPER_BLOCK_SHIFT, #PTRS_PER_PTE, \istart, \iend, \count, \tmp
 	bic \count, \phys, #SWAPPER_BLOCK_SIZE - 1
 	populate_entries \tbl, \count, \istart, \iend, \flags, #SWAPPER_BLOCK_SIZE, \tmp
 	.endm
