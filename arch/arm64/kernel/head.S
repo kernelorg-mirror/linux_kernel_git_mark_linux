@@ -225,7 +225,7 @@ SYM_CODE_END(preserve_boot_args)
  *
  * Temporaries:	istart, iend, tmp, count, sv - these need to be different registers
  * Preserves:	vstart, flags
- * Corrupts:	tbl, rtbl, vend, istart, iend, tmp, count, sv
+ * Corrupts:	tbl, rtbl, vend, phys, istart, iend, tmp, count, sv
  */
 	.macro map_memory, tbl, rtbl, vstart, vend, flags, phys, pgds, istart, iend, tmp, count, sv
 	sub \vend, \vend, #1
@@ -251,8 +251,8 @@ SYM_CODE_END(preserve_boot_args)
 #endif
 
 	compute_indices \vstart, \vend, #SWAPPER_BLOCK_SHIFT, #PTRS_PER_PTE, \istart, \iend, \count, \tmp
-	bic \count, \phys, #SWAPPER_BLOCK_SIZE - 1
-	populate_entries \tbl, \count, \istart, \iend, \flags, #SWAPPER_BLOCK_SIZE, \tmp
+	bic \phys, \phys, #SWAPPER_BLOCK_SIZE - 1
+	populate_entries \tbl, \phys, \istart, \iend, \flags, #SWAPPER_BLOCK_SIZE, \tmp
 	.endm
 
 /*
