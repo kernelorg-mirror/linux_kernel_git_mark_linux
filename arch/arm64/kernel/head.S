@@ -160,6 +160,8 @@ SYM_CODE_END(preserve_boot_args)
 	.endm
 
 /*
+ * Populate page table entries for a span of adjacent tables.
+ *
  * Macro to populate page table entries, these entries can be pointers to the next level
  * or last level entries pointing to physical memory.
  *
@@ -203,6 +205,7 @@ SYM_CODE_END(preserve_boot_args)
  * Preserves:	vstart, vend, shift, ptrs
  * Returns:	istart, iend, count
  */
+#if 0
 	.macro compute_indices, vstart, vend, shift, ptrs, istart, iend, count, tmp
 	// iend = (vend >> shift) & (ptrs - 1)
 	lsr	\iend, \vend, \shift
@@ -223,6 +226,25 @@ SYM_CODE_END(preserve_boot_args)
 
 	sub	\count, \iend, \istart
 	.endm
+#else
+	.macro compute_indices, vstart, vend, shift, ptrs, istart, iend, count, tmp
+
+	// Absolute indices
+	lsr	\istart, \vstart, \shift
+	lsr	\iend, \vend, \shift
+
+	// Number of entries minus 1
+	sub	\count, \iend, \istart
+
+	// Index within first table page
+	mov	\tmp, \ptrs
+	sub	\tmp, \tmp, #1
+	and	\istart, \istart, \tmp
+
+	// Index from first table page
+	add	\iend, \istart, \count
+	.endm
+#endif
 
 /*
  * Map memory for specified virtual address range. Each level of page table needed supports
