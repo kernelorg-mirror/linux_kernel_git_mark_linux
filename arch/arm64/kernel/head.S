@@ -172,42 +172,37 @@ SYM_CODE_END(preserve_boot_args)
 	.endm
 
 /*
- * Compute indices of table entries from virtual address range. If multiple entries
- * were needed in the previous page table level then the next page table level is assumed
- * to be composed of multiple pages. (This effectively scales the end index).
+ * Compute indices of page table entries for a virtual address range within a
+ * span of adjacent page tables. The number of tables in the span is equal to
+ * the number of entries required at the previous level. The indices are
+ * relative to the first table within the span.
  *
  *	vstart:	virtual address of start of range
  *	vend:	virtual address of end of range - we map [vstart, vend]
  *	shift:	shift used to transform virtual address into index
- *	ptrs:	number of entries in page table
- *	istart:	index in table corresponding to vstart
- *	iend:	index in table corresponding to vend
- *	count:	On entry: how many extra entries were required in previous level, scales
- *			  our end index.
- *		On exit: returns how many extra entries required for next page table level
+ *	ptrs:	number of entries in a single page table
+ *	istart:	index in the span corresponding to vstart
+ *	iend:	index in the span corresponding to vend
  *
  * Preserves:	vstart, vend, shift, ptrs
- * Returns:	istart, iend, count
+ * Corrupts:	tmp1, tmp2
+ * Returns:	istart, iend
  */
-	.macro compute_indices, vstart, vend, shift, ptrs, istart, iend, count, tmp
-	// iend = (vend >> shift) & (ptrs - 1)
+	.macro compute_indices, vstart, vend, shift, ptrs, istart, iend, tmp1, tmp2
+	// absolute indices
 	lsr	\iend, \vend, \shift
-	mov	\tmp, \ptrs
-	sub	\tmp, \tmp, #1
-	and	\iend, \iend, \tmp
-
-	// iend += count * ptrs
-	// our entries span multiple tables
-	mov	\tmp, \ptrs
-	madd	\iend, \count, \tmp, \iend
-
-	// istart = (vend >> shift) & (ptrs - 1)
 	lsr	\istart, \vstart, \shift
-	mov	\tmp, \ptrs
-	sub	\tmp, \tmp, #1
-	and	\istart, \istart, \tmp
 
-	sub	\count, \iend, \istart
+	// offset between start and end indices
+	sub	\tmp1, \iend, \istart
+
+	// istart relative to start of span
+	mov	\tmp2, \ptrs
+	sub	\tmp2, \tmp2, #1
+	and	\istart, \istart, \tmp2
+
+	// iend relative to start of span
+	add	\iend, \istart, \tmp1
 	.endm
 
 /*
@@ -227,32 +222,31 @@ SYM_CODE_END(preserve_boot_args)
  * Preserves:	vstart, flags
  * Corrupts:	tbl, rtbl, vend, phys, istart, iend, tmp, count, sv
  */
-	.macro map_memory, tbl, rtbl, vstart, vend, flags, phys, pgds, istart, iend, tmp, count, sv
+	.macro map_memory, tbl, rtbl, vstart, vend, flags, phys, pgds, istart, iend, tmp1, tmp2, sv
 	sub \vend, \vend, #1
 	add \rtbl, \tbl, #PAGE_SIZE
 	mov \sv, \rtbl
-	mov \count, #0
-	compute_indices \vstart, \vend, #PGDIR_SHIFT, \pgds, \istart, \iend, \count, \tmp
-	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp
+	compute_indices \vstart, \vend, #PGDIR_SHIFT, \pgds, \istart, \iend, \tmp1, \tmp2
+	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp1
 	mov \tbl, \sv
 	mov \sv, \rtbl
 
 #if SWAPPER_PGTABLE_LEVELS > 3
-	compute_indices \vstart, \vend, #PUD_SHIFT, #PTRS_PER_PUD, \istart, \iend, \count, \tmp
-	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp
+	compute_indices \vstart, \vend, #PUD_SHIFT, #PTRS_PER_PUD, \istart, \iend, \tmp1, \tmp2
+	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp1
 	mov \tbl, \sv
 	mov \sv, \rtbl
 #endif
 
 #if SWAPPER_PGTABLE_LEVELS > 2
-	compute_indices \vstart, \vend, #SWAPPER_TABLE_SHIFT, #PTRS_PER_PMD, \istart, \iend, \count, \tmp
-	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp
+	compute_indices \vstart, \vend, #SWAPPER_TABLE_SHIFT, #PTRS_PER_PMD, \istart, \iend, \tmp1, \tmp2
+	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp1
 	mov \tbl, \sv
 #endif
 
-	compute_indices \vstart, \vend, #SWAPPER_BLOCK_SHIFT, #PTRS_PER_PTE, \istart, \iend, \count, \tmp
+	compute_indices \vstart, \vend, #SWAPPER_BLOCK_SHIFT, #PTRS_PER_PTE, \istart, \iend, \tmp1, \tmp2
 	bic \phys, \phys, #SWAPPER_BLOCK_SIZE - 1
-	populate_entries \tbl, \phys, \istart, \iend, \flags, #SWAPPER_BLOCK_SIZE, \tmp
+	populate_entries \tbl, \phys, \istart, \iend, \flags, #SWAPPER_BLOCK_SIZE, \tmp1
 	.endm
 
 /*
