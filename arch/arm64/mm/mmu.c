@@ -6,37 +6,32 @@
  * Copyright (C) 2012 ARM Ltd.
  */
 
+#include <linux/bug.h>
 #include <linux/cache.h>
-#include <linux/export.h>
-#include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/export.h>
+#include <linux/fs.h>
 #include <linux/init.h>
-#include <linux/ioport.h>
-#include <linux/kexec.h>
+#include <linux/kernel.h>
 #include <linux/libfdt.h>
-#include <linux/mman.h>
-#include <linux/nodemask.h>
 #include <linux/memblock.h>
 #include <linux/memory.h>
-#include <linux/fs.h>
-#include <linux/io.h>
 #include <linux/mm.h>
-#include <linux/vmalloc.h>
 #include <linux/set_memory.h>
+#include <linux/sizes.h>
+#include <linux/vmalloc.h>
 
 #include <asm/barrier.h>
-#include <asm/cputype.h>
+#include <asm/cpufeature.h>
 #include <asm/fixmap.h>
 #include <asm/kasan.h>
 #include <asm/kernel-pgtable.h>
-#include <asm/sections.h>
-#include <asm/setup.h>
-#include <linux/sizes.h>
-#include <asm/tlb.h>
 #include <asm/mmu_context.h>
-#include <asm/ptdump.h>
-#include <asm/tlbflush.h>
 #include <asm/pgalloc.h>
+#include <asm/ptdump.h>
+#include <asm/sections.h>
+#include <asm/sysreg.h>
+#include <asm/tlbflush.h>
 
 #define NO_BLOCK_MAPPINGS	BIT(0)
 #define NO_CONT_MAPPINGS	BIT(1)
