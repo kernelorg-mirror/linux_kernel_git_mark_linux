@@ -12,6 +12,20 @@
 #include <asm/sparsemem.h>
 
 /*
+ * The number of entries required to map [vstart, vend - 1] at a given level of
+ * table.
+ */
+#define SPAN_TABLE_ENTRIES(vstart, vend, shift) \
+	((((vend) - 1) >> (shift)) - ((vstart) >> (shift)) + 1)
+
+#define SPAN_PGD_ENTRIES(vstart, vend) \
+	SPAN_TABLE_ENTRIES(vstart, vend, PGDIR_SHIFT)
+#define SPAN_PUD_ENTRIES(vstart, vend) \
+	SPAN_TABLE_ENTRIES(vstart, vend, PUD_SHIFT)
+#define SPAN_PMD_ENTRIES(vstart, vend) \
+	SPAN_TABLE_ENTRIES(vstart, vend, PMD_SHIFT)
+
+/*
  * The linear mapping and the start of memory are both 2M aligned (per
  * the arm64 booting.txt requirements). Hence we can use section mapping
  * with 4K (section size = 2M) but not with 16K (section size = 32M) or
@@ -65,22 +79,19 @@
 #define INIT_KASLR_PAGES	(0)
 #endif
 
-#define INIT_TABLE_ENTRIES(vstart, vend, shift) \
-	((((vend) - 1) >> (shift)) - ((vstart) >> (shift)) + 1 + INIT_KASLR_PAGES)
-
 #define INIT_PGD_TABLE_ENTRIES(vstart, vend) \
-	(INIT_TABLE_ENTRIES(vstart, vend, PGDIR_SHIFT))
+	(SPAN_PGD_ENTRIES(vstart, vend) + INIT_KASLR_PAGES)
 
 #if SWAPPER_PGTABLE_LEVELS > 3
 #define INIT_PUD_TABLE_ENTRIES(vstart, vend) \
-	(INIT_TABLE_ENTRIES(vstart, vend, PUD_SHIFT))
+	(SPAN_PUD_ENTRIES(vstart, vend) + INIT_KASLR_PAGES)
 #else
 #define INIT_PUD_TABLE_ENTRIES(vstart, vend) (0)
 #endif
 
 #if SWAPPER_PGTABLE_LEVELS > 2 && !ARM64_KERNEL_USES_PMD_MAPS
 #define INIT_PMD_TABLE_ENTRIES(vstart, vend) \
-	(INIT_TABLE_ENTRIES(vstart, vend, PMD_SHIFT))
+	(SPAN_PMD_ENTRIES(vstart, vend) + INIT_KASLR_PAGES)
 #else
 #define INIT_PMD_TABLE_ENTRIES(vstart, vend) (0)
 #endif
