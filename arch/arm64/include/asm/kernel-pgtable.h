@@ -47,7 +47,7 @@
  * space. The bottom 21 bits of this offset are zero to guarantee 2MB
  * alignment for PA and VA.
  *
- * For each pagetable level of the swapper, we know that the shift will
+ * For each pagetable level of the init_pg_dir, we know that the shift will
  * be larger than 21 (for the 4KB granule case we use section maps thus
  * the smallest shift is actually 30) thus there is the possibility that
  * KASLR can increase the number of pagetable entries by 1, so we make
@@ -60,33 +60,40 @@
  */
 
 #ifdef CONFIG_RANDOMIZE_BASE
-#define EARLY_KASLR	(1)
+#define INIT_KASLR_PAGES	(1)
 #else
-#define EARLY_KASLR	(0)
+#define INIT_KASLR_PAGES	(0)
 #endif
 
-#define EARLY_ENTRIES(vstart, vend, shift) \
-	((((vend) - 1) >> (shift)) - ((vstart) >> (shift)) + 1 + EARLY_KASLR)
+#define INIT_TABLE_ENTRIES(vstart, vend, shift) \
+	((((vend) - 1) >> (shift)) - ((vstart) >> (shift)) + 1 + INIT_KASLR_PAGES)
 
-#define EARLY_PGDS(vstart, vend) (EARLY_ENTRIES(vstart, vend, PGDIR_SHIFT))
+#define INIT_PGD_TABLE_ENTRIES(vstart, vend) \
+	(INIT_TABLE_ENTRIES(vstart, vend, PGDIR_SHIFT))
 
 #if SWAPPER_PGTABLE_LEVELS > 3
-#define EARLY_PUDS(vstart, vend) (EARLY_ENTRIES(vstart, vend, PUD_SHIFT))
+#define INIT_PUD_TABLE_ENTRIES(vstart, vend) \
+	(INIT_TABLE_ENTRIES(vstart, vend, PUD_SHIFT))
 #else
-#define EARLY_PUDS(vstart, vend) (0)
+#define INIT_PUD_TABLE_ENTRIES(vstart, vend) (0)
 #endif
 
-#if SWAPPER_PGTABLE_LEVELS > 2
-#define EARLY_PMDS(vstart, vend) (EARLY_ENTRIES(vstart, vend, SWAPPER_TABLE_SHIFT))
+#if SWAPPER_PGTABLE_LEVELS > 2 && !ARM64_KERNEL_USES_PMD_MAPS
+#define INIT_PMD_TABLE_ENTRIES(vstart, vend) \
+	(INIT_TABLE_ENTRIES(vstart, vend, PMD_SHIFT))
 #else
-#define EARLY_PMDS(vstart, vend) (0)
+#define INIT_PMD_TABLE_ENTRIES(vstart, vend) (0)
 #endif
 
-#define EARLY_PAGES(vstart, vend) ( 1 			/* PGDIR page */				\
-			+ EARLY_PGDS((vstart), (vend)) 	/* each PGDIR needs a next level page table */	\
-			+ EARLY_PUDS((vstart), (vend))	/* each PUD needs a next level page table */	\
-			+ EARLY_PMDS((vstart), (vend)))	/* each PMD needs a next level page table */
-#define INIT_DIR_SIZE (PAGE_SIZE * EARLY_PAGES(KIMAGE_VADDR, _end))
+#define INIT_TABLE_PAGES(vstart, vend)			\
+	(1 /* PGDIR page */				\
+	 + INIT_PGD_TABLE_ENTRIES((vstart), (vend))	\
+	 + INIT_PUD_TABLE_ENTRIES((vstart), (vend))	\
+	 + INIT_PMD_TABLE_ENTRIES((vstart), (vend))	\
+	)
+
+#define INIT_DIR_SIZE \
+	(PAGE_SIZE * INIT_TABLE_PAGES(KIMAGE_VADDR, _end))
 #define IDMAP_DIR_SIZE		(IDMAP_PGTABLE_LEVELS * PAGE_SIZE)
 
 /* Initial memory map size */
