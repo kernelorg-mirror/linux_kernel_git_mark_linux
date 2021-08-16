@@ -32,28 +32,13 @@
  * 64K (section size = 512M).
  */
 #ifdef CONFIG_ARM64_4K_PAGES
-#define ARM64_KERNEL_USES_PMD_MAPS 1
+#define ARM64_KERNEL_USES_PMD_MAPS 0
 #else
 #define ARM64_KERNEL_USES_PMD_MAPS 0
 #endif
 
-/*
- * The idmap and swapper page tables need some space reserved in the kernel
- * image. Both require pgd, pud (4 levels only) and pmd tables to (section)
- * map the kernel. With the 64K page configuration, swapper and idmap need to
- * map to pte level. The swapper also maps the FDT (see __create_page_tables
- * for more information). Note that the number of ID map translation levels
- * could be increased on the fly if system RAM is out of reach for the default
- * VA range, so pages required to map highest possible PA are reserved in all
- * cases.
- */
-#if ARM64_KERNEL_USES_PMD_MAPS
-#define SWAPPER_PGTABLE_LEVELS	(CONFIG_PGTABLE_LEVELS - 1)
-#define IDMAP_PGTABLE_LEVELS	(ARM64_HW_PGTABLE_LEVELS(PHYS_MASK_SHIFT) - 1)
-#else
-#define SWAPPER_PGTABLE_LEVELS	(CONFIG_PGTABLE_LEVELS)
 #define IDMAP_PGTABLE_LEVELS	(ARM64_HW_PGTABLE_LEVELS(PHYS_MASK_SHIFT))
-#endif
+#define SWAPPER_PGTABLE_LEVELS	(CONFIG_PGTABLE_LEVELS)
 
 
 /*
@@ -89,7 +74,7 @@
 #define INIT_PUD_TABLE_ENTRIES(vstart, vend) (0)
 #endif
 
-#if SWAPPER_PGTABLE_LEVELS > 2 && !ARM64_KERNEL_USES_PMD_MAPS
+#if SWAPPER_PGTABLE_LEVELS > 2
 #define INIT_PMD_TABLE_ENTRIES(vstart, vend) \
 	(SPAN_PMD_ENTRIES(vstart, vend) + INIT_KASLR_PAGES)
 #else
@@ -106,17 +91,6 @@
 #define INIT_DIR_SIZE \
 	(PAGE_SIZE * INIT_TABLE_PAGES(KIMAGE_VADDR, _end))
 #define IDMAP_DIR_SIZE		(IDMAP_PGTABLE_LEVELS * PAGE_SIZE)
-
-/* Initial memory map size */
-#if ARM64_KERNEL_USES_PMD_MAPS
-#define SWAPPER_BLOCK_SHIFT	PMD_SHIFT
-#define SWAPPER_BLOCK_SIZE	PMD_SIZE
-#define SWAPPER_TABLE_SHIFT	PUD_SHIFT
-#else
-#define SWAPPER_BLOCK_SHIFT	PAGE_SHIFT
-#define SWAPPER_BLOCK_SIZE	PAGE_SIZE
-#define SWAPPER_TABLE_SHIFT	PMD_SHIFT
-#endif
 
 /*
  * Initial memory map attributes.

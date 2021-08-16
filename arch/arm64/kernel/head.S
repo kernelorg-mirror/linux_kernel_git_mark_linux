@@ -241,14 +241,14 @@ SYM_CODE_END(preserve_boot_args)
 #endif
 
 #if SWAPPER_PGTABLE_LEVELS > 2
-	compute_indices \vstart, \vend, #SWAPPER_TABLE_SHIFT, #PTRS_PER_PMD, \istart, \iend, \tmp1, \tmp2
+	compute_indices \vstart, \vend, #PMD_SHIFT, #PTRS_PER_PMD, \istart, \iend, \tmp1, \tmp2
 	populate_entries \tbl, \rtbl, \istart, \iend, #PMD_TYPE_TABLE, #PAGE_SIZE, \tmp1
 	mov \tbl, \sv
 #endif
 
-	compute_indices \vstart, \vend, #SWAPPER_BLOCK_SHIFT, #PTRS_PER_PTE, \istart, \iend, \tmp1, \tmp2
-	bic \phys, \phys, #SWAPPER_BLOCK_SIZE - 1
-	populate_entries \tbl, \phys, \istart, \iend, \flags, #SWAPPER_BLOCK_SIZE, \tmp1
+	compute_indices \vstart, \vend, #PAGE_SHIFT, #PTRS_PER_PTE, \istart, \iend, \tmp1, \tmp2
+	bic \phys, \phys, #PAGE_SIZE - 1
+	populate_entries \tbl, \phys, \istart, \iend, \flags, #PAGE_SIZE, \tmp1
 	.endm
 
 /*
