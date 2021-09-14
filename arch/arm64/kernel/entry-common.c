@@ -343,6 +343,8 @@ static bool cortex_a76_erratum_1463225_debug_handler(struct pt_regs *regs)
 }
 #endif /* CONFIG_ARM64_ERRATUM_1463225 */
 
+typedef void (*sync_handler_t)(struct pt_regs *regs, unsigned long esr);
+
 UNHANDLED(el1t, 64, sync)
 UNHANDLED(el1t, 64, irq)
 UNHANDLED(el1t, 64, fiq)
@@ -370,7 +372,7 @@ static void noinstr el1_pc(struct pt_regs *regs, unsigned long esr)
 	exit_to_kernel_mode(regs);
 }
 
-static void noinstr el1_undef(struct pt_regs *regs)
+static void noinstr el1_undef(struct pt_regs *regs, unsigned long esr)
 {
 	enter_from_kernel_mode(regs);
 	local_daif_inherit(regs);
@@ -398,38 +400,32 @@ static void noinstr el1_fpac(struct pt_regs *regs, unsigned long esr)
 	exit_to_kernel_mode(regs);
 }
 
+static void noinstr el1_inv(struct pt_regs *regs, unsigned long esr)
+{
+	__panic_unhandled(regs, "64-bit el1h sync", esr);
+}
+
 asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
+	unsigned long ec = ESR_ELx_EC(esr);
 
-	switch (ESR_ELx_EC(esr)) {
-	case ESR_ELx_EC_DABT_CUR:
-	case ESR_ELx_EC_IABT_CUR:
-		el1_abort(regs, esr);
-		break;
-	/*
-	 * We don't handle ESR_ELx_EC_SP_ALIGN, since we will have hit a
-	 * recursive exception when trying to push the initial pt_regs.
-	 */
-	case ESR_ELx_EC_PC_ALIGN:
-		el1_pc(regs, esr);
-		break;
-	case ESR_ELx_EC_SYS64:
-	case ESR_ELx_EC_UNKNOWN:
-		el1_undef(regs);
-		break;
-	case ESR_ELx_EC_BREAKPT_CUR:
-	case ESR_ELx_EC_SOFTSTP_CUR:
-	case ESR_ELx_EC_WATCHPT_CUR:
-	case ESR_ELx_EC_BRK64:
-		el1_dbg(regs, esr);
-		break;
-	case ESR_ELx_EC_FPAC:
-		el1_fpac(regs, esr);
-		break;
-	default:
-		__panic_unhandled(regs, "64-bit el1h sync", esr);
-	}
+	static const sync_handler_t handlers[ESR_ELx_EC_MAX] = {
+		[0 ... ESR_ELx_EC_MAX - 1]	= el1_inv,
+
+		[ESR_ELx_EC_DABT_CUR]		= el1_abort,
+		[ESR_ELx_EC_IABT_CUR]		= el1_abort,
+		[ESR_ELx_EC_PC_ALIGN]		= el1_pc,
+		[ESR_ELx_EC_SYS64]		= el1_undef,
+		[ESR_ELx_EC_UNKNOWN]		= el1_undef,
+		[ESR_ELx_EC_BREAKPT_CUR]	= el1_dbg,
+		[ESR_ELx_EC_SOFTSTP_CUR]	= el1_dbg,
+		[ESR_ELx_EC_WATCHPT_CUR]	= el1_dbg,
+		[ESR_ELx_EC_BRK64]		= el1_dbg,
+		[ESR_ELx_EC_FPAC]		= el1_fpac,
+	};
+
+	handlers[ec](regs, esr);
 }
 
 static void noinstr el1_interrupt(struct pt_regs *regs,
@@ -471,7 +467,7 @@ asmlinkage void noinstr el1h_64_error_handler(struct pt_regs *regs)
 	do_serror(regs, esr);
 	arm64_exit_nmi(regs);
 }
-
+	
 static void noinstr el0_da(struct pt_regs *regs, unsigned long esr)
 {
 	unsigned long far = read_sysreg(far_el1);
@@ -553,7 +549,7 @@ static void noinstr el0_sp(struct pt_regs *regs, unsigned long esr)
 	exit_to_user_mode(regs);
 }
 
-static void noinstr el0_undef(struct pt_regs *regs)
+static void noinstr el0_undef(struct pt_regs *regs, unsigned long esr)
 {
 	enter_from_user_mode(regs);
 	local_daif_restore(DAIF_PROCCTX);
@@ -561,7 +557,7 @@ static void noinstr el0_undef(struct pt_regs *regs)
 	exit_to_user_mode(regs);
 }
 
-static void noinstr el0_bti(struct pt_regs *regs)
+static void noinstr el0_bti(struct pt_regs *regs, unsigned long esr)
 {
 	enter_from_user_mode(regs);
 	local_daif_restore(DAIF_PROCCTX);
@@ -588,7 +584,7 @@ static void noinstr el0_dbg(struct pt_regs *regs, unsigned long esr)
 	exit_to_user_mode(regs);
 }
 
-static void noinstr el0_svc(struct pt_regs *regs)
+static void noinstr el0_svc(struct pt_regs *regs, unsigned long esr)
 {
 	enter_from_user_mode(regs);
 	cortex_a76_erratum_1463225_svc_handler();
@@ -607,54 +603,31 @@ static void noinstr el0_fpac(struct pt_regs *regs, unsigned long esr)
 asmlinkage void noinstr el0t_64_sync_handler(struct pt_regs *regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
+	unsigned long ec = ESR_ELx_EC(esr);
 
-	switch (ESR_ELx_EC(esr)) {
-	case ESR_ELx_EC_SVC64:
-		el0_svc(regs);
-		break;
-	case ESR_ELx_EC_DABT_LOW:
-		el0_da(regs, esr);
-		break;
-	case ESR_ELx_EC_IABT_LOW:
-		el0_ia(regs, esr);
-		break;
-	case ESR_ELx_EC_FP_ASIMD:
-		el0_fpsimd_acc(regs, esr);
-		break;
-	case ESR_ELx_EC_SVE:
-		el0_sve_acc(regs, esr);
-		break;
-	case ESR_ELx_EC_FP_EXC64:
-		el0_fpsimd_exc(regs, esr);
-		break;
-	case ESR_ELx_EC_SYS64:
-	case ESR_ELx_EC_WFx:
-		el0_sys(regs, esr);
-		break;
-	case ESR_ELx_EC_SP_ALIGN:
-		el0_sp(regs, esr);
-		break;
-	case ESR_ELx_EC_PC_ALIGN:
-		el0_pc(regs, esr);
-		break;
-	case ESR_ELx_EC_UNKNOWN:
-		el0_undef(regs);
-		break;
-	case ESR_ELx_EC_BTI:
-		el0_bti(regs);
-		break;
-	case ESR_ELx_EC_BREAKPT_LOW:
-	case ESR_ELx_EC_SOFTSTP_LOW:
-	case ESR_ELx_EC_WATCHPT_LOW:
-	case ESR_ELx_EC_BRK64:
-		el0_dbg(regs, esr);
-		break;
-	case ESR_ELx_EC_FPAC:
-		el0_fpac(regs, esr);
-		break;
-	default:
-		el0_inv(regs, esr);
-	}
+	static const sync_handler_t handlers[ESR_ELx_EC_MAX] = {
+		[0 ... ESR_ELx_EC_MAX - 1]	= el0_inv,
+
+		[ESR_ELx_EC_SVC64]		= el0_svc,
+		[ESR_ELx_EC_DABT_LOW]		= el0_da,
+		[ESR_ELx_EC_IABT_LOW]		= el0_ia,
+		[ESR_ELx_EC_FP_ASIMD]		= el0_fpsimd_acc,
+		[ESR_ELx_EC_SVE]		= el0_sve_acc,
+		[ESR_ELx_EC_FP_EXC64]		= el0_fpsimd_exc,
+		[ESR_ELx_EC_SYS64]		= el0_sys,
+		[ESR_ELx_EC_WFx]		= el0_sys,
+		[ESR_ELx_EC_SP_ALIGN]		= el0_sp,
+		[ESR_ELx_EC_PC_ALIGN]		= el0_pc,
+		[ESR_ELx_EC_UNKNOWN]		= el0_undef,
+		[ESR_ELx_EC_BTI]		= el0_bti,
+		[ESR_ELx_EC_BREAKPT_LOW]	= el0_dbg,
+		[ESR_ELx_EC_SOFTSTP_LOW]	= el0_dbg,
+		[ESR_ELx_EC_WATCHPT_LOW]	= el0_dbg,
+		[ESR_ELx_EC_BRK64]		= el0_dbg,
+		[ESR_ELx_EC_FPAC]		= el0_fpac,
+	};
+
+	handlers[ec](regs, esr);
 }
 
 static void noinstr el0_interrupt(struct pt_regs *regs,
@@ -719,7 +692,7 @@ static void noinstr el0_cp15(struct pt_regs *regs, unsigned long esr)
 	exit_to_user_mode(regs);
 }
 
-static void noinstr el0_svc_compat(struct pt_regs *regs)
+static void noinstr el0_svc_compat(struct pt_regs *regs, unsigned long esr)
 {
 	enter_from_user_mode(regs);
 	cortex_a76_erratum_1463225_svc_handler();
@@ -730,45 +703,30 @@ static void noinstr el0_svc_compat(struct pt_regs *regs)
 asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
+	unsigned long ec = ESR_ELx_EC(esr);
 
-	switch (ESR_ELx_EC(esr)) {
-	case ESR_ELx_EC_SVC32:
-		el0_svc_compat(regs);
-		break;
-	case ESR_ELx_EC_DABT_LOW:
-		el0_da(regs, esr);
-		break;
-	case ESR_ELx_EC_IABT_LOW:
-		el0_ia(regs, esr);
-		break;
-	case ESR_ELx_EC_FP_ASIMD:
-		el0_fpsimd_acc(regs, esr);
-		break;
-	case ESR_ELx_EC_FP_EXC32:
-		el0_fpsimd_exc(regs, esr);
-		break;
-	case ESR_ELx_EC_PC_ALIGN:
-		el0_pc(regs, esr);
-		break;
-	case ESR_ELx_EC_UNKNOWN:
-	case ESR_ELx_EC_CP14_MR:
-	case ESR_ELx_EC_CP14_LS:
-	case ESR_ELx_EC_CP14_64:
-		el0_undef(regs);
-		break;
-	case ESR_ELx_EC_CP15_32:
-	case ESR_ELx_EC_CP15_64:
-		el0_cp15(regs, esr);
-		break;
-	case ESR_ELx_EC_BREAKPT_LOW:
-	case ESR_ELx_EC_SOFTSTP_LOW:
-	case ESR_ELx_EC_WATCHPT_LOW:
-	case ESR_ELx_EC_BKPT32:
-		el0_dbg(regs, esr);
-		break;
-	default:
-		el0_inv(regs, esr);
-	}
+	static const sync_handler_t handlers[ESR_ELx_EC_MAX] = {
+		[0 ... ESR_ELx_EC_MAX - 1]	= el0_inv,
+
+		[ESR_ELx_EC_SVC32]		= el0_svc_compat,
+		[ESR_ELx_EC_DABT_LOW]		= el0_da,
+		[ESR_ELx_EC_IABT_LOW]		= el0_ia,
+		[ESR_ELx_EC_FP_ASIMD]		= el0_fpsimd_acc,
+		[ESR_ELx_EC_FP_EXC32]		= el0_fpsimd_exc,
+		[ESR_ELx_EC_PC_ALIGN]		= el0_pc,
+		[ESR_ELx_EC_UNKNOWN]		= el0_undef,
+		[ESR_ELx_EC_CP14_MR]		= el0_undef,
+		[ESR_ELx_EC_CP14_LS]		= el0_undef,
+		[ESR_ELx_EC_CP14_64]		= el0_undef,
+		[ESR_ELx_EC_CP15_32]		= el0_cp15,
+		[ESR_ELx_EC_CP15_64]		= el0_cp15,
+		[ESR_ELx_EC_BREAKPT_LOW]	= el0_dbg,
+		[ESR_ELx_EC_SOFTSTP_LOW]	= el0_dbg,
+		[ESR_ELx_EC_WATCHPT_LOW]	= el0_dbg,
+		[ESR_ELx_EC_BKPT32]		= el0_dbg,
+	};
+
+	handlers[ec](regs, esr);
 }
 
 asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs)
