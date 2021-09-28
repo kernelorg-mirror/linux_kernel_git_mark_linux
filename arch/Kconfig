@@ -225,6 +225,12 @@ config GENERIC_SMP_IDLE_THREAD
 config GENERIC_IDLE_POLL_SETUP
 	bool
 
+config ARCH_ENTERS_IRQ
+	bool
+	help
+	  An architecture should select this when it performs irq entry
+	  management itself (e.g. calling irq_enter() and irq_exit()).
+
 config ARCH_HAS_FORTIFY_SOURCE
 	bool
 	help

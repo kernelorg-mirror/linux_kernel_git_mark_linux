@@ -677,6 +677,15 @@ int generic_handle_domain_irq(struct irq_domain *domain, unsigned int hwirq)
 EXPORT_SYMBOL_GPL(generic_handle_domain_irq);
 
 #ifdef CONFIG_HANDLE_DOMAIN_IRQ
+
+#ifdef ARCH_ENTERS_IRQ
+#define handle_irq_enter()
+#define handle_irq_exit()
+#else
+#define handle_irq_enter()	irq_enter()
+#define handle_irq_exit()	irq_exit()
+#endif
+
 /**
  * handle_domain_irq - Invoke the handler for a HW irq belonging to a domain,
  *                     usually for a root interrupt controller
@@ -693,7 +702,7 @@ int handle_domain_irq(struct irq_domain *domain,
 	struct irq_desc *desc;
 	int ret = 0;
 
-	irq_enter();
+	handle_irq_enter();
 
 	/* The irqdomain code provides boundary checks */
 	desc = irq_resolve_mapping(domain, hwirq);
@@ -702,7 +711,7 @@ int handle_domain_irq(struct irq_domain *domain,
 	else
 		ret = -EINVAL;
 
-	irq_exit();
+	handle_irq_exit();
 	set_irq_regs(old_regs);
 	return ret;
 }
