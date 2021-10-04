@@ -17,10 +17,20 @@
 
 struct exception_table_entry
 {
-	int insn, fixup;
+	int insn, fixup, handler, data;
 };
 
 #define ARCH_HAS_RELATIVE_EXTABLE
+
+#define swap_ex_entry_fixup(a, b, tmp, delta)		\
+do {							\
+	(a)->fixup = (b)->fixup + (delta);		\
+	(b)->fixup = (tmp).fixup - (delta);		\
+	(a)->handler = (b)->handler + (delta);		\
+	(b)->handler = (tmp).handler - (delta);		\
+	(a)->data = (b)->data;				\
+	(b)->data = (tmp).data;				\
+} while (0)
 
 static inline bool in_bpf_jit(struct pt_regs *regs)
 {

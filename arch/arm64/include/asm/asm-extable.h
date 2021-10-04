@@ -9,6 +9,8 @@
 	.align		3;			\
 	.long		((insn) - .);		\
 	.long		((fixup) - .);		\
+	.long		(0);			\
+	.long		(0);			\
 	.popsection;
 
 /*
@@ -38,6 +40,8 @@
 	".align		3\n"			\
 	".long		((" insn ") - .)\n"	\
 	".long		((" fixup ") - .)\n"	\
+	".long		(0)\n"			\
+	".long		(0)\n"			\
 	".popsection\n"
 
 #define _ASM_EXTABLE(insn, fixup) \
