@@ -3,8 +3,11 @@
  * Based on arch/arm/mm/extable.c
  */
 
+#include <linux/bitfield.h>
 #include <linux/extable.h>
 #include <linux/uaccess.h>
+
+#include <asm/ptrace.h>
 
 typedef bool (*ex_handler_t)(const struct exception_table_entry *,
 			     struct pt_regs *);
@@ -44,3 +47,17 @@ bool ex_handler_fixup(const struct exception_table_entry *ex,
 	return true;
 }
 EXPORT_SYMBOL(ex_handler_fixup);
+
+bool ex_handler_efault_zero(const struct exception_table_entry *ex,
+			   struct pt_regs *regs)
+{
+	int reg_err = FIELD_GET(EX_DATA_REG_ERR, ex->data);
+	int reg_zero = FIELD_GET(EX_DATA_REG_ZERO, ex->data);
+
+	pt_regs_write_reg(regs, reg_err, -EFAULT);
+	pt_regs_write_reg(regs, reg_zero, 0);
+
+	regs->pc = get_ex_fixup(ex);
+	return true;
+}
+EXPORT_SYMBOL(ex_handler_efault_zero);

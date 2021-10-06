@@ -33,7 +33,10 @@
 
 #else /* __ASSEMBLY__ */
 
+#include <linux/bits.h>
 #include <linux/stringify.h>
+
+#include <asm/gpr-num.h>
 
 #define __ASM_EXTABLE_RAW(insn, fixup, handler, data)	\
 	".pushsection	__ex_table, \"a\"\n"		\
@@ -44,8 +47,24 @@
 	".long		(" data ")\n"			\
 	".popsection\n"
 
-#define _ASM_EXTABLE(insn, fixup) \
+#define _ASM_EXTABLE(insn, fixup)					\
 	__ASM_EXTABLE_RAW(#insn, #fixup, "ex_handler_fixup", "0")
+
+#define EX_DATA_REG_ERR_SHIFT	0
+#define EX_DATA_REG_ERR		GENMASK(4, 0)
+#define EX_DATA_REG_ZERO_SHIFT	5
+#define EX_DATA_REG_ZERO	GENMASK(9, 5)
+
+#define EX_DATA_REG(reg, gpr)						\
+	"((.L__gpr_num_" #gpr ") << " __stringify(EX_DATA_REG_##reg##_SHIFT) ")"
+
+#define _ASM_EXTABLE_EFAULT_ZERO(insn, fixup, err, zero)		\
+	__DEFINE_ASM_GPR_NUMS						\
+	__ASM_EXTABLE_RAW(#insn, #fixup, "ex_handler_efault_zero",	\
+			  "(" EX_DATA_REG(ERR, err) " | " EX_DATA_REG(ZERO, zero) ")")
+
+#define _ASM_EXTABLE_EFAULT(insn, fixup, err)				\
+	_ASM_EXTABLE_EFAULT_ZERO(insn, fixup, err, xzr)
 
 #endif /* __ASSEMBLY__ */
 
