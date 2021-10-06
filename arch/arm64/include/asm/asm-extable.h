@@ -4,13 +4,13 @@
 
 #ifdef __ASSEMBLY__
 
-#define __ASM_EXTABLE_RAW(insn, fixup)		\
-	.pushsection	__ex_table, "a";	\
-	.align		3;			\
-	.long		((insn) - .);		\
-	.long		((fixup) - .);		\
-	.long		(0);			\
-	.long		(0);			\
+#define __ASM_EXTABLE_RAW(insn, fixup, handler, data)	\
+	.pushsection	__ex_table, "a";		\
+	.align		3;				\
+	.long		((insn) - .);			\
+	.long		((fixup) - .);			\
+	.long		((handler) - .);		\
+	.long		(data);				\
 	.popsection;
 
 /*
@@ -18,7 +18,7 @@
  * when an unhandled fault is taken.
  */
 	.macro		_asm_extable, insn, fixup
-	__ASM_EXTABLE_RAW(\insn, \fixup)
+	__ASM_EXTABLE_RAW(\insn, \fixup, ex_handler_fixup, 0)
 	.endm
 
 /*
@@ -35,17 +35,17 @@
 
 #include <linux/stringify.h>
 
-#define __ASM_EXTABLE_RAW(insn, fixup)		\
-	".pushsection	__ex_table, \"a\"\n"	\
-	".align		3\n"			\
-	".long		((" insn ") - .)\n"	\
-	".long		((" fixup ") - .)\n"	\
-	".long		(0)\n"			\
-	".long		(0)\n"			\
+#define __ASM_EXTABLE_RAW(insn, fixup, handler, data)	\
+	".pushsection	__ex_table, \"a\"\n"		\
+	".align		3\n"				\
+	".long		((" insn ") - .)\n"		\
+	".long		((" fixup ") - .)\n"		\
+	".long		((" handler ") - .)\n"		\
+	".long		(" data ")\n"			\
 	".popsection\n"
 
 #define _ASM_EXTABLE(insn, fixup) \
-	__ASM_EXTABLE_RAW(#insn, #fixup)
+	__ASM_EXTABLE_RAW(#insn, #fixup, "ex_handler_fixup", "0")
 
 #endif /* __ASSEMBLY__ */
 
