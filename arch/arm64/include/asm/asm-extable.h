@@ -66,6 +66,16 @@
 #define _ASM_EXTABLE_EFAULT(insn, fixup, err)				\
 	_ASM_EXTABLE_EFAULT_ZERO(insn, fixup, err, xzr)
 
+#define EX_DATA_REG_DATA_SHIFT	0
+#define EX_DATA_REG_DATA	GENMASK(4, 0)
+#define EX_DATA_REG_ADDR_SHIFT	5
+#define EX_DATA_REG_ADDR	GENMASK(9, 5)
+
+#define _ASM_EXTABLE_LUZ(insn, fixup, data, addr)		\
+	__DEFINE_ASM_GPR_NUMS					\
+	__ASM_EXTABLE_RAW(#insn, #fixup, "ex_handler_luz",	\
+			  "(" EX_DATA_REG(DATA, data) " | " EX_DATA_REG(ADDR, addr) ")")
+
 #endif /* __ASSEMBLY__ */
 
 #endif /* __ASM_ASM_EXTABLE_H */

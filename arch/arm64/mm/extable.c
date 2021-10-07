@@ -61,3 +61,30 @@ bool ex_handler_efault_zero(const struct exception_table_entry *ex,
 	return true;
 }
 EXPORT_SYMBOL(ex_handler_efault_zero);
+
+bool ex_handler_luz(const struct exception_table_entry *ex,
+		    struct pt_regs *regs)
+{
+	int reg_data = FIELD_GET(EX_DATA_REG_DATA, ex->data);
+	int reg_addr = FIELD_GET(EX_DATA_REG_ADDR, ex->data);
+	unsigned long data, addr, offset;
+
+	addr = pt_regs_read_reg(regs, reg_addr);
+
+	offset = addr & 0x7UL;
+	addr &= ~0x7UL;
+
+	data = *(unsigned long*)addr;
+
+#ifndef __AARCH64EB__
+	data >>= 8 * offset;
+#else
+	data <<= 8 * offset;
+#endif
+
+	pt_regs_write_reg(regs, reg_data, data);
+
+	regs->pc = get_ex_fixup(ex);
+	return true;
+}
+EXPORT_SYMBOL(ex_handler_luz);
