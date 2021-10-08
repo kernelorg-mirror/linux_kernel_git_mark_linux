@@ -225,10 +225,10 @@ static inline void __user *__uaccess_mask_ptr(const void __user *ptr)
 	void __user *safe_ptr;
 
 	asm volatile(
-	"	bics	xzr, %3, %2\n"
+	"	tst	%3, %2\n"
 	"	csel	%0, %1, xzr, eq\n"
 	: "=&r" (safe_ptr)
-	: "r" (ptr), "r" (TASK_SIZE_MAX - 1),
+	: "r" (ptr), "L" (~(TASK_SIZE_MAX - 1)),
 	  "r" (untagged_addr(ptr))
 	: "cc");
 
