@@ -33,9 +33,6 @@ bool fixup_exception(struct pt_regs *regs)
 	if (!ex)
 		return false;
 
-	if (in_bpf_jit(regs))
-		return arm64_bpf_fixup_exception(ex, regs);
-
 	handler = get_ex_handler(ex);
 	return handler(ex, regs);
 }

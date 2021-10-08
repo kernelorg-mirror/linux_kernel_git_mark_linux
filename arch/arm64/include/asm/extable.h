@@ -41,17 +41,5 @@ static inline bool in_bpf_jit(struct pt_regs *regs)
 	       regs->pc < BPF_JIT_REGION_END;
 }
 
-#ifdef CONFIG_BPF_JIT
-bool arm64_bpf_fixup_exception(const struct exception_table_entry *ex,
-			      struct pt_regs *regs);
-#else /* !CONFIG_BPF_JIT */
-static inline
-bool arm64_bpf_fixup_exception(const struct exception_table_entry *ex,
-			       struct pt_regs *regs)
-{
-	return false;
-}
-#endif /* !CONFIG_BPF_JIT */
-
 bool fixup_exception(struct pt_regs *regs);
 #endif

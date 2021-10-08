@@ -358,8 +358,8 @@ static void build_epilogue(struct jit_ctx *ctx)
 #define BPF_FIXUP_OFFSET_MASK	GENMASK(26, 0)
 #define BPF_FIXUP_REG_MASK	GENMASK(31, 27)
 
-bool arm64_bpf_fixup_exception(const struct exception_table_entry *ex,
-			       struct pt_regs *regs)
+static bool ex_handler_bpf(const struct exception_table_entry *ex,
+			   struct pt_regs *regs)
 {
 	off_t offset = FIELD_GET(BPF_FIXUP_OFFSET_MASK, ex->fixup);
 	int dst_reg = FIELD_GET(BPF_FIXUP_REG_MASK, ex->fixup);
@@ -396,6 +396,11 @@ static int add_exception_handler(const struct bpf_insn *insn,
 	if (WARN_ON_ONCE(offset >= 0 || offset < INT_MIN))
 		return -ERANGE;
 	ex->insn = offset;
+
+	offset = (long)ex_handler_bpf - (long)&ex->handler;
+	if (WARN_ON_ONCE(offset >= 0 || offset < INT_MIN))
+		return -ERANGE;
+	ex->handler = offset;
 
 	/*
 	 * Since the extable follows the program, the fixup offset is always
