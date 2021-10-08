@@ -440,6 +440,16 @@ exit:
 	return fn ? fn(regs, instr) : 1;
 }
 
+int hark_foo(int __user *thing)
+{
+	int val;
+
+	if (!get_user(val, thing))
+		return val;
+
+	return 0xf00fd00d;
+}
+
 void force_signal_inject(int signal, int code, unsigned long address, unsigned int err)
 {
 	const char *desc;
