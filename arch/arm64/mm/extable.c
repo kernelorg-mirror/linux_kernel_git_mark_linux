@@ -40,7 +40,12 @@ bool fixup_exception(struct pt_regs *regs)
 bool ex_handler_fixup(const struct exception_table_entry *ex,
 		      struct pt_regs *regs)
 {
-	regs->pc = get_ex_fixup(ex);
+	unsigned long fixup = get_ex_fixup(ex);
+
+	pr_info("HARK: %s: %pS -> %pS\n",
+		__func__, (void *)regs->pc, (void *)fixup);
+
+	regs->pc = fixup;
 	return true;
 }
 EXPORT_SYMBOL(ex_handler_fixup);
@@ -48,13 +53,18 @@ EXPORT_SYMBOL(ex_handler_fixup);
 bool ex_handler_efault_zero(const struct exception_table_entry *ex,
 			   struct pt_regs *regs)
 {
+	unsigned long fixup = get_ex_fixup(ex);
 	int reg_err = FIELD_GET(EX_DATA_REG_ERR, ex->data);
 	int reg_zero = FIELD_GET(EX_DATA_REG_ZERO, ex->data);
+
+	pr_info("HARK: %s: %pS -> %pS / err=x%d zero=x%d\n",
+		__func__, (void *)regs->pc, (void *)fixup,
+		reg_err, reg_zero);
 
 	pt_regs_write_reg(regs, reg_err, -EFAULT);
 	pt_regs_write_reg(regs, reg_zero, 0);
 
-	regs->pc = get_ex_fixup(ex);
+	regs->pc = fixup;
 	return true;
 }
 EXPORT_SYMBOL(ex_handler_efault_zero);
@@ -62,11 +72,16 @@ EXPORT_SYMBOL(ex_handler_efault_zero);
 bool ex_handler_luz(const struct exception_table_entry *ex,
 		    struct pt_regs *regs)
 {
+	unsigned long fixup = get_ex_fixup(ex);
 	int reg_data = FIELD_GET(EX_DATA_REG_DATA, ex->data);
 	int reg_addr = FIELD_GET(EX_DATA_REG_ADDR, ex->data);
 	unsigned long data, addr, offset;
 
 	addr = pt_regs_read_reg(regs, reg_addr);
+
+	pr_info("HARK: %s: %pS -> %pS / data=x%d addr=x%d (0x%016lx)\n",
+		__func__, (void *)regs->pc, (void *)fixup,
+		reg_data, reg_addr, addr);
 
 	offset = addr & 0x7UL;
 	addr &= ~0x7UL;
@@ -81,7 +96,7 @@ bool ex_handler_luz(const struct exception_table_entry *ex,
 
 	pt_regs_write_reg(regs, reg_data, data);
 
-	regs->pc = get_ex_fixup(ex);
+	regs->pc = fixup;
 	return true;
 }
 EXPORT_SYMBOL(ex_handler_luz);
