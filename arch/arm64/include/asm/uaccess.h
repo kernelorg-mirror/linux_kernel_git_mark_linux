@@ -251,6 +251,25 @@ static inline void __user *__uaccess_mask_ptr(const void __user *ptr)
  * The "__xxx_error" versions set the third argument to -EFAULT if an error
  * occurs, and leave it unchanged on success.
  */
+
+#ifdef CONFIG_CC_HAS_ASM_GOTO_OUTPUT
+#define __get_mem_asm(load, reg, x, addr, err)				\
+do {									\
+	__label__ __gma_fault;						\
+	asm_volatile_goto(						\
+	"1:	" load "	" reg "0, [%1]\n"			\
+	_ASM_EXTABLE(1b, %l2)						\
+	: "=&r" (x)							\
+	: "r" (addr)							\
+	:								\
+	: __gma_fault							\
+	);								\
+	break;								\
+__gma_fault:								\
+	err = -EFAULT;							\
+	x = 0;								\
+} while (0)
+#else
 #define __get_mem_asm(load, reg, x, addr, err)				\
 	asm volatile(							\
 	"1:	" load "	" reg "1, [%2]\n"			\
@@ -258,6 +277,7 @@ static inline void __user *__uaccess_mask_ptr(const void __user *ptr)
 	_ASM_EXTABLE_EFAULT_ZERO(1b, 2b, %0, %1)			\
 	: "+r" (err), "=&r" (x)						\
 	: "r" (addr))
+#endif
 
 #define __raw_get_mem(ldr, x, ptr, err)					\
 do {									\
@@ -322,6 +342,23 @@ do {									\
 		goto err_label;						\
 } while (0)
 
+#ifdef CONFIG_CC_HAS_ASM_GOTO_OUTPUT
+#define __put_mem_asm(store, reg, x, addr, err)				\
+do {									\
+	__label__ __pma_fault;						\
+	asm_volatile_goto(						\
+	"1:	" store "	" reg "0, [%1]\n"			\
+	_ASM_EXTABLE(1b, %l2)						\
+	:								\
+	: "r" (x), "r" (addr)						\
+	:								\
+	: __pma_fault							\
+	);								\
+	break;								\
+__pma_fault:								\
+	err = -EFAULT;							\
+} while (0)
+#else
 #define __put_mem_asm(store, reg, x, addr, err)				\
 	asm volatile(							\
 	"1:	" store "	" reg "1, [%2]\n"			\
@@ -329,6 +366,7 @@ do {									\
 	_ASM_EXTABLE_EFAULT(1b, 2b, %0)					\
 	: "+r" (err)							\
 	: "r" (x), "r" (addr))
+#endif
 
 #define __raw_put_mem(str, x, ptr, err)					\
 do {									\
