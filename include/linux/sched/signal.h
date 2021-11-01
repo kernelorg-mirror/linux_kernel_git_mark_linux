@@ -397,9 +397,14 @@ static inline int signal_pending_state(unsigned int state, struct task_struct *p
 static inline bool fault_signal_pending(vm_fault_t fault_flags,
 					struct pt_regs *regs)
 {
-	return unlikely((fault_flags & VM_FAULT_RETRY) &&
-			(fatal_signal_pending(current) ||
-			 (user_mode(regs) && signal_pending(current))));
+	bool retry = fault_flags & VM_FAULT_RETRY;
+	bool fatal = fatal_signal_pending(current);
+	bool user = user_mode(regs);
+	bool pending = signal_pending(current);
+
+	WARN(fatal && !user && !retry, "Fatal non-retriable kernel fault with flags %u\n", fault_flags);
+
+	return unlikely(retry && (fatal || (user && pending)));
 }
 
 /*
