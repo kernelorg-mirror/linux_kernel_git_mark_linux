@@ -398,9 +398,17 @@ static void noinstr el1_fpac(struct pt_regs *regs, unsigned long esr)
 	exit_to_kernel_mode(regs);
 }
 
+#define UACCESS_RETRY_LIMIT	10000
+
 asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
+	unsigned long *ua_retries = current->thread.uaccess_retries;
+
+	if (ua_retries && ((*ua_retries)++ > UACCESS_RETRY_LIMIT)) {
+		WARN_RATELIMIT(1, "Uaccess @ %pS fault-retried more than %d times, esr = 0x%016lx\n",
+			       (void *)regs->pc, UACCESS_RETRY_LIMIT, esr);
+	}
 
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_DABT_CUR:
@@ -430,6 +438,8 @@ asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs)
 	default:
 		__panic_unhandled(regs, "64-bit el1h sync", esr);
 	}
+
+	current->thread.uaccess_retries = ua_retries;
 }
 
 static void noinstr el1_interrupt(struct pt_regs *regs,

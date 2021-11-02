@@ -294,10 +294,13 @@ do {									\
 
 #define __raw_get_user(x, ptr, err)					\
 do {									\
+	unsigned long ____rgu_retries = 0;				\
+	current->thread.uaccess_retries = &____rgu_retries;		\
 	__chk_user_ptr(ptr);						\
 	uaccess_ttbr0_enable();						\
 	__raw_get_mem("ldtr", x, ptr, err);				\
 	uaccess_ttbr0_disable();					\
+	current->thread.uaccess_retries = NULL;				\
 } while (0)
 
 #define __get_user_error(x, ptr, err)					\
@@ -369,10 +372,13 @@ do {									\
 
 #define __raw_put_user(x, ptr, err)					\
 do {									\
+	unsigned long ____rpu_retries = 0;				\
+	current->thread.uaccess_retries = &____rpu_retries;		\
 	__chk_user_ptr(ptr);						\
 	uaccess_ttbr0_enable();						\
 	__raw_put_mem("sttr", x, ptr, err);				\
 	uaccess_ttbr0_disable();					\
+	current->thread.uaccess_retries = NULL;				\
 } while (0)
 
 #define __put_user_error(x, ptr, err)					\

@@ -380,6 +380,8 @@ int copy_thread(unsigned long clone_flags, unsigned long stack_start,
 
 	ptrace_hw_copy_thread(p);
 
+	BUG_ON(p->thread.uaccess_retries);
+
 	return 0;
 }
 

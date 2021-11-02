@@ -162,6 +162,8 @@ struct thread_struct {
 	u64			mte_ctrl;
 #endif
 	u64			sctlr_user;
+
+	unsigned long		*uaccess_retries;
 };
 
 #define SCTLR_USER_MASK                                                        \
