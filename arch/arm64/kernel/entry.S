@@ -485,32 +485,9 @@ tsk	.req	x28		// current thread_info
 	.text
 
 /*
- * Exception vectors.
+ * Low-level entry code
  */
 	.pushsection ".entry.text", "ax"
-
-	.align	11
-SYM_CODE_START(vectors)
-	kernel_ventry	1, t, 64, sync		// Synchronous EL1t
-	kernel_ventry	1, t, 64, irq		// IRQ EL1t
-	kernel_ventry	1, t, 64, fiq		// FIQ EL1h
-	kernel_ventry	1, t, 64, error		// Error EL1t
-
-	kernel_ventry	1, h, 64, sync		// Synchronous EL1h
-	kernel_ventry	1, h, 64, irq		// IRQ EL1h
-	kernel_ventry	1, h, 64, fiq		// FIQ EL1h
-	kernel_ventry	1, h, 64, error		// Error EL1h
-
-	kernel_ventry	0, t, 64, sync		// Synchronous 64-bit EL0
-	kernel_ventry	0, t, 64, irq		// IRQ 64-bit EL0
-	kernel_ventry	0, t, 64, fiq		// FIQ 64-bit EL0
-	kernel_ventry	0, t, 64, error		// Error 64-bit EL0
-
-	kernel_ventry	0, t, 32, sync		// Synchronous 32-bit EL0
-	kernel_ventry	0, t, 32, irq		// IRQ 32-bit EL0
-	kernel_ventry	0, t, 32, fiq		// FIQ 32-bit EL0
-	kernel_ventry	0, t, 32, error		// Error 32-bit EL0
-SYM_CODE_END(vectors)
 
 #ifdef CONFIG_VMAP_STACK
 SYM_CODE_START_LOCAL(__bad_stack)
@@ -542,7 +519,6 @@ SYM_CODE_START_LOCAL(__bad_stack)
 SYM_CODE_END(__bad_stack)
 #endif /* CONFIG_VMAP_STACK */
 
-
 	.macro entry_handler el:req, ht:req, regsize:req, label:req
 SYM_CODE_START_LOCAL(el\el\ht\()_\regsize\()_\label)
 	kernel_entry \el, \regsize
@@ -556,28 +532,35 @@ SYM_CODE_START_LOCAL(el\el\ht\()_\regsize\()_\label)
 SYM_CODE_END(el\el\ht\()_\regsize\()_\label)
 	.endm
 
-/*
- * Early exception handlers
- */
-	entry_handler	1, t, 64, sync
-	entry_handler	1, t, 64, irq
-	entry_handler	1, t, 64, fiq
-	entry_handler	1, t, 64, error
+	.macro kernel_vector_entry el:req, ht:req, regsize:req, label:req
+	kernel_ventry	\el, \ht, \regsize, \label
+	.pushsection ".entry.text.handler", "ax"
+	entry_handler	\el, \ht, \regsize, \label
+	.popsection
+	.endm
 
-	entry_handler	1, h, 64, sync
-	entry_handler	1, h, 64, irq
-	entry_handler	1, h, 64, fiq
-	entry_handler	1, h, 64, error
+	.align	11
+SYM_CODE_START(vectors)
+	kernel_vector_entry	1, t, 64, sync		// Synchronous EL1t
+	kernel_vector_entry	1, t, 64, irq		// IRQ EL1t
+	kernel_vector_entry	1, t, 64, fiq		// FIQ EL1h
+	kernel_vector_entry	1, t, 64, error		// Error EL1t
 
-	entry_handler	0, t, 64, sync
-	entry_handler	0, t, 64, irq
-	entry_handler	0, t, 64, fiq
-	entry_handler	0, t, 64, error
+	kernel_vector_entry	1, h, 64, sync		// Synchronous EL1h
+	kernel_vector_entry	1, h, 64, irq		// IRQ EL1h
+	kernel_vector_entry	1, h, 64, fiq		// FIQ EL1h
+	kernel_vector_entry	1, h, 64, error		// Error EL1h
 
-	entry_handler	0, t, 32, sync
-	entry_handler	0, t, 32, irq
-	entry_handler	0, t, 32, fiq
-	entry_handler	0, t, 32, error
+	kernel_vector_entry	0, t, 64, sync		// Synchronous 64-bit EL0
+	kernel_vector_entry	0, t, 64, irq		// IRQ 64-bit EL0
+	kernel_vector_entry	0, t, 64, fiq		// FIQ 64-bit EL0
+	kernel_vector_entry	0, t, 64, error		// Error 64-bit EL0
+
+	kernel_vector_entry	0, t, 32, sync		// Synchronous 32-bit EL0
+	kernel_vector_entry	0, t, 32, irq		// IRQ 32-bit EL0
+	kernel_vector_entry	0, t, 32, fiq		// FIQ 32-bit EL0
+	kernel_vector_entry	0, t, 32, error		// Error 32-bit EL0
+SYM_CODE_END(vectors)
 
 SYM_CODE_START_LOCAL(ret_to_kernel)
 	kernel_exit 1
