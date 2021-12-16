@@ -131,7 +131,7 @@
 	 */
 	__INITRODATA
 
-	.align	2
+	.p2align_zeropad 2
 .Lefi_debug_table:
 	// EFI_IMAGE_DEBUG_DIRECTORY_ENTRY
 	.long	0					// Characteristics
@@ -158,7 +158,7 @@
 	.set	.Lefi_debug_entry_size, . - .Lefi_debug_entry
 #endif
 
-	.balign	SEGMENT_ALIGN
+	.balign_zeropad	SEGMENT_ALIGN
 .Lefi_header_end:
 #else
 	.set	.Lpe_header_offset, 0x0
