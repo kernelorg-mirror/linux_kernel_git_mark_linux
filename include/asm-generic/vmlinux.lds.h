@@ -621,7 +621,7 @@
 #define ENTRY_TEXT							\
 		ALIGN_FUNCTION();					\
 		__entry_text_start = .;					\
-		*(.entry.text)						\
+		*(.entry.text) *(.entry.text.*)				\
 		__entry_text_end = .;
 
 #define IRQENTRY_TEXT							\
