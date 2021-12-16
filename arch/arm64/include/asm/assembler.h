@@ -27,6 +27,20 @@
 #include <asm/thread_info.h>
 
 	/*
+	 * Align to a `n` byte boundary, padding any gap with zeroes.
+	 */
+	.macro .balign_zeropad, n
+	.balign (\n), 0
+	.endm
+
+	/*
+	 * Align to a `2**n` byte boundary, padding any gap with zeroes.
+	 */
+	.macro .p2align_zeropad, n
+	.align (\n), 0
+	.endm
+
+	/*
 	 * Provide a wxN alias for each wN register so what we can paste a xN
 	 * reference after a 'w' to obtain the 32-bit version.
 	 */
