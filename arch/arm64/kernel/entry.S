@@ -539,28 +539,39 @@ SYM_CODE_END(el\el\ht\()_\regsize\()_\label)
 	.popsection
 	.endm
 
-	.align	11
-SYM_CODE_START(vectors)
-	kernel_vector_entry	1, t, 64, sync		// Synchronous EL1t
-	kernel_vector_entry	1, t, 64, irq		// IRQ EL1t
-	kernel_vector_entry	1, t, 64, fiq		// FIQ EL1h
-	kernel_vector_entry	1, t, 64, error		// Error EL1t
+	.macro ventry_elem name:req, idx:req, ventry:req, el:req, ht:req, regsize:req, label:req
+	.org	(\name) + (\idx * 0x80)
+	\ventry	\el, \ht, \regsize, \label
+	.endm
 
-	kernel_vector_entry	1, h, 64, sync		// Synchronous EL1h
-	kernel_vector_entry	1, h, 64, irq		// IRQ EL1h
-	kernel_vector_entry	1, h, 64, fiq		// FIQ EL1h
-	kernel_vector_entry	1, h, 64, error		// Error EL1h
+	.macro define_vectors name:req, ventry:req
+	.align 11
+SYM_CODE_START_NOALIGN(\name)
+	ventry_elem	\name, 0,	\ventry, 1, t, 64, sync		// EL1t Synchronous
+	ventry_elem	\name, 1,	\ventry, 1, t, 64, irq		// EL1t IRQ
+	ventry_elem	\name, 2,	\ventry, 1, t, 64, fiq		// EL1t FIQ
+	ventry_elem	\name, 3,	\ventry, 1, t, 64, error	// EL1t Error
 
-	kernel_vector_entry	0, t, 64, sync		// Synchronous 64-bit EL0
-	kernel_vector_entry	0, t, 64, irq		// IRQ 64-bit EL0
-	kernel_vector_entry	0, t, 64, fiq		// FIQ 64-bit EL0
-	kernel_vector_entry	0, t, 64, error		// Error 64-bit EL0
+	ventry_elem	\name, 4,	\ventry, 1, h, 64, sync		// EL1h Synchronous
+	ventry_elem	\name, 5,	\ventry, 1, h, 64, irq		// EL1h IRQ
+	ventry_elem	\name, 6,	\ventry, 1, h, 64, fiq		// EL1h FIQ
+	ventry_elem	\name, 7,	\ventry, 1, h, 64, error	// EL1h Error
 
-	kernel_vector_entry	0, t, 32, sync		// Synchronous 32-bit EL0
-	kernel_vector_entry	0, t, 32, irq		// IRQ 32-bit EL0
-	kernel_vector_entry	0, t, 32, fiq		// FIQ 32-bit EL0
-	kernel_vector_entry	0, t, 32, error		// Error 32-bit EL0
-SYM_CODE_END(vectors)
+	ventry_elem	\name, 8,	\ventry, 0, t, 64, sync		// EL0 (64-bit) Synchronous
+	ventry_elem	\name, 9,	\ventry, 0, t, 64, irq		// EL0 (64-bit) IRQ
+	ventry_elem	\name, 10,	\ventry, 0, t, 64, fiq		// EL0 (64-bit) FIQ
+	ventry_elem	\name, 11,	\ventry, 0, t, 64, error	// EL0 (64-bit) Error
+
+	ventry_elem	\name, 12,	\ventry, 0, t, 32, sync		// EL0 (32-bit) Synchronous
+	ventry_elem	\name, 13,	\ventry, 0, t, 32, irq		// EL0 (32-bit) IRQ
+	ventry_elem	\name, 14,	\ventry, 0, t, 32, fiq		// EL0 (32-bit) FIQ
+	ventry_elem	\name, 15,	\ventry, 0, t, 32, error	// EL0 (32-bit) Error
+
+	.org (\name) + (16 * 0x80)
+SYM_CODE_END(\name)
+	.endm
+
+	define_vectors	vectors, kernel_vector_entry
 
 SYM_CODE_START_LOCAL(ret_to_kernel)
 	kernel_exit 1
