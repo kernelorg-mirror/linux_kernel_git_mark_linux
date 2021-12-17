@@ -975,7 +975,7 @@ static int unix_autobind(struct socket *sock)
 		goto out;
 
 	addr->name->sun_family = AF_UNIX;
-	refcount_set(&addr->refcnt, 1);
+	refcount_init(&addr->refcnt, 1);
 
 retry:
 	addr->len = sprintf(addr->name->sun_path+1, "%05x", ordernum) + 1 + sizeof(short);
@@ -1174,7 +1174,7 @@ static int unix_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	memcpy(addr->name, sunaddr, addr_len);
 	addr->len = addr_len;
 	addr->hash = hash ^ sk->sk_type;
-	refcount_set(&addr->refcnt, 1);
+	refcount_init(&addr->refcnt, 1);
 
 	if (sun_path[0])
 		err = unix_bind_bsd(sk, addr);
