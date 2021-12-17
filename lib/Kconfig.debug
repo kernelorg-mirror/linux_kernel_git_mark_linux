@@ -1318,6 +1318,11 @@ config LOCK_STAT
 	 CONFIG_LOCK_STAT defines "contended" and "acquired" lock events.
 	 (CONFIG_LOCKDEP defines "acquire" and "release" events.)
 
+config DEBUG_REFCOUNT
+	bool "Refcount debugging: basic checks"
+	help
+	  Say Y here to catch missing refcount_t initialization.
+
 config DEBUG_RT_MUTEXES
 	bool "RT Mutex debugging, deadlock detection"
 	depends on DEBUG_KERNEL && RT_MUTEXES

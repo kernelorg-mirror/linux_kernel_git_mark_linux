@@ -110,9 +110,35 @@ struct mutex;
  */
 typedef struct refcount_struct {
 	atomic_t refs;
+#ifdef CONFIG_DEBUG_REFCOUNT
+	unsigned int magic;
+#endif
 } refcount_t;
 
-#define REFCOUNT_INIT(n)	{ .refs = ATOMIC_INIT(n), }
+#ifdef CONFIG_DEBUG_REFCOUNT
+#define REFCOUNT_MAGIC		0x04f10bad
+
+#define DEBUG_REFCOUNT_INIT()				\
+	.magic = REFCOUNT_MAGIC,
+
+void refcount_bad_magic(const refcount_t *r);
+
+static __always_inline void refcount_debug_before(const refcount_t *r)
+{
+	if (r->magic != REFCOUNT_MAGIC)
+		refcount_bad_magic(r);
+}
+#else
+#define DEBUG_REFCOUNT_INIT()
+static __always_inline void refcount_debug_before(const refcount_t *r) { }
+#endif
+
+#define REFCOUNT_INIT(n)				\
+	(refcount_t){					\
+		.refs = ATOMIC_INIT(n),			\
+		DEBUG_REFCOUNT_INIT()			\
+	}
+
 #define REFCOUNT_MAX		INT_MAX
 #define REFCOUNT_SATURATED	(INT_MIN / 2)
 
@@ -133,7 +159,18 @@ void refcount_warn_saturate(refcount_t *r, enum refcount_saturation_type t);
  */
 static inline void refcount_set(refcount_t *r, int n)
 {
+	// TODO: move callers to refcount_init(), and check this
 	atomic_set(&r->refs, n);
+}
+
+static inline void refcount_init(refcount_t *r, int n)
+{
+	*r = REFCOUNT_INIT(n);
+}
+
+static inline unsigned int __refcount_internal_read(const refcount_t *r)
+{
+	return atomic_read(&r->refs);
 }
 
 /**
@@ -144,12 +181,17 @@ static inline void refcount_set(refcount_t *r, int n)
  */
 static inline unsigned int refcount_read(const refcount_t *r)
 {
-	return atomic_read(&r->refs);
+	refcount_debug_before(r);
+	return __refcount_internal_read(r);
 }
 
 static inline __must_check bool __refcount_add_not_zero(int i, refcount_t *r, int *oldp)
 {
-	int old = refcount_read(r);
+	int old;
+
+	refcount_debug_before(r);
+
+	old = __refcount_internal_read(r);
 
 	do {
 		if (!old)
@@ -190,7 +232,11 @@ static inline __must_check bool refcount_add_not_zero(int i, refcount_t *r)
 
 static inline void __refcount_add(int i, refcount_t *r, int *oldp)
 {
-	int old = atomic_fetch_add_relaxed(i, &r->refs);
+	int old;
+
+	refcount_debug_before(r);
+
+	old = atomic_fetch_add_relaxed(i, &r->refs);
 
 	if (oldp)
 		*oldp = old;
@@ -269,7 +315,11 @@ static inline void refcount_inc(refcount_t *r)
 
 static inline __must_check bool __refcount_sub_and_test(int i, refcount_t *r, int *oldp)
 {
-	int old = atomic_fetch_sub_release(i, &r->refs);
+	int old;
+
+	refcount_debug_before(r);
+
+	old = atomic_fetch_sub_release(i, &r->refs);
 
 	if (oldp)
 		*oldp = old;
@@ -335,7 +385,11 @@ static inline __must_check bool refcount_dec_and_test(refcount_t *r)
 
 static inline void __refcount_dec(refcount_t *r, int *oldp)
 {
-	int old = atomic_fetch_sub_release(1, &r->refs);
+	int old;
+
+	refcount_debug_before(r);
+
+	old = atomic_fetch_sub_release(1, &r->refs);
 
 	if (oldp)
 		*oldp = old;

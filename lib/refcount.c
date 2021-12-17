@@ -3,10 +3,11 @@
  * Out-of-line refcount functions.
  */
 
+#include <linux/bug.h>
 #include <linux/mutex.h>
+#include <linux/ratelimit.h>
 #include <linux/refcount.h>
 #include <linux/spinlock.h>
-#include <linux/bug.h>
 
 #define REFCOUNT_WARN(str)	WARN_ONCE(1, "refcount_t: " str ".\n")
 
@@ -56,6 +57,8 @@ bool refcount_dec_if_one(refcount_t *r)
 {
 	int val = 1;
 
+	refcount_debug_before(r);
+
 	return atomic_try_cmpxchg_release(&r->refs, &val, 0);
 }
 EXPORT_SYMBOL(refcount_dec_if_one);
@@ -74,6 +77,9 @@ EXPORT_SYMBOL(refcount_dec_if_one);
 bool refcount_dec_not_one(refcount_t *r)
 {
 	unsigned int new, val = atomic_read(&r->refs);
+
+	// TODO: move the read of `val`?
+	refcount_debug_before(r);
 
 	do {
 		if (unlikely(val == REFCOUNT_SATURATED))
@@ -112,6 +118,8 @@ EXPORT_SYMBOL(refcount_dec_not_one);
  */
 bool refcount_dec_and_mutex_lock(refcount_t *r, struct mutex *lock)
 {
+	refcount_debug_before(r);
+
 	if (refcount_dec_not_one(r))
 		return false;
 
@@ -143,6 +151,8 @@ EXPORT_SYMBOL(refcount_dec_and_mutex_lock);
  */
 bool refcount_dec_and_lock(refcount_t *r, spinlock_t *lock)
 {
+	refcount_debug_before(r);
+
 	if (refcount_dec_not_one(r))
 		return false;
 
@@ -172,6 +182,8 @@ EXPORT_SYMBOL(refcount_dec_and_lock);
 bool refcount_dec_and_lock_irqsave(refcount_t *r, spinlock_t *lock,
 				   unsigned long *flags)
 {
+	refcount_debug_before(r);
+
 	if (refcount_dec_not_one(r))
 		return false;
 
@@ -184,3 +196,16 @@ bool refcount_dec_and_lock_irqsave(refcount_t *r, spinlock_t *lock,
 	return true;
 }
 EXPORT_SYMBOL(refcount_dec_and_lock_irqsave);
+
+#ifdef CONFIG_DEBUG_REFCOUNT
+void refcount_bad_magic(const refcount_t *r)
+{
+	/*
+	 * This *should* be a BUG() or panic(). This is only a WARN for the
+	 * sake of estimating how many places in the kernel need to be fixed
+	 * up.
+	 */
+	WARN_RATELIMIT(1, "BUG: refcount %pS has bad magic 0x%08x\n",
+		       r, READ_ONCE(r->magic));
+}
+#endif /* CONFIG_DEBUG_REFCOUNT */
