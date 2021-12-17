@@ -28,7 +28,7 @@ struct kref {
  */
 static inline void kref_init(struct kref *kref)
 {
-	refcount_set(&kref->refcount, 1);
+	refcount_init(&kref->refcount, 1);
 }
 
 static inline unsigned int kref_read(const struct kref *kref)
