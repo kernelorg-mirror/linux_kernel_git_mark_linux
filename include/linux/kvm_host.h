@@ -29,6 +29,8 @@
 #include <linux/refcount.h>
 #include <linux/nospec.h>
 #include <linux/notifier.h>
+#include <linux/ftrace.h>
+#include <linux/instrumentation.h>
 #include <asm/signal.h>
 
 #include <linux/kvm.h>
@@ -362,8 +364,11 @@ struct kvm_vcpu {
 	int last_used_slot;
 };
 
-/* must be called with irqs disabled */
-static __always_inline void guest_enter_irqoff(void)
+/*
+ * Start accounting time towards a guest.
+ * Must be called before entering guest context.
+ */
+static __always_inline void guest_timing_enter_irqoff(void)
 {
 	/*
 	 * This is running in ioctl context so its safe to assume that it's the
@@ -372,7 +377,17 @@ static __always_inline void guest_enter_irqoff(void)
 	instrumentation_begin();
 	vtime_account_guest_enter();
 	instrumentation_end();
+}
 
+/*
+ * Enter guest context and enter an RCU extended quiescent state.
+ *
+ * This should be the last thing called before entering the guest, and must be
+ * called after any potential use of RCU (including any potentially
+ * instrumented code).
+ */
+static __always_inline void guest_context_enter_irqoff(void)
+{
 	/*
 	 * KVM does not hold any references to rcu protected data when it
 	 * switches CPU into a guest mode. In fact switching to a guest mode
@@ -388,14 +403,75 @@ static __always_inline void guest_enter_irqoff(void)
 	}
 }
 
-static __always_inline void guest_exit_irqoff(void)
+/*
+ * Deprecated. Architectures should move to guest_timing_enter_irqoff() and
+ * exit_to_guest_mode().
+ */
+static __always_inline void guest_enter_irqoff(void)
+{
+	guest_timing_enter_irqoff();
+	guest_context_enter_irqoff();
+}
+
+/**
+ * exit_to_guest_mode - Fixup state when exiting to guest mode
+ *
+ * This is analagous to exit_to_user_mode(), and ensures we perform the
+ * following in order:
+ *
+ * 1) Trace interrupts on state
+ * 2) Invoke context tracking if enabled to adjust RCU state
+ * 3) Tell lockdep that interrupts are enabled
+ *
+ * Invoked from architecture specific code as the last step before entering a
+ * guest. Must be invoked with interrupts disabled and the caller must be
+ * non-instrumentable.
+ *
+ * This must be called after guest_timing_enter_irqoff().
+ */
+static __always_inline void exit_to_guest_mode(void)
+{
+	instrumentation_begin();
+	trace_hardirqs_on_prepare();
+	lockdep_hardirqs_on_prepare(CALLER_ADDR0);
+	instrumentation_end();
+
+	guest_context_enter_irqoff();
+	lockdep_hardirqs_on(CALLER_ADDR0);
+}
+
+/*
+ * Exit guest context and exit an RCU extended quiescent state.
+ *
+ * This should be the first thing called after exiting the guest, and must be
+ * called before any potential use of RCU (including any potentially
+ * instrumented code).
+ */
+static __always_inline void guest_context_exit_irqoff(void)
 {
 	context_tracking_guest_exit();
+}
 
+/*
+ * Stop accounting time towards a guest.
+ * Must be called after exiting guest context.
+ */
+static __always_inline void guest_timing_exit_irqoff(void)
+{
 	instrumentation_begin();
 	/* Flush the guest cputime we spent on the guest */
 	vtime_account_guest_exit();
 	instrumentation_end();
+}
+
+/*
+ * Deprecated. Architectures should move to enter_from_guest_mode() and
+ * guest_timing_enter_irqoff().
+ */
+static __always_inline void guest_exit_irqoff(void)
+{
+	guest_context_exit_irqoff();
+	guest_timing_exit_irqoff();
 }
 
 static inline void guest_exit(void)
@@ -405,6 +481,32 @@ static inline void guest_exit(void)
 	local_irq_save(flags);
 	guest_exit_irqoff();
 	local_irq_restore(flags);
+}
+
+/**
+ * enter_from_guest_mode - Establish state when returning from guest mode
+ *
+ * This is analagous to enter_from_user_mode(), and ensures we perform the
+ * following in order:
+ *
+ * 1) Tell lockdep that interrupts are disabled
+ * 2) Invoke context tracking if enabled to reactivate RCU
+ * 3) Trace interrupts off state
+ *
+ * Invoked from architecture specific code as the first step after exiting a
+ * guest. Must be invoked with interrupts disabled and the caller must be
+ * non-instrumentable.
+ *
+ * This must be called before guest_timing_exit_irqoff().
+ */
+static __always_inline void enter_from_guest_mode(void)
+{
+	lockdep_hardirqs_off(CALLER_ADDR0);
+	guest_context_exit_irqoff();
+
+	instrumentation_begin();
+	trace_hardirqs_off_finish();
+	instrumentation_end();
 }
 
 static inline int kvm_vcpu_exiting_guest_mode(struct kvm_vcpu *vcpu)
