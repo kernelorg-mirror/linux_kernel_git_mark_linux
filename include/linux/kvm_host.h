@@ -362,17 +362,8 @@ struct kvm_vcpu {
 	int last_used_slot;
 };
 
-/* must be called with irqs disabled */
-static __always_inline void guest_enter_irqoff(void)
+static __always_inline void guest_eqs_enter_irqoff(void)
 {
-	/*
-	 * This is running in ioctl context so its safe to assume that it's the
-	 * stime pending cputime to flush.
-	 */
-	instrumentation_begin();
-	vtime_account_guest_enter();
-	instrumentation_end();
-
 	/*
 	 * KVM does not hold any references to rcu protected data when it
 	 * switches CPU into a guest mode. In fact switching to a guest mode
@@ -388,14 +379,42 @@ static __always_inline void guest_enter_irqoff(void)
 	}
 }
 
-static __always_inline void guest_exit_irqoff(void)
+static __always_inline void guest_timing_enter_irqoff(void)
+{
+	/*
+	 * This is running in ioctl context so its safe to assume that it's the
+	 * stime pending cputime to flush.
+	 */
+	instrumentation_begin();
+	vtime_account_guest_enter();
+	instrumentation_end();
+
+}
+
+/* must be called with irqs disabled */
+static __always_inline void guest_enter_irqoff(void)
+{
+	guest_timing_enter_irqoff();
+	guest_eqs_enter_irqoff();
+}
+
+static __always_inline void guest_eqs_exit_irqoff(void)
 {
 	context_tracking_guest_exit();
+}
 
+static __always_inline void guest_timing_exit_irqoff(void)
+{
 	instrumentation_begin();
 	/* Flush the guest cputime we spent on the guest */
 	vtime_account_guest_exit();
 	instrumentation_end();
+}
+
+static __always_inline void guest_exit_irqoff(void)
+{
+	guest_eqs_exit_irqoff();
+	guest_timing_exit_irqoff();
 }
 
 static inline void guest_exit(void)
