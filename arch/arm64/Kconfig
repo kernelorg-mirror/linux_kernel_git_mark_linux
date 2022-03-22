@@ -147,10 +147,10 @@ config ARM64
 	select HAVE_ARCH_HUGE_VMAP
 	select HAVE_ARCH_JUMP_LABEL
 	select HAVE_ARCH_JUMP_LABEL_RELATIVE
-	select HAVE_ARCH_KASAN if !(ARM64_16K_PAGES && ARM64_VA_BITS_48)
+	select HAVE_ARCH_KASAN if ARM64_HAVE_KASAN_SHADOW
 	select HAVE_ARCH_KASAN_VMALLOC if HAVE_ARCH_KASAN
-	select HAVE_ARCH_KASAN_SW_TAGS if HAVE_ARCH_KASAN
-	select HAVE_ARCH_KASAN_HW_TAGS if (HAVE_ARCH_KASAN && ARM64_MTE)
+	select HAVE_ARCH_KASAN_SW_TAGS
+	select HAVE_ARCH_KASAN_HW_TAGS if ARM64_MTE
 	# Some instrumentation may be unsound, hence EXPERT
 	select HAVE_ARCH_KCSAN if EXPERT
 	select HAVE_ARCH_KFENCE
@@ -250,6 +250,12 @@ config ARM64_CONT_PMD_SHIFT
 	default 5 if ARM64_64K_PAGES
 	default 5 if ARM64_16K_PAGES
 	default 4
+
+# The shadow region occupies 1/8 or 1/16 of the address space, and its start
+# and end must be aligned to PGDIR_SIZE. With 16K pages and 48-bit VAs, the PGD
+# level contains two entries, making this impossible.
+config ARM64_HAVE_KASAN_SHADOW
+	def_bool !(ARM64_16K_PAGES && ARM64_VA_BITS_48)
 
 config ARCH_MMAP_RND_BITS_MIN
        default 14 if ARM64_64K_PAGES
