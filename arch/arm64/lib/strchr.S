@@ -30,5 +30,7 @@ SYM_FUNC_START(__pi_strchr)
 	ret
 SYM_FUNC_END(__pi_strchr)
 
-SYM_FUNC_ALIAS_WEAK(strchr, __pi_strchr)
-EXPORT_SYMBOL_NOKASAN(strchr)
+#if !defined(CONFIG_KASAN_GENERIC) && !defined(CONFIG_KASAN_SW_TAGS)
+SYM_FUNC_ALIAS(strchr, __pi_strchr)
+EXPORT_SYMBOL(strchr)
+#endif

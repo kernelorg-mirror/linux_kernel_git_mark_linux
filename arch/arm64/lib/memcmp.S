@@ -135,5 +135,8 @@ L(byte_loop):
 	sub	result, data1w, data2w
 	ret
 SYM_FUNC_END(__pi_memcmp)
-SYM_FUNC_ALIAS_WEAK(memcmp, __pi_memcmp)
-EXPORT_SYMBOL_NOKASAN(memcmp)
+
+#if !defined(CONFIG_KASAN_GENERIC) && !defined(CONFIG_KASAN_SW_TAGS)
+SYM_FUNC_ALIAS(memcmp, __pi_memcmp)
+EXPORT_SYMBOL(memcmp)
+#endif

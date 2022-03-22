@@ -158,5 +158,7 @@ CPU_LE( lsr	tmp2, tmp2, tmp4 )	/* Shift (tmp1 & 63).  */
 	ret
 SYM_FUNC_END(__pi_strnlen)
 
-SYM_FUNC_ALIAS_WEAK(strnlen, __pi_strnlen)
-EXPORT_SYMBOL_NOKASAN(strnlen)
+#if !defined(CONFIG_KASAN_GENERIC) && !defined(CONFIG_KASAN_SW_TAGS)
+SYM_FUNC_ALIAS(strnlen, __pi_strnlen)
+EXPORT_SYMBOL(strnlen)
+#endif

@@ -72,5 +72,8 @@ L(not_found):
 	mov	result, #0
 	ret
 SYM_FUNC_END(__pi_memchr)
-SYM_FUNC_ALIAS_WEAK(memchr, __pi_memchr)
-EXPORT_SYMBOL_NOKASAN(memchr)
+
+#if !defined(CONFIG_KASAN_GENERIC) && !defined(CONFIG_KASAN_SW_TAGS)
+SYM_FUNC_ALIAS(memchr, __pi_memchr)
+EXPORT_SYMBOL(memchr)
+#endif

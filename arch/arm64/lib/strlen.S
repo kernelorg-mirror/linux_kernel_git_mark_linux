@@ -209,5 +209,8 @@ L(page_cross):
 	csel	data2, data2, tmp2, eq
 	b	L(page_cross_entry)
 SYM_FUNC_END(__pi_strlen)
-SYM_FUNC_ALIAS_WEAK(strlen, __pi_strlen)
-EXPORT_SYMBOL_NOKASAN(strlen)
+
+#if !defined(CONFIG_KASAN_GENERIC) && !defined(CONFIG_KASAN_SW_TAGS)
+SYM_FUNC_ALIAS(strlen, __pi_strlen)
+EXPORT_SYMBOL(strlen)
+#endif

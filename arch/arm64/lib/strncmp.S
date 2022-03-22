@@ -306,5 +306,8 @@ L(ret0):
 	mov	result, #0
 	ret
 SYM_FUNC_END(__pi_strncmp)
-SYM_FUNC_ALIAS_WEAK(strncmp, __pi_strncmp)
-EXPORT_SYMBOL_NOKASAN(strncmp)
+
+#if !defined(CONFIG_KASAN_GENERIC) && !defined(CONFIG_KASAN_SW_TAGS)
+SYM_FUNC_ALIAS(strncmp, __pi_strncmp)
+EXPORT_SYMBOL(strncmp)
+#endif

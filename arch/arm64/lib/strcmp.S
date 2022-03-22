@@ -186,5 +186,8 @@ L(done):
 	sub	result, data1, data2
 	ret
 SYM_FUNC_END(__pi_strcmp)
-SYM_FUNC_ALIAS_WEAK(strcmp, __pi_strcmp)
-EXPORT_SYMBOL_NOKASAN(strcmp)
+
+#if !defined(CONFIG_KASAN_GENERIC) && !defined(CONFIG_KASAN_SW_TAGS)
+SYM_FUNC_ALIAS(strcmp, __pi_strcmp)
+EXPORT_SYMBOL(strcmp)
+#endif
