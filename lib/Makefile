@@ -128,6 +128,7 @@ obj-$(CONFIG_TEST_FPU) += test_fpu.o
 CFLAGS_test_fpu.o += $(FPU_CFLAGS)
 
 obj-$(CONFIG_TEST_LIVEPATCH) += livepatch/
+obj-$(CONFIG_TEST_STACKTRACE) += test_stacktrace/
 
 obj-$(CONFIG_KUNIT) += kunit/
 
