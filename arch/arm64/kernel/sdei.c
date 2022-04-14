@@ -31,9 +31,6 @@ unsigned long sdei_exit_mode;
  * sdei stack.
  * For now, we allocate stacks when the driver is probed.
  */
-DECLARE_PER_CPU(unsigned long *, sdei_stack_normal_ptr);
-DECLARE_PER_CPU(unsigned long *, sdei_stack_critical_ptr);
-
 #ifdef CONFIG_VMAP_STACK
 DEFINE_PER_CPU(unsigned long *, sdei_stack_normal_ptr);
 DEFINE_PER_CPU(unsigned long *, sdei_stack_critical_ptr);
@@ -160,38 +157,6 @@ static int init_sdei_scs(void)
 		free_sdei_scs();
 
 	return err;
-}
-
-static bool on_sdei_normal_stack(unsigned long sp, unsigned long size,
-				 struct stack_info *info)
-{
-	unsigned long low = (unsigned long)raw_cpu_read(sdei_stack_normal_ptr);
-	unsigned long high = low + SDEI_STACK_SIZE;
-
-	return on_stack(sp, size, low, high, STACK_TYPE_SDEI_NORMAL, info);
-}
-
-static bool on_sdei_critical_stack(unsigned long sp, unsigned long size,
-				   struct stack_info *info)
-{
-	unsigned long low = (unsigned long)raw_cpu_read(sdei_stack_critical_ptr);
-	unsigned long high = low + SDEI_STACK_SIZE;
-
-	return on_stack(sp, size, low, high, STACK_TYPE_SDEI_CRITICAL, info);
-}
-
-bool _on_sdei_stack(unsigned long sp, unsigned long size, struct stack_info *info)
-{
-	if (!IS_ENABLED(CONFIG_VMAP_STACK))
-		return false;
-
-	if (on_sdei_critical_stack(sp, size, info))
-		return true;
-
-	if (on_sdei_normal_stack(sp, size, info))
-		return true;
-
-	return false;
 }
 
 unsigned long sdei_arch_get_entry_point(int conduit)
