@@ -360,11 +360,9 @@ static void alloc_init_pud(pgd_t *pgdp, unsigned long addr, unsigned long end,
 		mutex_unlock(&fixmap_lock);
 }
 
-static void __create_pgd_mapping(pgd_t *pgdir, phys_addr_t phys,
-				 unsigned long virt, phys_addr_t size,
-				 pgprot_t prot,
-				 phys_addr_t (*pgtable_alloc)(int),
-				 int flags)
+void __create_pgd_mapping(pgd_t *pgdir, phys_addr_t phys, unsigned long virt,
+			  phys_addr_t size, pgprot_t prot,
+			  phys_addr_t (*pgtable_alloc)(int), int flags)
 {
 	unsigned long addr, end, next;
 	pgd_t *pgdp = pgd_offset_pgd(pgdir, virt);

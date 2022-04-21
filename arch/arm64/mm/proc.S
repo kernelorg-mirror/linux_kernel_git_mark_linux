@@ -14,6 +14,7 @@
 #include <asm/asm-offsets.h>
 #include <asm/asm_pointer_auth.h>
 #include <asm/hwcap.h>
+#include <asm/kernel-pgtable.h>
 #include <asm/pgtable-hwdef.h>
 #include <asm/cpufeature.h>
 #include <asm/alternative.h>
@@ -200,20 +201,21 @@ SYM_FUNC_END(idmap_cpu_replace_ttbr1)
 	.popsection
 
 #ifdef CONFIG_UNMAP_KERNEL_AT_EL0
+
+#define KPTI_NG_PTE_FLAGS	(PTE_ATTRINDX(MT_NORMAL) | SWAPPER_PTE_FLAGS)
+
 	.pushsection ".idmap.text", "awx"
 
 	.macro	kpti_mk_tbl_ng, type, num_entries
 	add	end_\type\()p, cur_\type\()p, #\num_entries * 8
 .Ldo_\type:
-	dc	cvac, cur_\()\type\()p		// Ensure any existing dirty
-	dmb	sy				// lines are written back before
-	ldr	\type, [cur_\type\()p]		// loading the entry
-	tbz	\type, #0, .Lnext_\type		// Skip invalid and
-	tbnz	\type, #11, .Lnext_\type	// non-global entries
-	orr	\type, \type, #PTE_NG		// Same bit for blocks and pages
-	str	\type, [cur_\type\()p]		// Update the entry and ensure
-	dmb	sy				// that it is visible to all
-	dc	civac, cur_\()\type\()p		// CPUs.
+	ldr	\type, [cur_\type\()p]		// Load the entry
+	.ifnc	\type, pte
+	tbnz	\type, #11, .Lnext_\type	// Skip visited entries
+	.endif
+	and	valid, \type, #1
+	orr	\type, \type, valid, lsl #11	// nG |= valid
+	str	\type, [cur_\type\()p]		// Update the entry
 	.ifnc	\type, pte
 	tbnz	\type, #1, .Lderef_\type
 	.endif
@@ -223,15 +225,40 @@ SYM_FUNC_END(idmap_cpu_replace_ttbr1)
 	b.ne	.Ldo_\type
 	.endm
 
+	/*
+	 * Dereference the current table entry and map it into the temporary
+	 * fixmap slot associated with the current level. The ad-hoc fixmap
+	 * is a set of PTEs that are located above the PTEs that cover the
+	 * level 3 page table and the scratch page that precedes it.
+	 */
+	.macro	kpti_map_pgtbl, type, level
+	str	xzr, [temp_pte_phys, #8 * (\level + 1)]	// break before make
+	dsb	ishst
+	add	pte, temp_pte_phys, #PAGE_SIZE * (\level + 1)
+	lsr	pte, pte, #12
+	tlbi	vaae1is, pte
+	dsb	ish
+	isb
+
+	phys_to_pte pte, cur_\type\()p
+	add	cur_\type\()p, temp_pte_phys, #PAGE_SIZE * (\level + 1)
+	orr	pte, pte, pte_flags
+	str	pte, [temp_pte_phys, #8 * (\level + 1)]
+	dsb	ishst
+	.endm
+
 /*
- * void __kpti_install_ng_mappings(phys_addr_t swapper)
+ * void __kpti_install_ng_mappings(phys_addr_t temp_pgd,
+ * 				   unsigned long kpti_ng_temp_va)
  *
  * Called exactly once by the boot CPU from stop_machine context, while
  * secondaries are held in idmap_kpti_secondary().
  */
 SYM_FUNC_START(idmap_kpti_install_ng_mappings)
-	swapper_pa	.req	x0
-	swapper_ttb	.req	x3
+	temp_pgd_phys	.req	x0
+	temp_pte_phys	.req	x1
+	pte_flags	.req	x2
+	swapper_ttb	.req	x4
 	cur_pgdp	.req	x5
 	end_pgdp	.req	x6
 	pgd		.req	x7
@@ -242,32 +269,27 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 	cur_ptep	.req	x14
 	end_ptep	.req	x15
 	pte		.req	x16
+	valid		.req	x17
 
 	mrs	swapper_ttb, ttbr1_el1
-	restore_ttbr1	swapper_ttb
 
-	/* We need to walk swapper, so turn off the MMU. */
-	pre_disable_mmu_workaround
-	mrs	x17, sctlr_el1
-	bic	x17, x17, #SCTLR_ELx_M
-	msr	sctlr_el1, x17
+	/* Uninstall swapper before surgery begins */
+	__idmap_cpu_set_reserved_ttbr1 x8, x9
+	offset_ttbr1 temp_pgd_phys, x8
+	msr	ttbr1_el1, temp_pgd_phys
 	isb
+
+	mov	pte_flags, #KPTI_NG_PTE_FLAGS
 
 	/* Perform the rewrite */
-	mov		cur_pgdp, swapper_pa
+	adrp		cur_pgdp, swapper_pg_dir
+	kpti_map_pgtbl	pgd, 0
 	kpti_mk_tbl_ng	pgd, PTRS_PER_PGD
 
-	/* Publish the updated tables and nuke all the TLBs */
-	dsb	sy
-	tlbi	vmalle1is
-	dsb	ish
+	/* We're done: fire up swapper again */
+	__idmap_cpu_set_reserved_ttbr1 x8, x9
+	msr	ttbr1_el1, swapper_ttb
 	isb
-
-	/* We're done: fire up the MMU again */
-	mrs	x17, sctlr_el1
-	orr	x17, x17, #SCTLR_ELx_M
-	set_sctlr_el1	x17
-
 	ret
 
 .Lderef_pgd:
@@ -275,6 +297,7 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 	.if		CONFIG_PGTABLE_LEVELS > 3
 	pud		.req	x10
 	pte_to_phys	cur_pudp, pgd
+	kpti_map_pgtbl	pud, 1
 	kpti_mk_tbl_ng	pud, PTRS_PER_PUD
 	b		.Lnext_pgd
 	.else		/* CONFIG_PGTABLE_LEVELS <= 3 */
@@ -287,6 +310,7 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 	.if		CONFIG_PGTABLE_LEVELS > 2
 	pmd		.req	x13
 	pte_to_phys	cur_pmdp, pud
+	kpti_map_pgtbl	pmd, 2
 	kpti_mk_tbl_ng	pmd, PTRS_PER_PMD
 	b		.Lnext_pud
 	.else		/* CONFIG_PGTABLE_LEVELS <= 2 */
@@ -297,10 +321,13 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 .Lderef_pmd:
 	/* PTE */
 	pte_to_phys	cur_ptep, pmd
+	kpti_map_pgtbl	pte, 3
 	kpti_mk_tbl_ng	pte, PTRS_PER_PTE
 	b		.Lnext_pmd
 
-	.unreq	swapper_pa
+	.unreq	pte_flags
+	.unreq	temp_pte_phys
+	.unreq	temp_pgd_phys
 	.unreq	cur_pgdp
 	.unreq	end_pgdp
 	.unreq	pgd

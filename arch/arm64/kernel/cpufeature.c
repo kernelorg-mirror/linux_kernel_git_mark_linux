@@ -1649,9 +1649,19 @@ static bool unmap_kernel_at_el0(const struct arm64_cpu_capabilities *entry,
 #define IDMAP_ALIAS(x)		((typeof(x))__pa_symbol(x))
 #define IDMAP_FUNC_PTR(f)	IDMAP_ALIAS(&function_nocfi(f))
 
+#define KPTI_NG_TEMP_VA		(-(1UL << PMD_SHIFT))
+
+static phys_addr_t kpti_ng_temp_alloc;
+
+static phys_addr_t kpti_ng_pgd_alloc(int shift)
+{
+	kpti_ng_temp_alloc -= PAGE_SIZE;
+	return kpti_ng_temp_alloc;
+}
+
 static void __nocfi kpti_install_ng_mappings(void)
 {
-	typedef void (kpti_remap_fn)(phys_addr_t);
+	typedef void (kpti_remap_fn)(phys_addr_t, unsigned long);
 	typedef void (kpti_secondary_fn)(int *);
 
 	extern kpti_remap_fn idmap_kpti_install_ng_mappings;
@@ -1661,6 +1671,12 @@ static void __nocfi kpti_install_ng_mappings(void)
 	kpti_remap_fn *remap_fn;
 	kpti_secondary_fn *secondary_fn;
 	int *secondary_flag;
+
+	static pgd_t *kpti_ng_temp_pgd;
+	static u64 alloc;
+
+	int levels = CONFIG_PGTABLE_LEVELS;
+	int order = order_base_2(levels);
 
 	/*
 	 * We don't need to rewrite the page-tables if either we've done
@@ -1691,6 +1707,28 @@ static void __nocfi kpti_install_ng_mappings(void)
 		return;
 	}
 
+	alloc =  __get_free_pages(GFP_ATOMIC | __GFP_ZERO, order);
+	kpti_ng_temp_pgd = (pgd_t *)(alloc + (levels - 1) * PAGE_SIZE);
+	kpti_ng_temp_alloc = __pa(kpti_ng_temp_pgd);
+
+	// Create a minimal page table hierarchy that permits us to
+	// map the swapper page tables temporarily as we traverse them.
+	//
+	// The physical pages are laid out as follows:
+	//
+	// +--------+-/-------+-/------ +-\\--------+
+	// :  PTE[] : | PMD[] : | PUD[] : || PGD[]  :
+	// +--------+-\-------+-\------ +-//--------+
+	//      ^         ^
+	// The PTE page is mapped into this hierarchy at a PMD_SHIFT aligned
+	// virtual address, so that we can manipulate the PTE level entries
+	// while the mapping is active. The first entry covers the PTE[] page
+	// itself, the remaining entries are free to be used as a ad-hoc
+	// fixmap.
+	__create_pgd_mapping(kpti_ng_temp_pgd, __pa(alloc),
+			     KPTI_NG_TEMP_VA, PAGE_SIZE,
+			     PAGE_KERNEL, kpti_ng_pgd_alloc, 0);
+
 	remap_fn = IDMAP_FUNC_PTR(idmap_kpti_install_ng_mappings);
 
 	cpu_install_idmap();
@@ -1700,13 +1738,14 @@ static void __nocfi kpti_install_ng_mappings(void)
 		cpu_relax();
 
 	/* Perform the rewrite */
-	remap_fn(__pa_symbol(swapper_pg_dir));
+	remap_fn(__pa(kpti_ng_temp_pgd), KPTI_NG_TEMP_VA);
 
 	/* Wake secondaries */
 	WRITE_ONCE(*secondary_flag, 0);
 
 	cpu_uninstall_idmap();
 
+	free_pages(alloc, order);
 	arm64_use_ng_mappings = true;
 }
 
