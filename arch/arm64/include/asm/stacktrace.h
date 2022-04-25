@@ -175,27 +175,4 @@ stackinfo_get_ctx_accessible(const struct task_struct *tsk)
 out:
 	return ctx;
 }
-
-/*
- * We can only safely access per-cpu stacks from current in a non-preemptible
- * context.
- */
-static inline bool on_accessible_stack(const struct task_struct *tsk,
-				       unsigned long sp, unsigned long size,
-				       struct stack_info *info)
-{
-	struct stack_context accessible = stackinfo_get_ctx_accessible(tsk);
-
-	for (int i = 0; i < __NR_STACK_TYPES; i++) {
-		struct stack_info tmp = accessible.stacks[i];
-		if (!stackinfo_on_stack(&tmp, sp, size))
-			continue;
-
-		*info = tmp;
-		return true;
-	}
-
-	*info = stackinfo_get_unknown();
-	return false;
-}
 #endif	/* __ASM_STACKTRACE_H */

@@ -25,16 +25,6 @@
  * @fp:          The fp value in the frame record (or the real fp)
  * @pc:          The lr value in the frame record (or the real lr)
  *
- * @stacks_done: Stacks which have been entirely unwound, for which it is no
- *               longer valid to unwind to.
- *
- * @prev_fp:     The fp that pointed to this frame record, or a synthetic value
- *               of 0. This is used to ensure that within a stack, each
- *               subsequent frame record is at an increasing address.
- * @prev_type:   The type of stack this frame record was on, or a synthetic
- *               value of STACK_TYPE_UNKNOWN. This is used to detect a
- *               transition from one stack to another.
- *
  * @kr_cur:      When KRETPROBES is selected, holds the kretprobe instance
  *               associated with the most recently encountered replacement lr
  *               value.
@@ -42,9 +32,6 @@
 struct unwind_state {
 	unsigned long fp;
 	unsigned long pc;
-	DECLARE_BITMAP(stacks_done, __NR_STACK_TYPES);
-	unsigned long prev_fp;
-	enum stack_type prev_type;
 #ifdef CONFIG_KRETPROBES
 	struct llist_node *kr_cur;
 #endif
@@ -58,19 +45,6 @@ static notrace void unwind_init(struct unwind_state *state, unsigned long fp,
 #ifdef CONFIG_KRETPROBES
 	state->kr_cur = NULL;
 #endif
-
-	/*
-	 * Prime the first unwind.
-	 *
-	 * In unwind_next() we'll check that the FP points to a valid stack,
-	 * which can't be STACK_TYPE_UNKNOWN, and the first unwind will be
-	 * treated as a transition to whichever stack that happens to be. The
-	 * prev_fp value won't be used, but we set it to 0 such that it is
-	 * definitely not an accessible stack address.
-	 */
-	bitmap_zero(state->stacks_done, __NR_STACK_TYPES);
-	state->prev_fp = 0;
-	state->prev_type = STACK_TYPE_UNKNOWN;
 }
 NOKPROBE_SYMBOL(unwind_init);
 
@@ -81,54 +55,11 @@ NOKPROBE_SYMBOL(unwind_init);
  * records (e.g. a cycle), determined based on the location and fp value of A
  * and the location (but not the fp value) of B.
  */
-static int notrace unwind_next(struct task_struct *tsk,
-			       struct unwind_state *state)
+
+
+static notrace int unwind_frame_record(struct unwind_state *state,
+				       stack_trace_consume_fn consume_entry, void *cookie)
 {
-	unsigned long fp = state->fp;
-	struct stack_info info;
-
-	/* Final frame; nothing to unwind */
-	if (fp == (unsigned long)task_pt_regs(tsk)->stackframe)
-		return -ENOENT;
-
-	if (fp & 0x7)
-		return -EINVAL;
-
-	if (!on_accessible_stack(tsk, fp, 16, &info))
-		return -EINVAL;
-
-	if (test_bit(info.type, state->stacks_done))
-		return -EINVAL;
-
-	/*
-	 * As stacks grow downward, any valid record on the same stack must be
-	 * at a strictly higher address than the prior record.
-	 *
-	 * Stacks can nest in several valid orders, e.g.
-	 *
-	 * TASK -> IRQ -> OVERFLOW -> SDEI_NORMAL
-	 * TASK -> SDEI_NORMAL -> SDEI_CRITICAL -> OVERFLOW
-	 *
-	 * ... but the nesting itself is strict. Once we transition from one
-	 * stack to another, it's never valid to unwind back to that first
-	 * stack.
-	 */
-	if (info.type == state->prev_type) {
-		if (fp <= state->prev_fp)
-			return -EINVAL;
-	} else {
-		set_bit(state->prev_type, state->stacks_done);
-	}
-
-	/*
-	 * Record this frame record's values and location. The prev_fp and
-	 * prev_type are only meaningful to the next unwind_next() invocation.
-	 */
-	state->fp = READ_ONCE_NOCHECK(*(unsigned long *)(fp));
-	state->pc = READ_ONCE_NOCHECK(*(unsigned long *)(fp + 8));
-	state->prev_fp = fp;
-	state->prev_type = info.type;
-
 	state->pc = ptrauth_strip_insn_pac(state->pc);
 
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
@@ -153,25 +84,101 @@ static int notrace unwind_next(struct task_struct *tsk,
 		state->pc = kretprobe_find_ret_addr(tsk, (void *)state->fp, &state->kr_cur);
 #endif
 
+	if (!consume_entry(cookie, state->pc))
+		return -ENOENT;
+
 	return 0;
 }
-NOKPROBE_SYMBOL(unwind_next);
+NOKPROBE_SYMBOL(unwind_frame_record);
+
+/*
+ * Unwind frames within a single stack.
+ */
+static notrace int unwind_one_stack(const struct task_struct *tsk,
+				    const struct stack_info *stack,
+				    struct unwind_state *state,
+				    stack_trace_consume_fn consume_entry, void *cookie)
+{
+	unsigned long fp = state->fp;
+	unsigned long prev_fp = 0;
+	int ret;
+
+	while (stackinfo_on_stack(stack, fp, 16)) {
+
+		/* Final frame; nothing to unwind */
+		if (fp == (unsigned long)task_pt_regs(tsk)->stackframe)
+			return -ENOENT;
+
+		if (fp & 0x7)
+			return -EINVAL;
+
+		if (fp <= prev_fp)
+			return -EINVAL;
+
+		/*
+		 * Read this frame record
+		 */
+		state->fp = READ_ONCE_NOCHECK(*(unsigned long *)(fp));
+		state->pc = READ_ONCE_NOCHECK(*(unsigned long *)(fp + 8));
+
+		prev_fp = fp;
+		fp = state->fp;
+
+		ret = unwind_frame_record(state, consume_entry, cookie);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+NOKPROBE_SYMBOL(unwind_one_stack);
+
+/*
+ * Stacks can nest in several valid orders, e.g.
+ *
+ * TASK -> IRQ -> OVERFLOW -> SDEI_NORMAL
+ * TASK -> SDEI_NORMAL -> SDEI_CRITICAL -> OVERFLOW
+ *
+ * ... but the nesting itself is strict. Once we transition from one
+ * stack to another, it's never valid to unwind back to that first
+ * stack.
+ */
+static int unwind_stacks(struct task_struct *tsk,
+			 struct unwind_state *state,
+			 stack_trace_consume_fn consume_entry, void *cookie)
+{
+	struct stack_context accessible = stackinfo_get_ctx_accessible(tsk);
+
+	if (!consume_entry(cookie, state->pc))
+		return -ENOENT;
+
+next_stack:
+	for (int i = 0; i < __NR_STACK_TYPES; i++) {
+		struct stack_info stack = accessible.stacks[i];
+		int ret;
+
+		if (!stackinfo_on_stack(&stack, state->fp, 16))
+			continue;
+
+		accessible.stacks[i] = stackinfo_get_unknown();
+
+		ret = unwind_one_stack(tsk, &stack, state, consume_entry,
+				       cookie);
+		if (ret)
+			return ret;
+
+		goto next_stack;
+	}
+
+	return -EINVAL;
+}
 
 static void notrace unwind(struct task_struct *tsk,
 			   struct unwind_state *state,
 			   stack_trace_consume_fn consume_entry, void *cookie)
 {
-	while (1) {
-		int ret;
-
-		if (!consume_entry(cookie, state->pc))
-			break;
-		ret = unwind_next(tsk, state);
-		if (ret < 0)
-			break;
-	}
+	unwind_stacks(tsk, state, consume_entry, cookie);
 }
-NOKPROBE_SYMBOL(unwind);
 
 static bool dump_backtrace_entry(void *arg, unsigned long where)
 {
