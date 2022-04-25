@@ -48,96 +48,101 @@ static inline bool stackinfo_on_stack(const struct stack_info *info,
 	return true;
 }
 
-static inline bool on_stack(unsigned long sp, unsigned long size,
-			    unsigned long low, unsigned long high,
-			    enum stack_type type, struct stack_info *info)
+static struct stack_info stackinfo_get_unknown(void)
 {
-	struct stack_info tmp = {
-		.low = low,
-		.high = high,
-		.type = type,
+	return (struct stack_info) {
+		.low = 0,
+		.high = 0,
+		.type = STACK_TYPE_UNKNOWN,
 	};
-
-	if (!stackinfo_on_stack(&tmp, sp, size))
-		return false;
-
-	if (info)
-		*info = tmp;
-
-	return true;
 }
 
-static inline bool on_irq_stack(unsigned long sp, unsigned long size,
-				struct stack_info *info)
+static struct stack_info stackinfo_get_irq(void)
 {
 	unsigned long low = (unsigned long)raw_cpu_read(irq_stack_ptr);
 	unsigned long high = low + IRQ_STACK_SIZE;
 
-	return on_stack(sp, size, low, high, STACK_TYPE_IRQ, info);
+	return (struct stack_info) {
+		.low = low,
+		.high = high,
+		.type = STACK_TYPE_IRQ,
+	};
 }
 
-static inline bool on_task_stack(const struct task_struct *tsk,
-				 unsigned long sp, unsigned long size,
-				 struct stack_info *info)
+static inline bool on_irq_stack(unsigned long sp, unsigned long size)
+{
+	const struct stack_info irq_info = stackinfo_get_irq();
+	return stackinfo_on_stack(&irq_info, sp, size);
+}
+
+static struct stack_info stackinfo_get_task(const struct task_struct *tsk)
 {
 	unsigned long low = (unsigned long)task_stack_page(tsk);
 	unsigned long high = low + THREAD_SIZE;
 
-	return on_stack(sp, size, low, high, STACK_TYPE_TASK, info);
+	return (struct stack_info) {
+		.low = low,
+		.high = high,
+		.type = STACK_TYPE_TASK,
+	};
+}
+
+static inline bool on_task_stack(const struct task_struct *tsk,
+				 unsigned long sp, unsigned long size)
+{
+	const struct stack_info tsk_info = stackinfo_get_task(tsk);
+	return stackinfo_on_stack(&tsk_info, sp, size);
 }
 
 #ifdef CONFIG_VMAP_STACK
 DECLARE_PER_CPU(unsigned long [OVERFLOW_STACK_SIZE/sizeof(long)], overflow_stack);
 
-static inline bool on_overflow_stack(unsigned long sp, unsigned long size,
-				struct stack_info *info)
+static struct stack_info stackinfo_get_overflow(void)
 {
 	unsigned long low = (unsigned long)raw_cpu_ptr(overflow_stack);
 	unsigned long high = low + OVERFLOW_STACK_SIZE;
 
-	return on_stack(sp, size, low, high, STACK_TYPE_OVERFLOW, info);
+	return (struct stack_info) {
+		.low = low,
+		.high = high,
+		.type = STACK_TYPE_OVERFLOW,
+	};
 }
+
 #else
-static inline bool on_overflow_stack(unsigned long sp, unsigned long size,
-				     struct stack_info *info)
-{
-	return false;
-}
+#define stackinfo_get_overflow()	stackinfo_get_unknown()
 #endif
 
 #if defined(CONFIG_ARM_SDE_INTERFACE) && defined(CONFIG_VMAP_STACK)
 DECLARE_PER_CPU(unsigned long *, sdei_shadow_call_stack_normal_ptr);
 DECLARE_PER_CPU(unsigned long *, sdei_shadow_call_stack_critical_ptr);
 
-static inline bool on_sdei_normal_stack(unsigned long sp, unsigned long size,
-					struct stack_info *info)
+static struct stack_info stackinfo_get_sdei_normal(void)
 {
 	unsigned long low = (unsigned long)raw_cpu_read(sdei_stack_normal_ptr);
 	unsigned long high = low + SDEI_STACK_SIZE;
 
-	return on_stack(sp, size, low, high, STACK_TYPE_SDEI_NORMAL, info);
+	return (struct stack_info) {
+		.low = low,
+		.high = high,
+		.type = STACK_TYPE_SDEI_NORMAL,
+	};
 }
 
-static inline bool on_sdei_critical_stack(unsigned long sp, unsigned long size,
-					  struct stack_info *info)
+static struct stack_info stackinfo_get_sdei_critical(void)
 {
 	unsigned long low = (unsigned long)raw_cpu_read(sdei_stack_critical_ptr);
 	unsigned long high = low + SDEI_STACK_SIZE;
 
-	return on_stack(sp, size, low, high, STACK_TYPE_SDEI_CRITICAL, info);
+	return (struct stack_info) {
+		.low = low,
+		.high = high,
+		.type = STACK_TYPE_SDEI_CRITICAL,
+	};
 }
 #else
-static inline bool on_sdei_normal_stack(unsigned long sp, unsigned long size,
-					struct stack_info *info)
-{
-	return false;
-}
-
-static inline bool on_sdei_critical_stack(unsigned long sp, unsigned long size,
-					  struct stack_info *info)
-{
-	return false;
-}
+#define stackinfo_get_sdei_normal()	stackinfo_get_unknown()
+#define stackinfo_get_sdei_critical()	stackinfo_get_unknown()
 #endif
 
 /*
@@ -148,30 +153,38 @@ static inline bool on_accessible_stack(const struct task_struct *tsk,
 				       unsigned long sp, unsigned long size,
 				       struct stack_info *info)
 {
-	if (info)
-		info->type = STACK_TYPE_UNKNOWN;
+	struct stack_info stacks[__NR_STACK_TYPES] = {
+		[0 ... __NR_STACK_TYPES - 1] = stackinfo_get_unknown(),
+	};
 
-	if (on_task_stack(tsk, sp, size, info))
-		return true;
+	stacks[STACK_TYPE_TASK] = stackinfo_get_task(tsk);
+
 	if (tsk != current || preemptible())
-		return false;
-	if (on_irq_stack(sp, size, info))
-		return true;
-	if (on_overflow_stack(sp, size, info))
-		return true;
+		goto found_stacks;
 
-	if (IS_ENABLED(CONFIG_VMAP_STACK) &&
-	    IS_ENABLED(CONFIG_ARM_SDE_INTERFACE) &&
-	    in_nmi())
-	{
-		if (on_sdei_critical_stack(sp, size, info))
-			return true;
+	stacks[STACK_TYPE_IRQ] = stackinfo_get_irq();
+	stacks[STACK_TYPE_OVERFLOW] = stackinfo_get_overflow();
 
-		if (on_sdei_normal_stack(sp, size, info))
-			return true;
+	if (!IS_ENABLED(CONFIG_VMAP_STACK) ||
+	    !IS_ENABLED(CONFIG_ARM_SDE_INTERFACE) ||
+	    !in_nmi())
+		goto found_stacks;
+
+	stacks[STACK_TYPE_SDEI_NORMAL] = stackinfo_get_sdei_normal();
+	stacks[STACK_TYPE_SDEI_CRITICAL] = stackinfo_get_sdei_critical();
+
+found_stacks:
+
+	for (int i = 0; i < __NR_STACK_TYPES; i++) {
+		struct stack_info tmp = stacks[i];
+		if (!stackinfo_on_stack(&tmp, sp, size))
+			continue;
+
+		*info = tmp;
+		return true;
 	}
 
+	*info = stackinfo_get_unknown();
 	return false;
 }
-
 #endif	/* __ASM_STACKTRACE_H */
