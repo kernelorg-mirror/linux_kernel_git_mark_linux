@@ -145,6 +145,37 @@ static struct stack_info stackinfo_get_sdei_critical(void)
 #define stackinfo_get_sdei_critical()	stackinfo_get_unknown()
 #endif
 
+struct stack_context {
+	struct stack_info stacks[__NR_STACK_TYPES];
+};
+
+static __always_inline struct stack_context
+stackinfo_get_ctx_accessible(const struct task_struct *tsk)
+{
+	struct stack_context ctx = {
+		.stacks[0 ... __NR_STACK_TYPES - 1] = stackinfo_get_unknown(),
+	};
+
+	ctx.stacks[STACK_TYPE_TASK] = stackinfo_get_task(tsk);
+
+	if (tsk != current || preemptible())
+		goto out;
+
+	ctx.stacks[STACK_TYPE_IRQ] = stackinfo_get_irq();
+	ctx.stacks[STACK_TYPE_OVERFLOW] = stackinfo_get_overflow();
+
+	if (!IS_ENABLED(CONFIG_VMAP_STACK) ||
+	    !IS_ENABLED(CONFIG_ARM_SDE_INTERFACE) ||
+	    !in_nmi())
+	    goto out;
+
+	ctx.stacks[STACK_TYPE_SDEI_NORMAL] = stackinfo_get_sdei_normal();
+	ctx.stacks[STACK_TYPE_SDEI_CRITICAL] = stackinfo_get_sdei_critical();
+
+out:
+	return ctx;
+}
+
 /*
  * We can only safely access per-cpu stacks from current in a non-preemptible
  * context.
@@ -153,30 +184,10 @@ static inline bool on_accessible_stack(const struct task_struct *tsk,
 				       unsigned long sp, unsigned long size,
 				       struct stack_info *info)
 {
-	struct stack_info stacks[__NR_STACK_TYPES] = {
-		[0 ... __NR_STACK_TYPES - 1] = stackinfo_get_unknown(),
-	};
-
-	stacks[STACK_TYPE_TASK] = stackinfo_get_task(tsk);
-
-	if (tsk != current || preemptible())
-		goto found_stacks;
-
-	stacks[STACK_TYPE_IRQ] = stackinfo_get_irq();
-	stacks[STACK_TYPE_OVERFLOW] = stackinfo_get_overflow();
-
-	if (!IS_ENABLED(CONFIG_VMAP_STACK) ||
-	    !IS_ENABLED(CONFIG_ARM_SDE_INTERFACE) ||
-	    !in_nmi())
-		goto found_stacks;
-
-	stacks[STACK_TYPE_SDEI_NORMAL] = stackinfo_get_sdei_normal();
-	stacks[STACK_TYPE_SDEI_CRITICAL] = stackinfo_get_sdei_critical();
-
-found_stacks:
+	struct stack_context accessible = stackinfo_get_ctx_accessible(tsk);
 
 	for (int i = 0; i < __NR_STACK_TYPES; i++) {
-		struct stack_info tmp = stacks[i];
+		struct stack_info tmp = accessible.stacks[i];
 		if (!stackinfo_on_stack(&tmp, sp, size))
 			continue;
 
