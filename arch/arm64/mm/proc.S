@@ -224,18 +224,14 @@ SYM_FUNC_END(idmap_cpu_replace_ttbr1)
 	.endm
 
 /*
- * void __kpti_install_ng_mappings(int cpu, int num_cpus, phys_addr_t swapper)
+ * void __kpti_install_ng_mappings(phys_addr_t swapper)
  *
- * Called exactly once from stop_machine context by each CPU found during boot.
+ * Called exactly once by the boot CPU from stop_machine context, while
+ * secondaries are held in idmap_kpti_secondary().
  */
-__idmap_kpti_flag:
-	.long	1
 SYM_FUNC_START(idmap_kpti_install_ng_mappings)
-	cpu		.req	w0
-	num_cpus	.req	w1
-	swapper_pa	.req	x2
+	swapper_pa	.req	x0
 	swapper_ttb	.req	x3
-	flag_ptr	.req	x4
 	cur_pgdp	.req	x5
 	end_pgdp	.req	x6
 	pgd		.req	x7
@@ -249,16 +245,6 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 
 	mrs	swapper_ttb, ttbr1_el1
 	restore_ttbr1	swapper_ttb
-	adr	flag_ptr, __idmap_kpti_flag
-
-	cbnz	cpu, __idmap_kpti_secondary
-
-	/* We're the boot CPU. Wait for the others to catch up */
-	sevl
-1:	wfe
-	ldaxr	w17, [flag_ptr]
-	eor	w17, w17, num_cpus
-	cbnz	w17, 1b
 
 	/* We need to walk swapper, so turn off the MMU. */
 	pre_disable_mmu_workaround
@@ -267,8 +253,7 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 	msr	sctlr_el1, x17
 	isb
 
-	/* Everybody is enjoying the idmap, so we can rewrite swapper. */
-	/* PGD */
+	/* Perform the rewrite */
 	mov		cur_pgdp, swapper_pa
 	kpti_mk_tbl_ng	pgd, PTRS_PER_PGD
 
@@ -283,8 +268,6 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 	orr	x17, x17, #SCTLR_ELx_M
 	set_sctlr_el1	x17
 
-	/* Set the flag to zero to indicate that we're all done */
-	str	wzr, [flag_ptr]
 	ret
 
 .Lderef_pgd:
@@ -317,8 +300,6 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 	kpti_mk_tbl_ng	pte, PTRS_PER_PTE
 	b		.Lnext_pmd
 
-	.unreq	cpu
-	.unreq	num_cpus
 	.unreq	swapper_pa
 	.unreq	cur_pgdp
 	.unreq	end_pgdp
@@ -332,33 +313,39 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 	.unreq	cur_ptep
 	.unreq	end_ptep
 	.unreq	pte
+	.unreq	swapper_ttb
+SYM_FUNC_END(idmap_kpti_install_ng_mappings)
 
-	/* Secondary CPUs end up here */
-__idmap_kpti_secondary:
-	/* Uninstall swapper before surgery begins */
-	__idmap_cpu_set_reserved_ttbr1 x16, x17
+/*
+ * void idmap_kpti_secondary(int *flag)
+ *
+ * Secondary CPUs wait here while the boot CPU rewrites the swapper.
+ */
+SYM_FUNC_START(idmap_kpti_secondary)
+	mrs	x17, ttbr1_el1
 
 	/* Increment the flag to let the boot CPU we're ready */
-1:	ldxr	w16, [flag_ptr]
+1:	ldxr	w16, [x0]
 	add	w16, w16, #1
-	stxr	w17, w16, [flag_ptr]
-	cbnz	w17, 1b
+	stxr	w15, w16, [x0]
+	cbnz	w15, 1b
 
 	/* Wait for the boot CPU to finish messing around with swapper */
 	sevl
 1:	wfe
-	ldxr	w16, [flag_ptr]
+	ldxr	w16, [x0]
 	cbnz	w16, 1b
 
-	/* All done, act like nothing happened */
-	offset_ttbr1 swapper_ttb, x16
-	msr	ttbr1_el1, swapper_ttb
+	msr	ttbr1_el1, x17
 	isb
-	ret
 
-	.unreq	swapper_ttb
-	.unreq	flag_ptr
-SYM_FUNC_END(idmap_kpti_install_ng_mappings)
+	ret
+SYM_FUNC_END(idmap_kpti_secondary)
+
+SYM_DATA_START(idmap_kpti_secondary_flag)
+	.long	1
+SYM_DATA_END(idmap_kpti_secondary_flag)
+
 	.popsection
 #endif
 

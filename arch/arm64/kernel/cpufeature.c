@@ -1645,13 +1645,22 @@ static bool unmap_kernel_at_el0(const struct arm64_cpu_capabilities *entry,
 }
 
 #ifdef CONFIG_UNMAP_KERNEL_AT_EL0
+
+#define IDMAP_ALIAS(x)		((typeof(x))__pa_symbol(x))
+#define IDMAP_FUNC_PTR(f)	IDMAP_ALIAS(&function_nocfi(f))
+
 static void __nocfi kpti_install_ng_mappings(void)
 {
-	typedef void (kpti_remap_fn)(int, int, phys_addr_t);
-	extern kpti_remap_fn idmap_kpti_install_ng_mappings;
-	kpti_remap_fn *remap_fn;
+	typedef void (kpti_remap_fn)(phys_addr_t);
+	typedef void (kpti_secondary_fn)(int *);
 
-	int cpu = smp_processor_id();
+	extern kpti_remap_fn idmap_kpti_install_ng_mappings;
+	extern kpti_secondary_fn idmap_kpti_secondary;
+	extern int idmap_kpti_secondary_flag;
+
+	kpti_remap_fn *remap_fn;
+	kpti_secondary_fn *secondary_fn;
+	int *secondary_flag;
 
 	/*
 	 * We don't need to rewrite the page-tables if either we've done
@@ -1661,14 +1670,44 @@ static void __nocfi kpti_install_ng_mappings(void)
 	if (arm64_use_ng_mappings)
 		return;
 
-	remap_fn = (void *)__pa_symbol(function_nocfi(idmap_kpti_install_ng_mappings));
+	/*
+	 * Since the secondary flag is in the idmap (and its image alias is
+	 * read-only), we always use its idmap alias so that we can write to
+	 * it.
+	 */
+	secondary_flag = IDMAP_ALIAS(&idmap_kpti_secondary_flag);
+
+	/*
+	 * Secondary CPUs wait in a pen using a reserved TTBR1 value during the
+	 * rewrite.
+	 */
+	if (smp_processor_id() != 0) {
+		secondary_fn = IDMAP_FUNC_PTR(idmap_kpti_secondary);
+
+		cpu_install_idmap();
+		secondary_fn(secondary_flag);
+		cpu_uninstall_idmap();
+
+		return;
+	}
+
+	remap_fn = IDMAP_FUNC_PTR(idmap_kpti_install_ng_mappings);
 
 	cpu_install_idmap();
-	remap_fn(cpu, num_online_cpus(), __pa_symbol(swapper_pg_dir));
+
+	/* Wait for secondaries to switch to the reserved TTBR1 page */
+	while (READ_ONCE(*secondary_flag) != num_online_cpus())
+		cpu_relax();
+
+	/* Perform the rewrite */
+	remap_fn(__pa_symbol(swapper_pg_dir));
+
+	/* Wake secondaries */
+	WRITE_ONCE(*secondary_flag, 0);
+
 	cpu_uninstall_idmap();
 
-	if (!cpu)
-		arm64_use_ng_mappings = true;
+	arm64_use_ng_mappings = true;
 }
 
 static void cpu_enable_kpti(const struct arm64_cpu_capabilities *__unused)
