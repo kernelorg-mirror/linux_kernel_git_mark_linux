@@ -233,18 +233,18 @@ SYM_FUNC_END(idmap_cpu_replace_ttbr1)
 	 */
 	.macro	kpti_map_pgtbl, type, level
 	str	xzr, [temp_pte_phys, #8 * (\level + 1)]	// break before make
-	dsb	ishst
+	dsb	nshst
 	add	pte, temp_pte_phys, #PAGE_SIZE * (\level + 1)
 	lsr	pte, pte, #12
-	tlbi	vaae1is, pte
-	dsb	ish
+	tlbi	vaae1, pte
+	dsb	nsh
 	isb
 
 	phys_to_pte pte, cur_\type\()p
 	add	cur_\type\()p, temp_pte_phys, #PAGE_SIZE * (\level + 1)
 	orr	pte, pte, pte_flags
 	str	pte, [temp_pte_phys, #8 * (\level + 1)]
-	dsb	ishst
+	dsb	nshst
 	.endm
 
 /*
@@ -285,6 +285,9 @@ SYM_FUNC_START(idmap_kpti_install_ng_mappings)
 	adrp		cur_pgdp, swapper_pg_dir
 	kpti_map_pgtbl	pgd, 0
 	kpti_mk_tbl_ng	pgd, PTRS_PER_PGD
+
+	/* Ensure all the updated entries are visible to secondary CPUs */
+	dsb	ishst
 
 	/* We're done: fire up swapper again */
 	__idmap_cpu_set_reserved_ttbr1 x8, x9
