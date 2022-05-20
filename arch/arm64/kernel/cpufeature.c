@@ -1645,20 +1645,13 @@ static bool unmap_kernel_at_el0(const struct arm64_cpu_capabilities *entry,
 }
 
 #ifdef CONFIG_UNMAP_KERNEL_AT_EL0
-static void __nocfi
-kpti_install_ng_mappings(const struct arm64_cpu_capabilities *__unused)
+static void __nocfi kpti_install_ng_mappings(void)
 {
 	typedef void (kpti_remap_fn)(int, int, phys_addr_t);
 	extern kpti_remap_fn idmap_kpti_install_ng_mappings;
 	kpti_remap_fn *remap_fn;
 
 	int cpu = smp_processor_id();
-
-	if (__this_cpu_read(this_cpu_vector) == vectors) {
-		const char *v = arm64_get_bp_hardening_vector(EL1_VECTOR_KPTI);
-
-		__this_cpu_write(this_cpu_vector, v);
-	}
 
 	/*
 	 * We don't need to rewrite the page-tables if either we've done
@@ -1677,9 +1670,20 @@ kpti_install_ng_mappings(const struct arm64_cpu_capabilities *__unused)
 	if (!cpu)
 		arm64_use_ng_mappings = true;
 }
+
+static void cpu_enable_kpti(const struct arm64_cpu_capabilities *__unused)
+{
+	if (__this_cpu_read(this_cpu_vector) == vectors) {
+		const char *v = arm64_get_bp_hardening_vector(EL1_VECTOR_KPTI);
+
+		__this_cpu_write(this_cpu_vector, v);
+	}
+
+	kpti_install_ng_mappings();
+}
+
 #else
-static void
-kpti_install_ng_mappings(const struct arm64_cpu_capabilities *__unused)
+static void cpu_enable_kpti(const struct arm64_cpu_capabilities *__unused)
 {
 }
 #endif	/* CONFIG_UNMAP_KERNEL_AT_EL0 */
@@ -2124,7 +2128,7 @@ static const struct arm64_cpu_capabilities arm64_features[] = {
 		.field_width = 4,
 		.min_field_value = 1,
 		.matches = unmap_kernel_at_el0,
-		.cpu_enable = kpti_install_ng_mappings,
+		.cpu_enable = cpu_enable_kpti,
 	},
 	{
 		/* FP/SIMD is not implemented */
