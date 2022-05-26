@@ -23,7 +23,7 @@
  */
 #define HAVE_FUNCTION_GRAPH_RET_ADDR_PTR
 
-#ifdef CONFIG_DYNAMIC_FTRACE_WITH_REGS
+#ifdef CONFIG_DYNAMIC_FTRACE_WITH_ARGS
 #define ARCH_SUPPORTS_FTRACE_OPS 1
 #else
 #define MCOUNT_ADDR		((unsigned long)_mcount)
@@ -33,8 +33,7 @@
 #define MCOUNT_INSN_SIZE	AARCH64_INSN_SIZE
 
 #define FTRACE_PLT_IDX		0
-#define FTRACE_REGS_PLT_IDX	1
-#define NR_FTRACE_PLTS		2
+#define NR_FTRACE_PLTS		1
 
 /*
  * Currently, gcc tends to save the link register after the local variables
@@ -69,7 +68,7 @@ static inline unsigned long ftrace_call_adjust(unsigned long addr)
 	 * Adjust addr to point at the BL in the callsite.
 	 * See ftrace_init_nop() for the callsite sequence.
 	 */
-	if (IS_ENABLED(CONFIG_DYNAMIC_FTRACE_WITH_REGS))
+	if (IS_ENABLED(CONFIG_DYNAMIC_FTRACE_WITH_ARGS))
 		return addr + AARCH64_INSN_SIZE;
 	/*
 	 * addr is the address of the mcount call instruction.
@@ -78,10 +77,97 @@ static inline unsigned long ftrace_call_adjust(unsigned long addr)
 	return addr;
 }
 
-#ifdef CONFIG_DYNAMIC_FTRACE_WITH_REGS
+#ifdef CONFIG_DYNAMIC_FTRACE_WITH_ARGS
 struct dyn_ftrace;
 struct ftrace_ops;
-struct ftrace_regs;
+
+#define arch_ftrace_get_regs(regs) NULL
+
+/*
+ * Per AAPCS64, all function call argument and return values are held in
+ * the following GPRs:
+ *
+ * - X0 to X7 : parameter / result registers
+ * - X8       : indirect result location register
+ * - SP       : stack pointer
+ *
+ * Additionally, at function call boundaries, the following GPRs hold
+ * context/return information:
+ *
+ * - X29 : frame pointer (AKA FP)
+ * - X30 : link register (AKA LR)
+ *
+ * ... and to resume the instrumented function we need to captuere the
+ * instrumented address:
+ *
+ * - PC  : program counter
+ *
+ * No other GPRs are relevant, as none of the other arguments hold
+ * parameters or return values:
+ *
+ * - X9 to X17  : temporaries, may be clobbered
+ * - X18        : shadow call stack pointer (or temorary)
+ * - X19 to X28 : callee saved
+ */
+struct ftrace_regs {
+	/* x0 - x8 */
+	unsigned long regs[9];
+	unsigned long __unused;
+
+	unsigned long fp;
+	unsigned long lr;
+
+	unsigned long sp;
+	unsigned long pc;
+};
+
+static __always_inline unsigned long
+ftrace_regs_get_instruction_pointer(const struct ftrace_regs *fregs)
+{
+	return fregs->pc;
+}
+
+static __always_inline void
+ftrace_regs_set_instruction_pointer(struct ftrace_regs *fregs,
+				    unsigned long pc)
+{
+	fregs->pc = pc;
+}
+
+static __always_inline unsigned long
+ftrace_regs_get_stack_pointer(const struct ftrace_regs *fregs)
+{
+	return fregs->sp;
+}
+
+static __always_inline unsigned long
+ftrace_regs_get_argument(struct ftrace_regs *fregs, unsigned int n)
+{
+	if (n < 8)
+		return fregs->regs[n];
+	return 0;
+}
+
+static __always_inline unsigned long
+ftrace_regs_get_return_value(const struct ftrace_regs *fregs)
+{
+	return fregs->regs[0];
+}
+
+static __always_inline void
+ftrace_regs_set_return_value(struct ftrace_regs *fregs,
+			     unsigned long ret)
+{
+	fregs->regs[0] = ret;
+}
+
+static __always_inline void
+ftrace_override_function_with_return(struct ftrace_regs *fregs)
+{
+	fregs->pc = fregs->lr;
+}
+
+int ftrace_regs_query_register_offset(const char *name);
 
 int ftrace_init_nop(struct module *mod, struct dyn_ftrace *rec);
 #define ftrace_init_nop ftrace_init_nop
