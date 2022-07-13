@@ -44,6 +44,23 @@ static void lkdtm_CFI_FORWARD_PROTO(void)
 }
 
 /*
+ * This tries to call an indirect function with an address which is not a
+ * function entry point. This should be caught by architectures with "landing
+ * pad" instructions (e.g. BTI on arm64, or ENDBR on x86).
+ */
+static void lkdtm_CFI_FORWARD_LANDING_PAD(void)
+{
+	void (*func)(int *);
+
+	func = (void *)((unsigned long)lkdtm_increment_void + 4);
+
+	pr_info("Calling gadget address ...\n");
+	func(&called_count);
+
+	pr_err("FAIL: survived gadget function call!\n");
+}
+
+/*
  * This can stay local to LKDTM, as there should not be a production reason
  * to disable PAC && SCS.
  */
@@ -177,6 +194,7 @@ check_redirected:
 
 static struct crashtype crashtypes[] = {
 	CRASHTYPE(CFI_FORWARD_PROTO),
+	CRASHTYPE(CFI_FORWARD_LANDING_PAD),
 	CRASHTYPE(CFI_BACKWARD),
 };
 
