@@ -15,20 +15,9 @@
 #include <asm/ptrace.h>
 #include <asm/sdei.h>
 
-enum stack_type {
-	STACK_TYPE_UNKNOWN,
-	STACK_TYPE_TASK,
-	STACK_TYPE_IRQ,
-	STACK_TYPE_OVERFLOW,
-	STACK_TYPE_SDEI_NORMAL,
-	STACK_TYPE_SDEI_CRITICAL,
-	__NR_STACK_TYPES
-};
-
 struct stack_info {
 	unsigned long low;
 	unsigned long high;
-	enum stack_type type;
 };
 
 extern void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk,
@@ -53,7 +42,6 @@ static inline struct stack_info stackinfo_get_unknown(void)
 	return (struct stack_info) {
 		.low = 0,
 		.high = 0,
-		.type = STACK_TYPE_UNKNOWN,
 	};
 }
 
@@ -65,7 +53,6 @@ static inline struct stack_info stackinfo_get_irq(void)
 	return (struct stack_info) {
 		.low = low,
 		.high = high,
-		.type = STACK_TYPE_IRQ,
 	};
 }
 
@@ -83,7 +70,6 @@ static inline struct stack_info stackinfo_get_task(const struct task_struct *tsk
 	return (struct stack_info) {
 		.low = low,
 		.high = high,
-		.type = STACK_TYPE_TASK,
 	};
 }
 
@@ -105,7 +91,6 @@ static inline struct stack_info stackinfo_get_overflow(void)
 	return (struct stack_info) {
 		.low = low,
 		.high = high,
-		.type = STACK_TYPE_OVERFLOW,
 	};
 }
 
@@ -125,7 +110,6 @@ static inline struct stack_info stackinfo_get_sdei_normal(void)
 	return (struct stack_info) {
 		.low = low,
 		.high = high,
-		.type = STACK_TYPE_SDEI_NORMAL,
 	};
 }
 
@@ -137,7 +121,6 @@ static inline struct stack_info stackinfo_get_sdei_critical(void)
 	return (struct stack_info) {
 		.low = low,
 		.high = high,
-		.type = STACK_TYPE_SDEI_CRITICAL,
 	};
 }
 #else
@@ -145,49 +128,50 @@ static inline struct stack_info stackinfo_get_sdei_critical(void)
 #define stackinfo_get_sdei_critical()	stackinfo_get_unknown()
 #endif
 
+enum kernel_stack_type {
+	STACK_TYPE_TASK,
+	STACK_TYPE_IRQ,
+	STACK_TYPE_OVERFLOW,
+	STACK_TYPE_SDEI_NORMAL,
+	STACK_TYPE_SDEI_CRITICAL,
+	__NR_STACK_TYPES
+};
+
+struct kernel_stack_info {
+	struct stack_info stacks[__NR_STACK_TYPES];
+};
+
 /*
  * We can only safely access per-cpu stacks from current in a non-preemptible
  * context.
  */
-static inline bool on_accessible_stack(const struct task_struct *tsk,
-				       unsigned long sp, unsigned long size,
-				       struct stack_info *info)
-{
-	struct stack_info tmp;
 
-	tmp = stackinfo_get_task(tsk);
-	if (stackinfo_on_stack(&tmp, sp, size))
-		goto found;
+static __always_inline struct kernel_stack_info
+get_accessible_kernel_stacks(const struct task_struct *tsk)
+{
+	struct kernel_stack_info info = {
+		.stacks = {
+			[0 ... __NR_STACK_TYPES - 1] = stackinfo_get_unknown(),
+		},
+	};
+
+	info.stacks[STACK_TYPE_TASK] = stackinfo_get_task(tsk);
 
 	if (tsk != current || preemptible())
-		return false;
+		goto out;
 
-	tmp = stackinfo_get_irq();
-	if (stackinfo_on_stack(&tmp, sp, size))
-		goto found;
-
-	tmp = stackinfo_get_overflow();
-	if (stackinfo_on_stack(&tmp, sp, size))
-		goto found;
+	info.stacks[STACK_TYPE_IRQ] = stackinfo_get_irq();
+	info.stacks[STACK_TYPE_OVERFLOW] = stackinfo_get_overflow();
 
 	if (!IS_ENABLED(CONFIG_VMAP_STACK) ||
 	    !IS_ENABLED(CONFIG_ARM_SDE_INTERFACE) ||
 	    !in_nmi())
-		return false;
+		goto out;
 
-	tmp = stackinfo_get_sdei_normal();
-	if (stackinfo_on_stack(&tmp, sp, size))
-		goto found;
+	info.stacks[STACK_TYPE_SDEI_NORMAL] = stackinfo_get_sdei_normal();
+	info.stacks[STACK_TYPE_SDEI_CRITICAL] = stackinfo_get_sdei_critical();
 
-	tmp = stackinfo_get_sdei_critical();
-	if (stackinfo_on_stack(&tmp, sp, size))
-		goto found;
-
-	*info = stackinfo_get_unknown();
-	return false;
-
-found:
-	*info = tmp;
-	return true;
+out:
+	return info;
 }
 #endif	/* __ASM_STACKTRACE_H */

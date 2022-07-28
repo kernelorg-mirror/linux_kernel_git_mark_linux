@@ -25,16 +25,6 @@
  * @fp:          The fp value in the frame record (or the real fp)
  * @pc:          The lr value in the frame record (or the real lr)
  *
- * @stacks_done: Stacks which have been entirely unwound, for which it is no
- *               longer valid to unwind to.
- *
- * @prev_fp:     The fp that pointed to this frame record, or a synthetic value
- *               of 0. This is used to ensure that within a stack, each
- *               subsequent frame record is at an increasing address.
- * @prev_type:   The type of stack this frame record was on, or a synthetic
- *               value of STACK_TYPE_UNKNOWN. This is used to detect a
- *               transition from one stack to another.
- *
  * @kr_cur:      When KRETPROBES is selected, holds the kretprobe instance
  *               associated with the most recently encountered replacement lr
  *               value.
@@ -44,13 +34,14 @@
 struct unwind_state {
 	unsigned long fp;
 	unsigned long pc;
-	DECLARE_BITMAP(stacks_done, __NR_STACK_TYPES);
-	unsigned long prev_fp;
-	enum stack_type prev_type;
 #ifdef CONFIG_KRETPROBES
 	struct llist_node *kr_cur;
 #endif
 	struct task_struct *task;
+
+	struct stack_info *stack;
+	struct stack_info *stacks;
+	int nr_stacks;
 };
 
 static void unwind_init_common(struct unwind_state *state,
@@ -63,16 +54,8 @@ static void unwind_init_common(struct unwind_state *state,
 
 	/*
 	 * Prime the first unwind.
-	 *
-	 * In unwind_next() we'll check that the FP points to a valid stack,
-	 * which can't be STACK_TYPE_UNKNOWN, and the first unwind will be
-	 * treated as a transition to whichever stack that happens to be. The
-	 * prev_fp value won't be used, but we set it to 0 such that it is
-	 * definitely not an accessible stack address.
 	 */
-	bitmap_zero(state->stacks_done, __NR_STACK_TYPES);
-	state->prev_fp = 0;
-	state->prev_type = STACK_TYPE_UNKNOWN;
+	state->stack = NULL;
 }
 
 /*
@@ -127,6 +110,21 @@ static inline void unwind_init_from_task(struct unwind_state *state,
 }
 
 /*
+ * Find the stack which contains the current frame record.
+ */
+static struct stack_info *state_find_stack_info(struct unwind_state *state)
+{
+	for (int i = 0; i < state->nr_stacks; i++) {
+		struct stack_info *info = &state->stacks[i];
+
+		if (stackinfo_on_stack(info, state->fp, 16))
+			return info;
+	}
+
+	return NULL;
+}
+
+/*
  * Unwind from one frame record (A) to the next frame record (B).
  *
  * We terminate early if the location of B indicates a malformed chain of frame
@@ -137,7 +135,7 @@ static int notrace unwind_next(struct unwind_state *state)
 {
 	struct task_struct *tsk = state->task;
 	unsigned long fp = state->fp;
-	struct stack_info info;
+	struct stack_info *stack = state->stack;
 
 	/* Final frame; nothing to unwind */
 	if (fp == (unsigned long)task_pt_regs(tsk)->stackframe)
@@ -146,16 +144,7 @@ static int notrace unwind_next(struct unwind_state *state)
 	if (fp & 0x7)
 		return -EINVAL;
 
-	if (!on_accessible_stack(tsk, fp, 16, &info))
-		return -EINVAL;
-
-	if (test_bit(info.type, state->stacks_done))
-		return -EINVAL;
-
 	/*
-	 * As stacks grow downward, any valid record on the same stack must be
-	 * at a strictly higher address than the prior record.
-	 *
 	 * Stacks can nest in several valid orders, e.g.
 	 *
 	 * TASK -> IRQ -> OVERFLOW -> SDEI_NORMAL
@@ -165,21 +154,32 @@ static int notrace unwind_next(struct unwind_state *state)
 	 * stack to another, it's never valid to unwind back to that first
 	 * stack.
 	 */
-	if (info.type == state->prev_type) {
-		if (fp <= state->prev_fp)
+	if (!stack || !stackinfo_on_stack(stack, fp, 16)) {
+
+		/* Ensure we never walk the current stack again */
+		if (stack)
+			*stack = stackinfo_get_unknown();
+
+		stack = state_find_stack_info(state);
+		if (!stack)
 			return -EINVAL;
-	} else {
-		__set_bit(state->prev_type, state->stacks_done);
+
+		state->stack = stack;
 	}
 
 	/*
-	 * Record this frame record's values and location. The prev_fp and
-	 * prev_type are only meaningful to the next unwind_next() invocation.
+	 * As stacks grow downward, any valid record on the same stack must be
+	 * at a strictly higher address than the prior record.
+	 * Advance the bounds of the current stack to start above the current
+	 * frame record.
+	 */
+	stack->low = fp + 16;
+
+	/*
+	 * Record this frame record's values and location.
 	 */
 	state->fp = READ_ONCE(*(unsigned long *)(fp));
 	state->pc = READ_ONCE(*(unsigned long *)(fp + 8));
-	state->prev_fp = fp;
-	state->prev_type = info.type;
 
 	state->pc = ptrauth_strip_insn_pac(state->pc);
 
@@ -261,7 +261,11 @@ noinline notrace void arch_stack_walk(stack_trace_consume_fn consume_entry,
 			      void *cookie, struct task_struct *task,
 			      struct pt_regs *regs)
 {
-	struct unwind_state state;
+	struct kernel_stack_info stacks = get_accessible_kernel_stacks(task);
+	struct unwind_state state = {
+		.stacks = stacks.stacks,
+		.nr_stacks = __NR_STACK_TYPES,
+	};
 
 	if (regs) {
 		if (task != current)
