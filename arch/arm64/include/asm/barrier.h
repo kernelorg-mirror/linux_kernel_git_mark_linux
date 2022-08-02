@@ -31,6 +31,12 @@
 #define csdb()		asm volatile("hint #20" : : : "memory")
 
 /*
+ * GCC 8.4 and earlier don't know the UDF mnemonic, so open-code UDF #0
+ */
+#define undefined_instruction() \
+	asm volatile(".inst 0x00000000" : : : "memory")
+
+/*
  * Data Gathering Hint:
  * This instruction prevents merging memory accesses with Normal-NC or
  * Device-GRE attributes before the hint instruction with any memory accesses
