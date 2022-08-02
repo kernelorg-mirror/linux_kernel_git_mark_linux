@@ -595,6 +595,16 @@ static noinline void lkdtm_CORRUPT_PAC(void)
 #endif
 }
 
+static noinline void lkdtm_UNDEFINED_INSTRUCTION(void)
+{
+#ifdef undefined_instruction
+	undefined_instruction();
+	pr_err("FAIL: survived undefined instruction\n");
+#else
+	pr_err("XFAIL: undefined_instruction() is not implemented\n");
+#endif
+}
+
 static struct crashtype crashtypes[] = {
 	CRASHTYPE(PANIC),
 	CRASHTYPE(BUG),
@@ -622,6 +632,7 @@ static struct crashtype crashtypes[] = {
 	CRASHTYPE(UNSET_SMEP),
 	CRASHTYPE(DOUBLE_FAULT),
 	CRASHTYPE(CORRUPT_PAC),
+	CRASHTYPE(UNDEFINED_INSTRUCTION),
 };
 
 struct crashtype_category bugs_crashtypes = {
