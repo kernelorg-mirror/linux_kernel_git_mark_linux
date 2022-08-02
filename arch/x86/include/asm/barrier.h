@@ -24,6 +24,8 @@
 #define __wmb()	asm volatile("sfence" ::: "memory")
 #endif
 
+#define undefined_instruction()		asm volatile("ud2" ::: "memory")
+
 /**
  * array_index_mask_nospec() - generate a mask that is ~0UL when the
  * 	bounds check succeeds and 0 otherwise
