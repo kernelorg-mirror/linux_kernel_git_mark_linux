@@ -139,15 +139,74 @@ static noinstr void clean_dcache_range_nopatch(u64 start, u64 end)
 	} while (cur += d_size, cur < end);
 }
 
+#define for_each_region_alt(region, alt)		\
+	for (struct alt_instr *alt = (region)->begin;	\
+	     (alt) < (region)->end;			\
+	     (alt)++)
+
+static void summarize_alternatives(const struct alt_region *region)
+{
+	unsigned int entries[ARM64_NCAPS] = { 0 };
+	unsigned int orig_len[ARM64_NCAPS] = { 0 };
+	unsigned int repl_len[ARM64_NCAPS] = { 0 };
+	unsigned int callbacks[ARM64_NCAPS] = { 0 };
+
+	unsigned int total_entries = 0;
+	unsigned int total_orig = 0;
+	unsigned int total_repl = 0;
+	unsigned int total_callbacks = 0;
+
+	for_each_region_alt(region, alt) {
+		int cap = ALT_CAP(alt);
+
+		entries[cap]++;
+		total_entries++;
+
+		orig_len[cap] += alt->orig_len;
+		total_orig += alt->orig_len;
+
+		repl_len[cap] += alt->alt_len;
+		total_repl += alt->alt_len;
+
+		if (ALT_HAS_CB(alt)) {
+			callbacks[cap]++;
+			total_callbacks++;
+		}
+	}
+
+	pr_info("Alternatives summary:\n"
+		"    entries:      %6u (%6zu bytes)\n"
+		"      standard:   %6d\n"
+		"      callback:   %6d\n"
+		"    instructions: %6u (%6u bytes)\n"
+		"    replacements: %6u (%6u bytes)\n",
+		total_entries,	total_entries * sizeof (struct alt_instr),
+		total_entries - total_callbacks,
+		total_callbacks,
+		total_orig / AARCH64_INSN_SIZE, total_orig,
+		total_repl / AARCH64_INSN_SIZE, total_repl);
+
+	for (int i = 0; i < ARM64_NCAPS; i++) {
+		if (!entries[i])
+			continue;
+
+		pr_info("cpucap %3d => entries: %6d, orig: %6d, repl: %6d, cb: %6d\n",
+			i,
+			entries[i],
+			orig_len[i] / AARCH64_INSN_SIZE,
+			repl_len[i] / AARCH64_INSN_SIZE,
+			callbacks[i]);
+	}
+}
+
 static int __apply_alternatives(const struct alt_region *region,
 				bool is_module,
 				unsigned long *cpucap_mask)
 {
-	struct alt_instr *alt;
 	__le32 *origptr, *updptr;
 	alternative_cb_t alt_cb;
 
-	for (alt = region->begin; alt < region->end; alt++) {
+	for_each_region_alt(region, alt) {
 		int nr_inst;
 		int cap = ALT_CAP(alt);
 
@@ -275,6 +334,8 @@ void __init apply_boot_alternatives(void)
 	/* If called on non-boot cpu things could go wrong */
 	WARN_ON(smp_processor_id() != 0);
 
+	summarize_alternatives(&kernel_alternatives);
+
 	pr_info("applying boot alternatives\n");
 
 	__apply_alternatives(&kernel_alternatives, false,
@@ -291,6 +352,8 @@ int apply_alternatives_module(void *start, size_t length)
 	DECLARE_BITMAP(all_capabilities, ARM64_NCAPS);
 
 	bitmap_fill(all_capabilities, ARM64_NCAPS);
+
+	summarize_alternatives(&region);
 
 	return __apply_alternatives(&region, true, &all_capabilities[0]);
 }
