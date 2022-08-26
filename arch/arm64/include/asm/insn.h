@@ -884,10 +884,29 @@ u32 aarch64_insn_gen_dmb(enum aarch64_insn_mb_type type);
 s32 aarch64_get_branch_offset(u32 insn);
 u32 aarch64_set_branch_offset(u32 insn, s32 offset);
 
-s64 aarch64_insn_adr_get_offset(u32 insn);
-u32 aarch64_insn_adr_set_offset(u32 insn, s64 offset);
-s64 aarch64_insn_adrp_get_offset(u32 insn);
-u32 aarch64_insn_adrp_set_offset(u32 insn, s64 offset);
+static __always_inline s64
+aarch64_insn_adr_get_offset(u32 insn)
+{
+	return aarch64_insn_decode_signed_adr_imm(insn);
+}
+
+static __always_inline bool __must_check
+aarch64_insn_try_adr_set_offset(u32 *insn, s64 offset)
+{
+	return aarch64_insn_try_encode_signed_adr_imm(insn, offset);
+}
+
+static __always_inline s64
+aarch64_insn_adrp_get_offset(u32 insn)
+{
+	return aarch64_insn_decode_scaled_signed_adr_imm(insn, 4096);
+}
+
+static __always_inline bool __must_check
+aarch64_insn_try_adrp_set_offset(u32 *insn, s64 offset)
+{
+	return aarch64_insn_try_encode_scaled_signed_adr_imm(insn, offset, 4096);
+}
 
 bool aarch32_insn_is_wide(u32 insn);
 

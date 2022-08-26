@@ -1035,30 +1035,6 @@ u32 aarch64_set_branch_offset(u32 insn, s32 offset)
 	BUG();
 }
 
-s64 aarch64_insn_adr_get_offset(u32 insn)
-{
-	return aarch64_insn_decode_signed_adr_imm(insn);
-}
-
-u32 aarch64_insn_adr_set_offset(u32 insn, s64 offset)
-{
-	if (!aarch64_insn_try_encode_signed_adr_imm(&insn, offset))
-		return AARCH64_BREAK_FAULT;
-	return insn;
-}
-
-s64 aarch64_insn_adrp_get_offset(u32 insn)
-{
-	return aarch64_insn_decode_scaled_signed_adr_imm(insn, SZ_4K);
-}
-
-u32 aarch64_insn_adrp_set_offset(u32 insn, s64 offset)
-{
-	if (!aarch64_insn_try_encode_scaled_signed_adr_imm(&insn, offset, SZ_4K))
-		return AARCH64_BREAK_FAULT;
-	return insn;
-}
-
 /*
  * Extract the Op/CR data from a msr/mrs instruction.
  */

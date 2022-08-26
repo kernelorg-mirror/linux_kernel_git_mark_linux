@@ -89,7 +89,8 @@ static __always_inline u32 get_alt_insn(struct alt_instr *alt, __le32 *insnptr, 
 		orig_offset  = aarch64_insn_adrp_get_offset(insn);
 		target = align_down(altinsnptr, SZ_4K) + orig_offset;
 		new_offset = target - align_down(insnptr, SZ_4K);
-		insn = aarch64_insn_adrp_set_offset(insn, new_offset);
+		if (!aarch64_insn_try_adrp_set_offset(&insn, new_offset))
+			insn = AARCH64_BREAK_FAULT;
 	} else if (aarch64_insn_uses_literal(insn)) {
 		/*
 		 * Disallow patching unhandled instructions using PC relative
