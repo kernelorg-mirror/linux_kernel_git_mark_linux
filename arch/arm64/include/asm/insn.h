@@ -13,6 +13,10 @@
 #include <asm/insn-def.h>
 
 #ifndef __ASSEMBLY__
+#include <linux/align.h>
+#include <linux/bitfield.h>
+#include <linux/bitops.h>
+#include <linux/bits.h>
 
 enum aarch64_insn_hint_cr_op {
 	AARCH64_INSN_HINT_NOP	= 0x0 << 5,
@@ -171,6 +175,13 @@ enum aarch64_insn_size_type {
 	AARCH64_INSN_SIZE_16 = 1,
 	AARCH64_INSN_SIZE_32 = 2,
 	AARCH64_INSN_SIZE_64 = 3,
+};
+
+enum aarch64_insn_reg_shift_type {
+	AARCH64_INSN_REG_SHIFT_LSL = 0,
+	AARCH64_INSN_REG_SHIFT_LSR = 1,
+	AARCH64_INSN_REG_SHIFT_ASR = 2,
+	AARCH64_INSN_REG_SHIFT_ROR = 3,
 };
 
 enum aarch64_insn_ldst_type {
@@ -556,6 +567,157 @@ enum aarch64_insn_encoding_class aarch64_get_insn_class(u32 insn);
 u64 aarch64_insn_decode_immediate(enum aarch64_insn_imm_type type, u32 insn);
 u32 aarch64_insn_encode_immediate(enum aarch64_insn_imm_type type,
 				  u32 insn, u64 imm);
+
+#define zero_extend64(val, msb)	(((u64)val) & GENMASK(msb, 0))
+
+#define AARCH64_IMMEDIATE_RAW_FUNCS(abbr, msb, lsb)			\
+static __always_inline u64						\
+aarch64_insn_decode_raw_##abbr(u32 insn)				\
+{									\
+	const unsigned long field = GENMASK(msb, lsb);			\
+	return FIELD_GET(field, insn);					\
+}									\
+static __always_inline void						\
+aarch64_insn_encode_raw_##abbr(u32 *insnp, u64 val)			\
+{									\
+	const unsigned long field = GENMASK(msb, lsb);			\
+	const unsigned long bits = GENMASK(msb - lsb + 1, 0);		\
+	*insnp &= ~field;						\
+	*insnp |= FIELD_PREP(field, FIELD_GET(bits, val));		\
+}
+
+#define __AARCH64_IMMEDIATE_SIGN_FUNCS(class, type, extend, abbr, width)\
+static __always_inline type						\
+aarch64_insn_decode_##class##_##abbr(u32 insn)				\
+{									\
+	u64 val = aarch64_insn_decode_raw_##abbr(insn);			\
+	return extend(val, width - 1);					\
+}									\
+static __always_inline bool						\
+aarch64_insn_can_encode_##class##_##abbr(type imm)			\
+{									\
+	return extend(imm, width - 1) == imm;				\
+}									\
+static __always_inline bool						\
+aarch64_insn_encode_truncated_##class##_##abbr(u32 *insnp, type imm)	\
+{									\
+	aarch64_insn_encode_raw_##abbr(insnp, imm);			\
+	return !aarch64_insn_can_encode_##class##_##abbr(imm);		\
+}									\
+static __always_inline bool __must_check				\
+aarch64_insn_try_encode_##class##_##abbr(u32 *insnp, type imm)		\
+{									\
+	if (!aarch64_insn_can_encode_##class##_##abbr(imm))		\
+		return false;						\
+	aarch64_insn_encode_raw_##abbr(insnp, imm);			\
+	return true;							\
+}									\
+static __always_inline type						\
+aarch64_insn_decode_scaled_##class##_##abbr(u32 insn, type scale)	\
+{									\
+	return aarch64_insn_decode_##class##_##abbr(insn) * scale;	\
+}									\
+static __always_inline bool __must_check				\
+aarch64_insn_can_encode_scaled_##class##_##abbr(type imm, type scale)	\
+{									\
+	if (imm % scale)						\
+		return false;						\
+	imm /= scale;							\
+	return aarch64_insn_can_encode_##class##_##abbr(imm);		\
+}									\
+static __always_inline bool __must_check				\
+aarch64_insn_try_encode_scaled_##class##_##abbr(u32 *insnp, type imm,	\
+						type scale)		\
+{									\
+	if (imm % scale)						\
+		return false;						\
+	imm /= scale;							\
+	return aarch64_insn_try_encode_##class##_##abbr(insnp, imm);	\
+}
+
+#define AARCH64_IMMEDIATE_SIGN_FUNCS(abbr, width)			\
+	__AARCH64_IMMEDIATE_SIGN_FUNCS(signed, s64, sign_extend64,	\
+				       abbr, width)			\
+	__AARCH64_IMMEDIATE_SIGN_FUNCS(unsigned, u64, zero_extend64,	\
+				       abbr, width)
+
+AARCH64_IMMEDIATE_RAW_FUNCS(adr_immhi, 23, 5)
+AARCH64_IMMEDIATE_RAW_FUNCS(adr_immlo, 30, 29)
+
+static __always_inline u64
+aarch64_insn_decode_raw_adr_imm(u32 insn)
+{
+	u64 immlo = aarch64_insn_decode_raw_adr_immlo(insn);
+	u64 immhi = aarch64_insn_decode_raw_adr_immhi(insn);
+	return (immhi << 2) | immlo;
+}
+
+static __always_inline void
+aarch64_insn_encode_raw_adr_imm(u32 *insnp, u64 val)
+{
+	u64 immlo = FIELD_GET(GENMASK(1, 0), val);
+	u64 immhi = FIELD_GET(GENMASK(20, 2), val);
+
+	aarch64_insn_encode_raw_adr_immlo(insnp, immlo);
+	aarch64_insn_encode_raw_adr_immhi(insnp, immhi);
+}
+
+AARCH64_IMMEDIATE_SIGN_FUNCS(adr_imm, 21)
+
+AARCH64_IMMEDIATE_RAW_FUNCS(b40, 23, 19)
+AARCH64_IMMEDIATE_RAW_FUNCS(b5, 31, 31)
+
+static __always_inline u64
+aarch64_insn_decode_raw_b50(u32 insn)
+{
+	u64 b40 = aarch64_insn_decode_raw_b40(insn);
+	u64 b5 = aarch64_insn_decode_raw_b5(insn);
+
+	return (b5 << 5) | b40;
+}
+
+static __always_inline void
+aarch64_insn_encode_raw_b50(u32 *insnp, u64 val)
+{
+	u64 b40 = FIELD_GET(GENMASK(4, 0), val);
+	u64 b5  = FIELD_GET(GENMASK(5, 5), val);
+
+	aarch64_insn_encode_raw_b40(insnp, b40);
+	aarch64_insn_encode_raw_b5(insnp, b5);
+}
+
+AARCH64_IMMEDIATE_SIGN_FUNCS(b50, 6)
+
+#define AARCH64_IMMEDIATE_FUNCS(abbr, msb, lsb)				\
+	AARCH64_IMMEDIATE_RAW_FUNCS(abbr, msb, lsb)			\
+	AARCH64_IMMEDIATE_SIGN_FUNCS(abbr, msb - lsb + 1)
+
+AARCH64_IMMEDIATE_FUNCS(imm3_10,	12, 10)
+AARCH64_IMMEDIATE_FUNCS(imm6_10,	15, 10)
+AARCH64_IMMEDIATE_FUNCS(imm7_15,	21, 15)
+AARCH64_IMMEDIATE_FUNCS(imm9,		20, 12)
+AARCH64_IMMEDIATE_FUNCS(imm12,		21, 10)
+AARCH64_IMMEDIATE_FUNCS(imm14,		18, 5)
+AARCH64_IMMEDIATE_FUNCS(imm16,		20, 5)
+AARCH64_IMMEDIATE_FUNCS(imm19,		23, 5)
+AARCH64_IMMEDIATE_FUNCS(imm26,		25, 0)
+AARCH64_IMMEDIATE_FUNCS(immr,		21, 16)
+AARCH64_IMMEDIATE_FUNCS(imms,		15, 10)
+AARCH64_IMMEDIATE_FUNCS(hw,		22, 21)
+AARCH64_IMMEDIATE_FUNCS(N,		22, 22)
+AARCH64_IMMEDIATE_FUNCS(sf,		31, 31)
+AARCH64_IMMEDIATE_FUNCS(sh,		22, 22)
+AARCH64_IMMEDIATE_FUNCS(ldst_size,	31, 30)
+AARCH64_IMMEDIATE_FUNCS(ldst_L,		22, 22)
+AARCH64_IMMEDIATE_FUNCS(ldst_o0,	15, 15)
+AARCH64_IMMEDIATE_FUNCS(amo_a,		23, 23)
+AARCH64_IMMEDIATE_FUNCS(amo_r,		22, 22)
+AARCH64_IMMEDIATE_FUNCS(reg_shift,	23, 22)
+
+#undef AARCH64_IMMEDIATE_FUNCS
+#undef __AARCH64_IMMEDIATE_SIGN_FUNCS
+#undef AARCH64_IMMEDIATE_RAW_FUNCS
+
 u32 aarch64_insn_decode_register(enum aarch64_insn_register_type type,
 					 u32 insn);
 u32 aarch64_insn_gen_branch_imm(unsigned long pc, unsigned long addr,
