@@ -16,10 +16,6 @@
 #include <asm/insn.h>
 #include <asm/kprobes.h>
 
-#define AARCH64_INSN_SF_BIT	BIT(31)
-#define AARCH64_INSN_N_BIT	BIT(22)
-#define AARCH64_INSN_LSL_12	BIT(22)
-
 static int __kprobes aarch64_get_imm_shift_mask(enum aarch64_insn_imm_type type,
 						u32 *maskp, int *shiftp)
 {
@@ -84,30 +80,6 @@ static int __kprobes aarch64_get_imm_shift_mask(enum aarch64_insn_imm_type type,
 #define ADR_IMM_HIMASK		((ADR_IMM_SIZE >> ADR_IMM_HILOSPLIT) - 1)
 #define ADR_IMM_LOSHIFT		29
 #define ADR_IMM_HISHIFT		5
-
-u64 aarch64_insn_decode_immediate(enum aarch64_insn_imm_type type, u32 insn)
-{
-	u32 immlo, immhi, mask;
-	int shift;
-
-	switch (type) {
-	case AARCH64_INSN_IMM_ADR:
-		shift = 0;
-		immlo = (insn >> ADR_IMM_LOSHIFT) & ADR_IMM_LOMASK;
-		immhi = (insn >> ADR_IMM_HISHIFT) & ADR_IMM_HIMASK;
-		insn = (immhi << ADR_IMM_HILOSPLIT) | immlo;
-		mask = ADR_IMM_SIZE - 1;
-		break;
-	default:
-		if (aarch64_get_imm_shift_mask(type, &mask, &shift) < 0) {
-			pr_err("%s: unknown immediate encoding %d\n", __func__,
-			       type);
-			return 0;
-		}
-	}
-
-	return (insn >> shift) & mask;
-}
 
 u32 __kprobes aarch64_insn_encode_immediate(enum aarch64_insn_imm_type type,
 				  u32 insn, u64 imm)
@@ -896,6 +868,7 @@ u32 aarch64_insn_gen_data2(enum aarch64_insn_register dst,
 			   enum aarch64_insn_data2_type type)
 {
 	u32 insn;
+	bool sf = false;
 
 	switch (type) {
 	case AARCH64_INSN_DATA2_UDIV:
@@ -925,12 +898,15 @@ u32 aarch64_insn_gen_data2(enum aarch64_insn_register dst,
 	case AARCH64_INSN_VARIANT_32BIT:
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		insn |= AARCH64_INSN_SF_BIT;
+		sf = true;
 		break;
 	default:
 		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
+
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf))
+		return AARCH64_BREAK_FAULT;
 
 	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, dst);
 
@@ -947,6 +923,7 @@ u32 aarch64_insn_gen_data3(enum aarch64_insn_register dst,
 			   enum aarch64_insn_data3_type type)
 {
 	u32 insn;
+	bool sf = false;
 
 	switch (type) {
 	case AARCH64_INSN_DATA3_MADD:
@@ -964,12 +941,15 @@ u32 aarch64_insn_gen_data3(enum aarch64_insn_register dst,
 	case AARCH64_INSN_VARIANT_32BIT:
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		insn |= AARCH64_INSN_SF_BIT;
+		sf = true;
 		break;
 	default:
 		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
+
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf))
+		return AARCH64_BREAK_FAULT;
 
 	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, dst);
 
@@ -1109,22 +1089,17 @@ u32 aarch64_insn_gen_adr(unsigned long pc, unsigned long addr,
  */
 s32 aarch64_get_branch_offset(u32 insn)
 {
-	s32 imm;
-
 	if (aarch64_insn_is_b(insn) || aarch64_insn_is_bl(insn)) {
-		imm = aarch64_insn_decode_immediate(AARCH64_INSN_IMM_26, insn);
-		return (imm << 6) >> 4;
+		return aarch64_insn_decode_scaled_signed_imm26(insn, 4);
 	}
 
 	if (aarch64_insn_is_cbz(insn) || aarch64_insn_is_cbnz(insn) ||
 	    aarch64_insn_is_bcond(insn)) {
-		imm = aarch64_insn_decode_immediate(AARCH64_INSN_IMM_19, insn);
-		return (imm << 13) >> 11;
+		return aarch64_insn_decode_scaled_signed_imm19(insn, 4);
 	}
 
 	if (aarch64_insn_is_tbz(insn) || aarch64_insn_is_tbnz(insn)) {
-		imm = aarch64_insn_decode_immediate(AARCH64_INSN_IMM_14, insn);
-		return (imm << 18) >> 16;
+		return aarch64_insn_decode_scaled_signed_imm14(insn, 4);
 	}
 
 	/* Unhandled instruction */
@@ -1137,18 +1112,23 @@ s32 aarch64_get_branch_offset(u32 insn)
  */
 u32 aarch64_set_branch_offset(u32 insn, s32 offset)
 {
-	if (aarch64_insn_is_b(insn) || aarch64_insn_is_bl(insn))
-		return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_26, insn,
-						     offset >> 2);
+	if (aarch64_insn_is_b(insn) || aarch64_insn_is_bl(insn)) {
+		if (!aarch64_insn_try_encode_scaled_signed_imm26(&insn, offset, 4))
+			return AARCH64_BREAK_FAULT;
+		return insn;
+	}
 
 	if (aarch64_insn_is_cbz(insn) || aarch64_insn_is_cbnz(insn) ||
-	    aarch64_insn_is_bcond(insn))
-		return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_19, insn,
-						     offset >> 2);
-
-	if (aarch64_insn_is_tbz(insn) || aarch64_insn_is_tbnz(insn))
-		return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_14, insn,
-						     offset >> 2);
+	    aarch64_insn_is_bcond(insn)) {
+		if (!aarch64_insn_try_encode_scaled_signed_imm19(&insn, offset, 4))
+			return AARCH64_BREAK_FAULT;
+		return insn;
+	}
+	if (aarch64_insn_is_tbz(insn) || aarch64_insn_is_tbnz(insn)) {
+		if (!aarch64_insn_try_encode_scaled_signed_imm14(&insn, offset, 4))
+			return AARCH64_BREAK_FAULT;
+		return insn;
+	}
 
 	/* Unhandled instruction */
 	BUG();
@@ -1227,13 +1207,14 @@ static u32 aarch64_encode_bitmask_immediate(u64 imm,
 {
 	unsigned int immr, imms, n, ones, ror, esz, tmp;
 	u64 mask;
+	bool sf = false;
 
 	switch (variant) {
 	case AARCH64_INSN_VARIANT_32BIT:
 		esz = 32;
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		insn |= AARCH64_INSN_SF_BIT;
+		sf = true;
 		esz = 64;
 		break;
 	default:
@@ -1312,9 +1293,13 @@ static u32 aarch64_encode_bitmask_immediate(u64 imm,
 	 */
 	immr = (esz - ror) % esz;
 
-	insn = aarch64_insn_encode_immediate(AARCH64_INSN_IMM_N, insn, n);
-	insn = aarch64_insn_encode_immediate(AARCH64_INSN_IMM_R, insn, immr);
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_S, insn, imms);
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf) ||
+	    !aarch64_insn_try_encode_unsigned_N(&insn, n) ||
+	    !aarch64_insn_try_encode_unsigned_immr(&insn, immr) ||
+	    !aarch64_insn_try_encode_unsigned_imms(&insn, imms))
+		return AARCH64_BREAK_FAULT;
+
+	return insn;
 }
 
 u32 aarch64_insn_gen_logical_immediate(enum aarch64_insn_logic_type type,

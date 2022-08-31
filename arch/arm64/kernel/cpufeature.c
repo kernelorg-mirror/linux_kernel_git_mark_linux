@@ -3510,7 +3510,7 @@ bool try_emulate_mrs(struct pt_regs *regs, u32 insn)
 	 * sys_reg values are defined as used in mrs/msr instruction.
 	 * shift the imm value to get the encoding.
 	 */
-	sys_reg = (u32)aarch64_insn_decode_immediate(AARCH64_INSN_IMM_16, insn) << 5;
+	sys_reg = aarch64_insn_decode_unsigned_imm16(insn) << 5;
 	rt = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RT, insn);
 	return do_emulate_mrs(regs, sys_reg, rt) == 0;
 }
