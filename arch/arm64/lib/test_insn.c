@@ -213,20 +213,6 @@ do {										\
 #define TEST_SCALED_IMM_RANGE(test, immname, scale, min, max)			\
 	TEST_IMM_RANGE(test, immname,  min, max, scale)
 
-#define TEST_IMM_MATCHES_LEGACY(test, bits, immname, immtype)			\
-do {										\
-	for (unsigned long val = 0;						\
-	     val < BIT(bits);							\
-	     val++) {								\
-		u32 old = 0;							\
-		u32 new = 0;							\
-		old = aarch64_insn_encode_immediate(immtype, 0, val);		\
-		INSN_EXPECT_TRY_ENCODE_TRUE(test, &new, immname, val, 1);	\
-		INSN_EXPECT_IMM_EQ(test, old, immname, val, 1);			\
-		INSN_EXPECT_IMM_EQ(test, new, immname, val, 1);			\
-	}									\
-} while (0)
-
 #define TEST_IMM_CASE(test, asm_insn, immname, gen_imm, scale)			\
 do {										\
 	u32 obj_insn = ASM_U32(asm_insn, [imm] "i" (gen_imm));			\
@@ -241,9 +227,6 @@ do {										\
 
 static void test_imm_adr(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 19,
-				unsigned_adr_imm, AARCH64_INSN_IMM_ADR);
-
 	/*
 	 * As used by ADR
 	 */
@@ -285,8 +268,6 @@ static void test_imm_adr(struct kunit *test)
 
 static void test_imm_b50(struct kunit *test)
 {
-	/* No legacy encoder exists */
-
 	/*
 	 * As used by TBZ
 	 */
@@ -308,9 +289,6 @@ static void test_imm_b50(struct kunit *test)
 
 static void test_imm_imm26(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 26,
-				unsigned_imm26, AARCH64_INSN_IMM_26);
-
 	/*
 	 * As used by Branch (immediate)
 	 */
@@ -332,9 +310,6 @@ static void test_imm_imm26(struct kunit *test)
 
 static void test_imm_imm19(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 19,
-				unsigned_imm19, AARCH64_INSN_IMM_19);
-
 	/*
 	 * As used by LDR (literal)
 	 */
@@ -356,9 +331,6 @@ static void test_imm_imm19(struct kunit *test)
 
 static void test_imm_imm16(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 16,
-				unsigned_imm16, AARCH64_INSN_IMM_16);
-
 	/*
 	 * As used by SVC
 	 */
@@ -380,9 +352,6 @@ static void test_imm_imm16(struct kunit *test)
 
 static void test_imm_imm14(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 14,
-				unsigned_imm14, AARCH64_INSN_IMM_14);
-
 	/*
 	 * As used by TBZ
 	 */
@@ -404,9 +373,6 @@ static void test_imm_imm14(struct kunit *test)
 
 static void test_imm_imm12(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 12,
-				unsigned_imm12, AARCH64_INSN_IMM_12);
-
 	/*
 	 * As used by LDR (immediate, unsigned offset)
 	 */
@@ -435,9 +401,6 @@ static void test_imm_imm12(struct kunit *test)
 
 static void test_imm_imm9(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 9,
-				unsigned_imm9, AARCH64_INSN_IMM_9);
-
 	/*
 	 * As used by LDR (immedate, pre-index)
 	 */
@@ -459,9 +422,6 @@ static void test_imm_imm9(struct kunit *test)
 
 static void test_imm_imm7_15(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 7,
-				unsigned_imm7_15, AARCH64_INSN_IMM_7);
-
 	/*
 	 * As used by LDP (64-bit)
 	 */
@@ -501,9 +461,6 @@ static void test_imm_imm7_15(struct kunit *test)
 
 static void test_imm_imm6_10(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 6,
-				unsigned_imm6_10, AARCH64_INSN_IMM_6);
-
 	/*
 	 * As used by ADD (shifted register)
 	 */
@@ -525,8 +482,6 @@ static void test_imm_imm6_10(struct kunit *test)
 
 static void test_imm_imm3_10(struct kunit *test)
 {
-	/* No legacy encoder exists */
-
 	/*
 	 * As used by ADD (extended register)
 	 * Note that ADD treats values 5-7 as UNALLOCATED
@@ -549,9 +504,6 @@ static void test_imm_imm3_10(struct kunit *test)
 
 static void test_imm_immr(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 6,
-				unsigned_immr, AARCH64_INSN_IMM_R);
-
 	/*
 	 * As used by SBFM
 	 */
@@ -573,9 +525,6 @@ static void test_imm_immr(struct kunit *test)
 
 static void test_imm_imms(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 6,
-				unsigned_imms, AARCH64_INSN_IMM_S);
-
 	/*
 	 * As used by SBFM
 	 */
@@ -597,9 +546,6 @@ static void test_imm_imms(struct kunit *test)
 
 static void test_imm_N(struct kunit *test)
 {
-	TEST_IMM_MATCHES_LEGACY(test, 1,
-				unsigned_N, AARCH64_INSN_IMM_N);
-
 	/*
 	 * The 'N' bit doesn't directly correspond to an assembly parameter for
 	 * any instruction. It is typically used to encode bitmask immediates
@@ -622,8 +568,6 @@ static void test_imm_N(struct kunit *test)
 
 static void test_imm_hw(struct kunit *test)
 {
-	/* No legacy encoder exists */
-
 	/*
 	 * As used by MOVZ (64-bit)
 	 */
@@ -645,8 +589,6 @@ static void test_imm_hw(struct kunit *test)
 
 static void test_imm_sf(struct kunit *test)
 {
-	/* No legacy encoder exists */
-
 	/*
 	 * As used by MOV (register)
 	 *
@@ -668,8 +610,6 @@ static void test_imm_sf(struct kunit *test)
 
 static void test_imm_sh(struct kunit *test)
 {
-	/* No legacy encoder exists */
-
 	/*
 	 * As used by ADD (immediate)
 	 */

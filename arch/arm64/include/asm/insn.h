@@ -52,22 +52,6 @@ enum aarch64_insn_hint_cr_op {
 	AARCH64_INSN_HINT_BTIJC = 0x26 << 5,
 };
 
-enum aarch64_insn_imm_type {
-	AARCH64_INSN_IMM_ADR,
-	AARCH64_INSN_IMM_26,
-	AARCH64_INSN_IMM_19,
-	AARCH64_INSN_IMM_16,
-	AARCH64_INSN_IMM_14,
-	AARCH64_INSN_IMM_12,
-	AARCH64_INSN_IMM_9,
-	AARCH64_INSN_IMM_7,
-	AARCH64_INSN_IMM_6,
-	AARCH64_INSN_IMM_S,
-	AARCH64_INSN_IMM_R,
-	AARCH64_INSN_IMM_N,
-	AARCH64_INSN_IMM_MAX
-};
-
 enum aarch64_insn_register_type {
 	AARCH64_INSN_REGTYPE_RT,
 	AARCH64_INSN_REGTYPE_RN,
@@ -601,9 +585,6 @@ __AARCH64_REGISTER_FUNCS(rs,  16)
 #undef __AARCH64_REGISTER_FUNCS
 
 enum aarch64_insn_encoding_class aarch64_get_insn_class(u32 insn);
-u64 aarch64_insn_decode_immediate(enum aarch64_insn_imm_type type, u32 insn);
-u32 aarch64_insn_encode_immediate(enum aarch64_insn_imm_type type,
-				  u32 insn, u64 imm);
 
 #define zero_extend64(val, msb)	(((u64)val) & GENMASK(msb, 0))
 
