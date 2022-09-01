@@ -241,12 +241,12 @@ enum aarch64_insn_movw_imm_type {
 static int reloc_insn_movw(enum aarch64_reloc_op op, __le32 *place, u64 val,
 			   int lsb, enum aarch64_insn_movw_imm_type imm_type)
 {
-	u64 imm;
-	s64 sval;
+	bool ovf;
+	s64 imm;
 	u32 insn = le32_to_cpu(*place);
 
-	sval = do_reloc(op, place, val);
-	imm = sval >> lsb;
+	imm = do_reloc(op, place, val);
+	imm >>= lsb;
 
 	if (imm_type == AARCH64_INSN_IMM_MOVNZ) {
 		/*
@@ -255,7 +255,7 @@ static int reloc_insn_movw(enum aarch64_reloc_op op, __le32 *place, u64 val,
 		 * immediate is less than zero.
 		 */
 		insn &= ~(3 << 29);
-		if (sval >= 0) {
+		if (imm >= 0) {
 			/* >=0: Set the instruction to MOVZ (opcode 10b). */
 			insn |= 2 << 29;
 		} else {
@@ -270,48 +270,54 @@ static int reloc_insn_movw(enum aarch64_reloc_op op, __le32 *place, u64 val,
 	}
 
 	/* Update the instruction with the new encoding. */
-	insn = aarch64_insn_encode_immediate(AARCH64_INSN_IMM_16, insn, imm);
+	ovf = aarch64_insn_encode_truncated_unsigned_imm16(&insn, imm);
+
 	*place = cpu_to_le32(insn);
 
-	if (imm > U16_MAX)
-		return -ERANGE;
-
-	return 0;
+	return ovf ? -ERANGE : 0;
 }
 
-static int reloc_insn_imm(enum aarch64_reloc_op op, __le32 *place, u64 val,
-			  int lsb, int len, enum aarch64_insn_imm_type imm_type)
+#define __RELOC_INSN_IMM_FUNC(abbr)					\
+static int reloc_insn_##abbr(enum aarch64_reloc_op op,			\
+			     __le32 *place, u64 val,			\
+			    int lsb)					\
+{									\
+	bool ovf;							\
+	s64 imm;							\
+	u32 insn = le32_to_cpu(*place);					\
+									\
+	imm = do_reloc(op, place, val);					\
+	imm >>= lsb;							\
+									\
+	ovf = aarch64_insn_encode_truncated_signed_##abbr(&insn, imm);	\
+	*place = cpu_to_le32(insn);					\
+									\
+	return ovf ? -ERANGE : 0;					\
+}
+
+__RELOC_INSN_IMM_FUNC(adr_imm);
+__RELOC_INSN_IMM_FUNC(imm12);
+__RELOC_INSN_IMM_FUNC(imm14);
+__RELOC_INSN_IMM_FUNC(imm19);
+__RELOC_INSN_IMM_FUNC(imm26);
+
+#undef __RELOC_INSN_IMM_FUNC
+
+static int reloc_insn_ldst_imm12(enum aarch64_reloc_op op, __le32 *place,
+				 u64 val, int lsb)
 {
-	u64 imm, imm_mask;
-	s64 sval;
+	bool ovf;
+	s64 imm;
 	u32 insn = le32_to_cpu(*place);
 
-	/* Calculate the relocation value. */
-	sval = do_reloc(op, place, val);
-	sval >>= lsb;
+	imm = do_reloc(op, place, val);
+	imm &= GENMASK(11, lsb);
+	imm >>= lsb;
 
-	/* Extract the value bits and shift them to bit 0. */
-	imm_mask = (BIT(lsb + len) - 1) >> lsb;
-	imm = sval & imm_mask;
-
-	/* Update the instruction's immediate field. */
-	insn = aarch64_insn_encode_immediate(imm_type, insn, imm);
+	ovf = aarch64_insn_encode_truncated_signed_imm12(&insn, imm);
 	*place = cpu_to_le32(insn);
 
-	/*
-	 * Extract the upper value bits (including the sign bit) and
-	 * shift them to bit 0.
-	 */
-	sval = (s64)(sval & ~(imm_mask >> 1)) >> (len - 1);
-
-	/*
-	 * Overflow has occurred if the upper bits are not all equal to
-	 * the sign bit of the value.
-	 */
-	if ((u64)(sval + 1) >= 2)
-		return -ERANGE;
-
-	return 0;
+	return ovf ? -ERANGE : 0;
 }
 
 static int reloc_insn_adrp(struct module *mod, Elf64_Shdr *sechdrs,
@@ -320,12 +326,10 @@ static int reloc_insn_adrp(struct module *mod, Elf64_Shdr *sechdrs,
 	u32 insn;
 
 	if (!is_forbidden_offset_for_adrp(place))
-		return reloc_insn_imm(RELOC_OP_PAGE, place, val, 12, 21,
-				      AARCH64_INSN_IMM_ADR);
+		return reloc_insn_adr_imm(RELOC_OP_PAGE, place, val, 12);
 
 	/* patch ADRP to ADR if it is in range */
-	if (!reloc_insn_imm(RELOC_OP_PREL, place, val & ~0xfff, 0, 21,
-			    AARCH64_INSN_IMM_ADR)) {
+	if (!reloc_insn_adr_imm(RELOC_OP_PREL, place, val & ~0xfff, 0)) {
 		insn = le32_to_cpu(*place);
 		insn &= ~BIT(31);
 	} else {
@@ -476,12 +480,10 @@ int apply_relocate_add(Elf64_Shdr *sechdrs,
 
 		/* Immediate instruction relocations. */
 		case R_AARCH64_LD_PREL_LO19:
-			ovf = reloc_insn_imm(RELOC_OP_PREL, loc, val, 2, 19,
-					     AARCH64_INSN_IMM_19);
+			ovf = reloc_insn_imm19(RELOC_OP_PREL, loc, val, 2);
 			break;
 		case R_AARCH64_ADR_PREL_LO21:
-			ovf = reloc_insn_imm(RELOC_OP_PREL, loc, val, 0, 21,
-					     AARCH64_INSN_IMM_ADR);
+			ovf = reloc_insn_adr_imm(RELOC_OP_PREL, loc, val, 0);
 			break;
 		case R_AARCH64_ADR_PREL_PG_HI21_NC:
 			overflow_check = false;
@@ -492,49 +494,43 @@ int apply_relocate_add(Elf64_Shdr *sechdrs,
 				return ovf;
 			break;
 		case R_AARCH64_ADD_ABS_LO12_NC:
+			overflow_check = false;
+			ovf = reloc_insn_imm12(RELOC_OP_ABS, loc, val, 0);
+			break;
 		case R_AARCH64_LDST8_ABS_LO12_NC:
 			overflow_check = false;
-			ovf = reloc_insn_imm(RELOC_OP_ABS, loc, val, 0, 12,
-					     AARCH64_INSN_IMM_12);
+			ovf = reloc_insn_ldst_imm12(RELOC_OP_ABS, loc, val, 0);
 			break;
 		case R_AARCH64_LDST16_ABS_LO12_NC:
 			overflow_check = false;
-			ovf = reloc_insn_imm(RELOC_OP_ABS, loc, val, 1, 11,
-					     AARCH64_INSN_IMM_12);
+			ovf = reloc_insn_ldst_imm12(RELOC_OP_ABS, loc, val, 1);
 			break;
 		case R_AARCH64_LDST32_ABS_LO12_NC:
 			overflow_check = false;
-			ovf = reloc_insn_imm(RELOC_OP_ABS, loc, val, 2, 10,
-					     AARCH64_INSN_IMM_12);
+			ovf = reloc_insn_ldst_imm12(RELOC_OP_ABS, loc, val, 2);
 			break;
 		case R_AARCH64_LDST64_ABS_LO12_NC:
 			overflow_check = false;
-			ovf = reloc_insn_imm(RELOC_OP_ABS, loc, val, 3, 9,
-					     AARCH64_INSN_IMM_12);
+			ovf = reloc_insn_ldst_imm12(RELOC_OP_ABS, loc, val, 3);
 			break;
 		case R_AARCH64_LDST128_ABS_LO12_NC:
 			overflow_check = false;
-			ovf = reloc_insn_imm(RELOC_OP_ABS, loc, val, 4, 8,
-					     AARCH64_INSN_IMM_12);
+			ovf = reloc_insn_ldst_imm12(RELOC_OP_ABS, loc, val, 4);
 			break;
 		case R_AARCH64_TSTBR14:
-			ovf = reloc_insn_imm(RELOC_OP_PREL, loc, val, 2, 14,
-					     AARCH64_INSN_IMM_14);
+			ovf = reloc_insn_imm14(RELOC_OP_PREL, loc, val, 2);
 			break;
 		case R_AARCH64_CONDBR19:
-			ovf = reloc_insn_imm(RELOC_OP_PREL, loc, val, 2, 19,
-					     AARCH64_INSN_IMM_19);
+			ovf = reloc_insn_imm19(RELOC_OP_PREL, loc, val, 2);
 			break;
 		case R_AARCH64_JUMP26:
 		case R_AARCH64_CALL26:
-			ovf = reloc_insn_imm(RELOC_OP_PREL, loc, val, 2, 26,
-					     AARCH64_INSN_IMM_26);
+			ovf = reloc_insn_imm26(RELOC_OP_PREL, loc, val, 2);
 			if (ovf == -ERANGE) {
 				val = module_emit_plt_entry(me, sechdrs, loc, &rel[i], sym);
 				if (!val)
 					return -ENOEXEC;
-				ovf = reloc_insn_imm(RELOC_OP_PREL, loc, val, 2,
-						     26, AARCH64_INSN_IMM_26);
+				ovf = reloc_insn_imm26(RELOC_OP_PREL, loc, val, 2);
 			}
 			break;
 
