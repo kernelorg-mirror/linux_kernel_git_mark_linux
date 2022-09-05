@@ -20,4 +20,14 @@ config ARM64_RELOC_TEST
 	depends on m
 	tristate "Relocation testing module"
 
+config ARM64_INSN_KUNIT_TEST
+	tristate "KUnit test for aarch64 insn manipulation" if !KUNIT_ALL_TESTS
+	depends on KUNIT
+	default KUNIT_ALL_TESTS
+	help
+	  This option enables a module with KUNIT tests for the aarch64 insn
+	  manipulation functions.
+
+	  Say N if you are unsure.
+
 source "drivers/hwtracing/coresight/Kconfig"
