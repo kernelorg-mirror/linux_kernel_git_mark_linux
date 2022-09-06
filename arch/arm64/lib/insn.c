@@ -551,13 +551,13 @@ u32 aarch64_insn_gen_load_store_ex(enum aarch64_insn_register reg,
 	switch (type) {
 	case AARCH64_INSN_LDST_LOAD_EX:
 	case AARCH64_INSN_LDST_LOAD_ACQ_EX:
-		insn = aarch64_insn_get_load_ex_value();
+		insn = aarch64_insn_get_ldxr_value();
 		if (type == AARCH64_INSN_LDST_LOAD_ACQ_EX)
 			insn |= BIT(15);
 		break;
 	case AARCH64_INSN_LDST_STORE_EX:
 	case AARCH64_INSN_LDST_STORE_REL_EX:
-		insn = aarch64_insn_get_store_ex_value();
+		insn = aarch64_insn_get_stxr_value();
 		if (type == AARCH64_INSN_LDST_STORE_REL_EX)
 			insn |= BIT(15);
 		break;

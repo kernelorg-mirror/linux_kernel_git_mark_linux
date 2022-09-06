@@ -119,13 +119,15 @@ static bool __kprobes
 is_probed_address_atomic(kprobe_opcode_t *scan_start, kprobe_opcode_t *scan_end)
 {
 	while (scan_start >= scan_end) {
+		u32 insn = le32_to_cpu(*scan_start);
+
 		/*
 		 * atomic region starts from exclusive load and ends with
 		 * exclusive store.
 		 */
-		if (aarch64_insn_is_store_ex(le32_to_cpu(*scan_start)))
+		if (aarch64_insn_is_stxp(insn) || aarch64_insn_is_stxr(insn))
 			return false;
-		else if (aarch64_insn_is_load_ex(le32_to_cpu(*scan_start)))
+		if (aarch64_insn_is_ldxp(insn) || aarch64_insn_is_ldxr(insn))
 			return true;
 		scan_start--;
 	}

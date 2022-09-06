@@ -344,9 +344,10 @@ __AARCH64_INSN_FUNCS(signed_ldr_reg, 0X3FE0FC00, 0x38A0E800)
 __AARCH64_INSN_FUNCS(ldr_imm,	0x3FC00000, 0x39400000)
 __AARCH64_INSN_FUNCS(ldr_lit,	0xBF000000, 0x18000000)
 __AARCH64_INSN_FUNCS(ldrsw_lit,	0xFF000000, 0x98000000)
-__AARCH64_INSN_FUNCS(exclusive,	0x3F800000, 0x08000000)
-__AARCH64_INSN_FUNCS(load_ex,	0x3F400000, 0x08400000)
-__AARCH64_INSN_FUNCS(store_ex,	0x3F400000, 0x08000000)
+__AARCH64_INSN_FUNCS(ldxp,	0xBFFF0000, 0x887F0000)
+__AARCH64_INSN_FUNCS(ldxr,	0x3FFF7C00, 0x085F7C00)
+__AARCH64_INSN_FUNCS(stxp,	0xBFE00000, 0x88200000)
+__AARCH64_INSN_FUNCS(stxr,	0x3FE07C00, 0x08007C00)
 __AARCH64_INSN_FUNCS(stp,	0x7FC00000, 0x29000000)
 __AARCH64_INSN_FUNCS(ldp,	0x7FC00000, 0x29400000)
 __AARCH64_INSN_FUNCS(stp_post,	0x7FC00000, 0x28800000)
@@ -541,6 +542,14 @@ static __always_inline bool aarch64_insn_uses_literal(u32 insn)
 	       aarch64_insn_is_ldrsw_lit(insn) ||
 	       aarch64_insn_is_adr_adrp(insn) ||
 	       aarch64_insn_is_prfm_lit(insn);
+}
+
+static __always_inline bool aarch64_insn_is_exclusive(u32 insn)
+{
+	return aarch64_insn_is_ldxp(insn) ||
+	       aarch64_insn_is_ldxr(insn) ||
+	       aarch64_insn_is_stxp(insn) ||
+	       aarch64_insn_is_stxr(insn);
 }
 
 enum aarch64_insn_encoding_class aarch64_get_insn_class(u32 insn);
