@@ -251,9 +251,150 @@ static void test_insn_adrp(struct kunit *test)
 	}
 }
 
+struct test_insn_exclusive_params {
+	enum aarch64_insn_register rt, rn, rs;
+	enum aarch64_insn_size_type size;
+	enum aarch64_insn_ldst_type type;
+
+	bool fail;
+	u32 insn;
+
+	bool (*is)(u32);
+};
+
+static void test_insn_exclusive_case(struct kunit *test,
+				     struct test_insn_exclusive_params *params)
+{
+	enum aarch64_insn_register rt, rt2, rn, rs;
+
+	u32 insn = aarch64_insn_gen_load_store_ex(params->rt, params->rn,
+						  params->rs, params->size,
+						  params->type);
+
+	if (params->fail) {
+		KUNIT_EXPECT_EQ(test, insn, AARCH64_BREAK_FAULT);
+		return;
+	}
+
+	KUNIT_EXPECT_EQ(test, insn, params->insn);
+
+	KUNIT_EXPECT_TRUE(test, params->is(insn));
+
+	rt = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RT, insn);
+	KUNIT_EXPECT_EQ(test, rt, params->rt);
+
+	rt2 = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RT2, insn);
+	KUNIT_EXPECT_EQ(test, rt2, AARCH64_INSN_REG_ZR);
+
+	rn = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RN, insn);
+	KUNIT_EXPECT_EQ(test, rn, params->rn);
+
+	rs = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RS, insn);
+	KUNIT_EXPECT_EQ(test, rs, params->rs);
+}
+
+#define __CASE_EXCLUSIVE(_rt, _rs, _rn, _size, _type, _fail, _insn, _is)	\
+	{									\
+		.rt = REG_IDX(_rt),						\
+		.rs = REG_IDX(_rs),						\
+		.rn = REG_IDX(_rn),						\
+		.size = AARCH64_INSN_SIZE_##_size,				\
+		.type = AARCH64_INSN_LDST_##_type,				\
+		.fail = (_fail),						\
+		.insn = (_insn),						\
+		.is = (_is),							\
+	}
+
+#define CASE_LDXR_GOOD(_asm, _rt, _rn, _size, _type)			\
+	__CASE_EXCLUSIVE(_rt, wzr, _rn, _size, _type, false, 		\
+			  ASM_U32(_asm), aarch64_insn_is_ldxr)
+
+static void test_insn_ldxr(struct kunit *test)
+{
+	struct test_insn_exclusive_params params[] = {
+		CASE_LDXR_GOOD("ldaxr  x0, [x1]", x0, x1, 64, LOAD_ACQ_EX),
+		CASE_LDXR_GOOD("ldaxr  w0, [x1]", w0, x1, 32, LOAD_ACQ_EX),
+		CASE_LDXR_GOOD("ldaxrh w0, [x1]", w0, x1, 16, LOAD_ACQ_EX),
+		CASE_LDXR_GOOD("ldaxrb w0, [x1]", w0, x1, 8,  LOAD_ACQ_EX),
+
+		CASE_LDXR_GOOD("ldxr   x0, [x1]", x0, x1, 64, LOAD_EX),
+		CASE_LDXR_GOOD("ldxr   w0, [x1]", w0, x1, 32, LOAD_EX),
+		CASE_LDXR_GOOD("ldxrh  w0, [x1]", w0, x1, 16, LOAD_EX),
+		CASE_LDXR_GOOD("ldxrb  w0, [x1]", w0, x1, 8,  LOAD_EX),
+	};
+
+	for (int i = 0; i < ARRAY_SIZE(params); i++) {
+		test_insn_exclusive_case(test, &params[i]);
+	}
+
+	/*
+	 * Historically mis-idenfied as an exclusive by aarch64_insn_is_*()
+	 */
+	INSN_EXPECT_IS_NOT(test, ldxr, 0x08200000);
+	INSN_EXPECT_IS_NOT(test, ldxr, 0x085f0000);
+	INSN_EXPECT_IS_NOT(test, ldxr, 0x08407c00);
+}
+
+#define CASE_STXR_GOOD(_asm, _rs, _rt, _rn, _size, _type)		\
+	__CASE_EXCLUSIVE(_rt, _rs, _rn, _size, _type, false, 		\
+			  ASM_U32(_asm), aarch64_insn_is_stxr)
+
+static void test_insn_stxr(struct kunit *test)
+{
+	struct test_insn_exclusive_params params[] = {
+		CASE_STXR_GOOD("stlxr  w0, x1, [x2]", w0, x1, x2, 64, STORE_REL_EX),
+		CASE_STXR_GOOD("stlxr  w0, w1, [x2]", w0, x1, x2, 32, STORE_REL_EX),
+		CASE_STXR_GOOD("stlxrh w0, w1, [x2]", w0, x1, x2, 16, STORE_REL_EX),
+		CASE_STXR_GOOD("stlxrb w0, w1, [x2]", w0, x1, x2, 8,  STORE_REL_EX),
+
+		CASE_STXR_GOOD("stxr   w0, x1, [x2]", w0, x1, x2, 64, STORE_EX),
+		CASE_STXR_GOOD("stxr   w0, w1, [x2]", w0, x1, x2, 32, STORE_EX),
+		CASE_STXR_GOOD("stxrh  w0, w1, [x2]", w0, x1, x2, 16, STORE_EX),
+		CASE_STXR_GOOD("stxrb  w0, w1, [x2]", w0, x1, x2, 8,  STORE_EX),
+	};
+
+	for (int i = 0; i < ARRAY_SIZE(params); i++) {
+		test_insn_exclusive_case(test, &params[i]);
+	}
+
+	/*
+	 * Historically mis-idenfied as an exclusive by aarch64_insn_is_*()
+	 */
+	INSN_EXPECT_IS_NOT(test, stxr, 0x08200000);
+	INSN_EXPECT_IS_NOT(test, stxr, 0x08000000);
+}
+
+static void test_insn_ldxp(struct kunit *test)
+{
+	u32 insn = ASM_U32("ldxp x1, x2, [x3]");
+	INSN_EXPECT_IS(test, ldxp, insn);
+
+	/*
+	 * Historically mis-idenfied as an exclusive by aarch64_insn_is_*()
+	 */
+	INSN_EXPECT_IS_NOT(test, ldxp, 0x08200000);
+	INSN_EXPECT_IS_NOT(test, ldxp, 0x88200000);
+	INSN_EXPECT_IS_NOT(test, ldxp, 0x88600000);
+}
+
+static void test_insn_stxp(struct kunit *test)
+{
+	u32 insn = ASM_U32("stxp w0, x1, x2, [x3]");
+	INSN_EXPECT_IS(test, stxp, insn);
+
+	/*
+	 * Historically mis-idenfied as an exclusive by aarch64_insn_is_*()
+	 */
+	INSN_EXPECT_IS_NOT(test, stxp, 0x08200000);
+}
+
 static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adr),
 	KUNIT_CASE(test_insn_adrp),
+	KUNIT_CASE(test_insn_ldxr),
+	KUNIT_CASE(test_insn_stxr),
+	KUNIT_CASE(test_insn_ldxp),
+	KUNIT_CASE(test_insn_stxp),
 	{ /* sentinel */ }
 };
 
