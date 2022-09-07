@@ -7,12 +7,14 @@
 
 #include <kunit/test.h>
 
+#include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/sizes.h>
 #include <linux/types.h>
 
 #include <asm/byteorder.h>
 #include <asm/insn.h>
+#include <asm/lse.h>
 
 #define __ASM_U32(opcode, insn, inputs...)				\
 ({									\
@@ -117,6 +119,799 @@
 #define INSN_EXPECT_IS_NOT(test, type, insn)				\
 	KUNIT_EXPECT_FALSE_MSG(test, aarch64_insn_is_##type(insn), 	\
 			       INSN_MSG(insn))
+
+#define INSN_EXPECT_IMM_EQ(test, insn, immname, val, scale)				\
+do {											\
+	KUNIT_EXPECT_EQ_MSG(test,							\
+			    val,							\
+			    aarch64_insn_decode_scaled_##immname(insn, scale),		\
+			    KUNIT_SUBSUBTEST_INDENT "'" #insn "' is 0x%08x\n"		\
+			    KUNIT_SUBSUBTEST_INDENT "'" #scale "' is %lld\n",		\
+			    insn, scale);						\
+} while (0)
+
+#define IMM_MSG(val, scale)								\
+	KUNIT_SUBSUBTEST_INDENT "'" #val "' is %lld (0x%llx)\n"				\
+	KUNIT_SUBSUBTEST_INDENT "'" #scale "' is %lld\n",				\
+	val, val, scale
+
+#define INSN_EXPECT_CAN_ENCODE_TRUE(test, name, val, scale)				\
+	KUNIT_EXPECT_TRUE_MSG(test,							\
+			      aarch64_insn_can_encode_scaled_##name(val, scale),	\
+			      IMM_MSG(val, scale))
+
+#define INSN_EXPECT_CAN_ENCODE_FALSE(test, name, val, scale)				\
+	KUNIT_EXPECT_FALSE_MSG(test,							\
+			       aarch64_insn_can_encode_scaled_##name(val, scale),	\
+			       IMM_MSG(val, scale))
+
+#define INSN_EXPECT_TRY_ENCODE_TRUE(test, insnp, name, val, scale)			\
+	KUNIT_EXPECT_TRUE_MSG(test,							\
+			      aarch64_insn_try_encode_scaled_##name(insnp, val, scale),	\
+			      IMM_MSG(val, scale))
+
+#define INSN_EXPECT_TRY_ENCODE_FALSE(test, insnp, name, val, scale)			\
+	KUNIT_EXPECT_FALSE_MSG(test,							\
+			       aarch64_insn_try_encode_scaled_##name(insnp, val, scale),\
+			       IMM_MSG(val, scale))
+
+#define TEST_IMM_MIN_MAX(test, immname, min, max, scale)			\
+do {										\
+	INSN_EXPECT_CAN_ENCODE_TRUE(test, immname, min, scale);			\
+	INSN_EXPECT_CAN_ENCODE_TRUE(test, immname, max, scale);			\
+										\
+	INSN_EXPECT_CAN_ENCODE_FALSE(test, immname, min - 1, scale);		\
+	INSN_EXPECT_CAN_ENCODE_FALSE(test, immname, min - scale, scale);	\
+										\
+	INSN_EXPECT_CAN_ENCODE_FALSE(test, immname, max + 1, scale);		\
+	INSN_EXPECT_CAN_ENCODE_FALSE(test, immname, max + scale, scale);	\
+} while (0)
+
+#define TEST_IMM_VALUE(test, immname, val, scale)				\
+do {										\
+	u32 insn = 0;								\
+	INSN_EXPECT_CAN_ENCODE_TRUE(test, immname, val, scale);			\
+	INSN_EXPECT_TRY_ENCODE_TRUE(test, &insn, immname, val, scale);		\
+	INSN_EXPECT_IMM_EQ(test, insn, immname, val, scale);			\
+} while (0)
+
+#define TEST_IMM_RANGE(test, immname, _min, _max, _scale)			\
+do {										\
+	typeof(aarch64_insn_decode_##immname(0))				\
+		min = _min,							\
+		max = _max,							\
+		scale = _scale;							\
+										\
+	TEST_IMM_MIN_MAX(test, immname, min, max, scale);			\
+										\
+	for (typeof(min) val = min; val < max; val += scale) {			\
+		TEST_IMM_VALUE(test, immname, val, scale);			\
+	}									\
+} while (0)
+
+#define TEST_UNSCALED_IMM_RANGE(test, immname, min, max)			\
+	TEST_IMM_RANGE(test, immname, min, max, 1)
+
+#define TEST_SCALED_IMM_RANGE(test, immname, scale, min, max)			\
+	TEST_IMM_RANGE(test, immname,  min, max, scale)
+
+#define TEST_IMM_MATCHES_LEGACY(test, bits, immname, immtype)			\
+do {										\
+	for (unsigned long val = 0;						\
+	     val < BIT(bits);							\
+	     val++) {								\
+		u32 old = 0;							\
+		u32 new = 0;							\
+		old = aarch64_insn_encode_immediate(immtype, 0, val);		\
+		INSN_EXPECT_TRY_ENCODE_TRUE(test, &new, immname, val, 1);	\
+		INSN_EXPECT_IMM_EQ(test, old, immname, val, 1);			\
+		INSN_EXPECT_IMM_EQ(test, new, immname, val, 1);			\
+	}									\
+} while (0)
+
+#define TEST_IMM_CASE(test, asm_insn, immname, gen_imm, scale)			\
+do {										\
+	u32 obj_insn = ASM_U32(asm_insn, [imm] "i" (gen_imm));			\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, immname, gen_imm, scale);		\
+} while (0)
+
+#define TEST_UNSCALED_IMM_CASE(test, immname, asm_insn, gen_imm)		\
+	TEST_IMM_CASE(test, asm_insn, immname, gen_imm, 1)
+
+#define TEST_SCALED_IMM_CASE(test, immname, scale, asm_insn, gen_imm)		\
+	TEST_IMM_CASE(test, asm_insn, immname, gen_imm, scale)
+
+static void test_imm_adr(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 19,
+				unsigned_adr_imm, AARCH64_INSN_IMM_ADR);
+
+	/*
+	 * As used by ADR
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, signed_adr_imm,
+				-SZ_1M, SZ_1M - 1);
+
+	TEST_UNSCALED_IMM_CASE(test, signed_adr_imm,
+			       "adr x0, . + %[imm]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, signed_adr_imm,
+			       "adr x0, . + %[imm]",
+			       257);
+
+	TEST_UNSCALED_IMM_CASE(test, signed_adr_imm,
+			       "adr x0, . + %[imm]",
+			       -43);
+
+	/*
+	 * As used by ADRP
+	 *
+	 * See TEST_ADRP_CASE() for why we use a local labels for these tests.
+	 */
+	TEST_SCALED_IMM_RANGE(test, signed_adr_imm, SZ_4K,
+			      -SZ_4G, SZ_4G - SZ_4K);
+
+	TEST_SCALED_IMM_CASE(test, signed_adr_imm, SZ_4K,
+			     "1: adrp x0, 1b + %[imm]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, signed_adr_imm, SZ_4K,
+			     "1: adrp x0, 1b + %[imm]",
+			     8192);
+
+	TEST_SCALED_IMM_CASE(test, signed_adr_imm, SZ_4K,
+			     "1: adrp x0, 1b + %[imm]",
+			     -16384);
+}
+
+static void test_imm_b50(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by TBZ
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_b50,
+				0, 63);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_b50,
+			       "tbz x0, %[imm], .",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_b50,
+			       "tbz x0, %[imm], .",
+			       22);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_b50,
+			       "tbz x0, %[imm], .",
+			       47);
+}
+
+static void test_imm_imm26(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 26,
+				unsigned_imm26, AARCH64_INSN_IMM_26);
+
+	/*
+	 * As used by Branch (immediate)
+	 */
+	TEST_SCALED_IMM_RANGE(test, signed_imm26, 4,
+			      -SZ_128M, SZ_128M - 4);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm26, 4,
+			     "b . + %[imm]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm26, 4,
+			     "b . + %[imm]",
+			     36);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm26, 4,
+			     "b . + %[imm]",
+			     -200);
+}
+
+static void test_imm_imm19(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 19,
+				unsigned_imm19, AARCH64_INSN_IMM_19);
+
+	/*
+	 * As used by LDR (literal)
+	 */
+	TEST_SCALED_IMM_RANGE(test, signed_imm19, 4,
+			      -SZ_1M, SZ_1M - 4);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm19, 4,
+			     "ldr x0, . + %[imm]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm19, 4,
+			     "ldr x0, . + %[imm]",
+			     208);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm19, 4,
+			     "ldr x0, . + %[imm]",
+			     -16384);
+}
+
+static void test_imm_imm16(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 16,
+				unsigned_imm16, AARCH64_INSN_IMM_16);
+
+	/*
+	 * As used by SVC
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_imm16,
+				0, 65535);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imm16,
+			       "svc %[imm]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imm16,
+			       "svc %[imm]",
+			       425);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imm16,
+			       "svc %[imm]",
+			       16384);
+}
+
+static void test_imm_imm14(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 14,
+				unsigned_imm14, AARCH64_INSN_IMM_14);
+
+	/*
+	 * As used by TBZ
+	 */
+	TEST_SCALED_IMM_RANGE(test, signed_imm14, 4,
+			      -SZ_32K, SZ_32K - 4);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm14, 4,
+			     "tbz x0, 0, . + %[imm]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm14, 4,
+			     "tbz x0, 0, . + %[imm]",
+			     36);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm14, 4,
+			     "tbz x0, 0, . + %[imm]",
+			     -200);
+}
+
+static void test_imm_imm12(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 12,
+				unsigned_imm12, AARCH64_INSN_IMM_12);
+
+	/*
+	 * As used by LDR (immediate, unsigned offset)
+	 */
+	TEST_SCALED_IMM_RANGE(test, unsigned_imm12, 8,
+			      0, 32760);
+
+	TEST_SCALED_IMM_RANGE(test, unsigned_imm12, 4,
+			      0, 16380);
+
+	TEST_SCALED_IMM_CASE(test, unsigned_imm12, 8,
+			     "ldr x0, [x1, %[imm]]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, unsigned_imm12, 8,
+			     "ldr x0, [x1, %[imm]]",
+			     24);
+
+	TEST_SCALED_IMM_CASE(test, unsigned_imm12, 4,
+			     "ldr w0, [x1, %[imm]]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, unsigned_imm12, 4,
+			     "ldr w0, [x1, %[imm]]",
+			     12);
+}
+
+static void test_imm_imm9(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 9,
+				unsigned_imm9, AARCH64_INSN_IMM_9);
+
+	/*
+	 * As used by LDR (immedate, pre-index)
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, signed_imm9,
+				-256, 255);
+
+	TEST_UNSCALED_IMM_CASE(test, signed_imm9,
+			       "ldr x0, [x1, %[imm]]!",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, signed_imm9,
+			       "ldr x0, [x1, %[imm]]!",
+			       13);
+
+	TEST_UNSCALED_IMM_CASE(test, signed_imm9,
+			       "ldr x0, [x1, %[imm]]!",
+			       -37);
+}
+
+static void test_imm_imm7_15(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 7,
+				unsigned_imm7_15, AARCH64_INSN_IMM_7);
+
+	/*
+	 * As used by LDP (64-bit)
+	 */
+	TEST_SCALED_IMM_RANGE(test, signed_imm7_15, 8,
+			      -512, 504);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm7_15, 8,
+			     "ldp x0, x1, [x2, %[imm]]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm7_15, 8,
+			     "ldp x0, x1, [x2, %[imm]]",
+			     40);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm7_15, 8,
+			     "ldp x0, x1, [x2, %[imm]]",
+			     -56);
+
+	/*
+	 * As used by LDP (32-bit)
+	 */
+	TEST_SCALED_IMM_RANGE(test, signed_imm7_15, 4,
+			      -256, 252);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm7_15, 4,
+			     "ldp w0, w1, [x2, %[imm]]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm7_15, 4,
+			     "ldp w0, w1, [x2, %[imm]]",
+			     28);
+
+	TEST_SCALED_IMM_CASE(test, signed_imm7_15, 4,
+			     "ldp w0, w1, [x2, %[imm]]",
+			     -60);
+}
+
+static void test_imm_imm6_10(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 6,
+				unsigned_imm6_10, AARCH64_INSN_IMM_6);
+
+	/*
+	 * As used by ADD (shifted register)
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_imm6_10,
+				0, 63);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imm6_10,
+			       "add x0, x1, x2, lsl %[imm]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imm6_10,
+			       "add x0, x1, x2, lsl %[imm]",
+			       63);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imm6_10,
+			       "add x0, x1, x2, lsl %[imm]",
+			       32);
+}
+
+static void test_imm_imm3_10(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by ADD (extended register)
+	 * Note that ADD treats values 5-7 as UNALLOCATED
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_imm3_10,
+				0, 7);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imm3_10,
+			       "add x0, x1, w2, sxtw %[imm]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imm3_10,
+			       "add x0, x1, w2, sxtw %[imm]",
+			       3);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imm3_10,
+			       "add x0, x1, w2, sxtw %[imm]",
+			       4);
+}
+
+static void test_imm_immr(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 6,
+				unsigned_immr, AARCH64_INSN_IMM_R);
+
+	/*
+	 * As used by SBFM
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_immr,
+				0, 63);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_immr,
+			       "sbfm x0, x1, %[imm], 0",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_immr,
+			       "sbfm x0, x1, %[imm], 0",
+			       27);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_immr,
+			       "sbfm x0, x1, %[imm], 0",
+			       53);
+}
+
+static void test_imm_imms(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 6,
+				unsigned_imms, AARCH64_INSN_IMM_S);
+
+	/*
+	 * As used by SBFM
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_imms,
+				0, 63);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imms,
+			       "sbfm x0, x1, 0, %[imm]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imms,
+			       "sbfm x0, x1, 0, %[imm]",
+			       27);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_imms,
+			       "sbfm x0, x1, 0, %[imm]",
+			       53);
+}
+
+static void test_imm_N(struct kunit *test)
+{
+	TEST_IMM_MATCHES_LEGACY(test, 1,
+				unsigned_N, AARCH64_INSN_IMM_N);
+
+	/*
+	 * The 'N' bit doesn't directly correspond to an assembly parameter for
+	 * any instruction. It is typically used to encode bitmask immediates
+	 * as part of 'N:imms:immr'.
+	 *
+	 * It is always set for 64-bit UBFM instructions, and always clear for
+	 * 32-bit UBFM instructions.
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_N,
+				0, 1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_N,
+			       "ubfm x0, x1, #0, #0",
+			       1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_N,
+			       "ubfm w0, w1, #0, #0",
+			       0);
+}
+
+static void test_imm_hw(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by MOVZ (64-bit)
+	 */
+	TEST_SCALED_IMM_RANGE(test, unsigned_hw, 16,
+			      0, 48);
+
+	TEST_SCALED_IMM_CASE(test, unsigned_hw, 16,
+			     "movz x0, #0, lsl %[imm]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, unsigned_hw, 16,
+			     "movz x0, #0, lsl %[imm]",
+			     32);
+
+	TEST_SCALED_IMM_CASE(test, unsigned_hw, 16,
+			     "movz x0, #0, lsl %[imm]",
+			     48);
+}
+
+static void test_imm_sf(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by MOV (register)
+	 *
+	 * The 'sf' bit doesn't directly correspond to an assembly immediate.
+	 * It is always set for 64-bit instructions, and always clear for
+	 * 32-bit instructions.
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_sf,
+				0, 1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_sf,
+			       "mov x0, x1",
+			       1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_sf,
+			       "mov w0, w1",
+			       0);
+}
+
+static void test_imm_sh(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by ADD (immediate)
+	 */
+	TEST_SCALED_IMM_RANGE(test, unsigned_sh, 12,
+			      0, 12);
+
+	TEST_SCALED_IMM_CASE(test, unsigned_sh, 12,
+			     "add x0, x0, #0, lsl %[imm]",
+			     0);
+
+	TEST_SCALED_IMM_CASE(test, unsigned_sh, 12,
+			     "add x0, x0, #0, lsl %[imm]",
+			     12);
+}
+
+static void test_imm_ldst_size(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by LDR (immediate)
+	 *
+	 * The 'size' field doesn't directly correspond to an assembly
+	 * immediate. It is used to encode the size of the memory access
+	 * (encoded as log2(size)).
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_ldst_size,
+				0, 3);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_size,
+			       "ldr x0, [x1]",
+			       AARCH64_INSN_SIZE_64);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_size,
+			       "ldr w0, [x1]",
+			       AARCH64_INSN_SIZE_32);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_size,
+			       "ldrh w0, [x1]",
+			       AARCH64_INSN_SIZE_16);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_size,
+			       "ldrb w0, [x1]",
+			       AARCH64_INSN_SIZE_8);
+}
+
+static void test_imm_ldst_L(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by LDXR / STXR
+	 *
+	 * The 'L' field doesn't directly correspond to an assembly immediate.
+	 * Its interpretation varies by instruction, but it is always set for
+	 * LDXR variants and always clear for STXR variants.
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_ldst_L,
+				0, 1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_L,
+			       "ldxr x0, [x1]",
+			       1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_L,
+			       "ldxrb w2, [x3]",
+			       1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_L,
+			       "stxr w0, x1, [x2]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_L,
+			       "stxr w3, x4, [x5]",
+			       0);
+}
+
+static void test_imm_ldst_o0(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by LDXR/LDAXR/STXR/STLXR
+	 *
+	 * The 'o0' field doesn't directly correspond to an assembly immediate.
+	 * It is used for some load/store encodings to indicate acquire/release
+	 * ordering.
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_ldst_o0,
+				0, 1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_o0,
+			       "ldxr x0, [x1]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_o0,
+			       "ldaxr x0, [x1]",
+			       1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_o0,
+			       "stxr w0, x1, [x2]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_ldst_o0,
+			       "stlxr w0, x1, [x2]",
+			       1);
+}
+
+static void test_imm_amo_a(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by SWP / SWPA / SWPAL / SWPL
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_amo_a,
+				0, 1);
+
+	if (!IS_ENABLED(CONFIG_AS_HAS_LSE_ATOMICS))
+		kunit_skip(test, "Missing toolchain support for LSE atomics");
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_amo_a,
+			       __LSE_PREAMBLE
+			       "swp x0, x1, [x2]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_amo_a,
+			       __LSE_PREAMBLE
+			       "swpa x0, x1, [x2]",
+			       1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_amo_a,
+			       __LSE_PREAMBLE
+			       "swpl x0, x1, [x2]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_amo_a,
+			       __LSE_PREAMBLE
+			       "swpal x0, x1, [x2]",
+			       1);
+}
+
+static void test_imm_amo_r(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by SWP / SWPA / SWPAL / SWPL
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_amo_r,
+				0, 1);
+
+	if (!IS_ENABLED(CONFIG_AS_HAS_LSE_ATOMICS))
+		kunit_skip(test, "Missing toolchain support for LSE atomics");
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_amo_r,
+			       __LSE_PREAMBLE
+			       "swp x0, x1, [x2]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_amo_r,
+			       __LSE_PREAMBLE
+			       "swpa x0, x1, [x2]",
+			       0);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_amo_r,
+			       __LSE_PREAMBLE
+			       "swpl x0, x1, [x2]",
+			       1);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_amo_r,
+			       __LSE_PREAMBLE
+			       "swpal x0, x1, [x2]",
+			       1);
+}
+
+static void test_imm_reg_shift(struct kunit *test)
+{
+	/* No legacy encoder exists */
+
+	/*
+	 * As used by AND (shifted register)
+	 *
+	 * The 'shift' field is used to encode the shift type to apply to a
+	 * register argument: LSL / LSR / ASR / ROR
+	 */
+	TEST_UNSCALED_IMM_RANGE(test, unsigned_reg_shift,
+				0, 3);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_reg_shift,
+			       "and x0, x1, x2, lsl #1",
+			       AARCH64_INSN_REG_SHIFT_LSL);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_reg_shift,
+			       "and x0, x1, x2, lsr #1",
+			       AARCH64_INSN_REG_SHIFT_LSR);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_reg_shift,
+			       "and x0, x1, x2, asr #1",
+			       AARCH64_INSN_REG_SHIFT_ASR);
+
+	TEST_UNSCALED_IMM_CASE(test, unsigned_reg_shift,
+			       "and x0, x1, x2, ror #1",
+			       AARCH64_INSN_REG_SHIFT_ROR);
+}
+
+static struct kunit_case aarch64_insn_imm_test_cases[] = {
+	KUNIT_CASE(test_imm_adr),
+	KUNIT_CASE(test_imm_b50),
+	KUNIT_CASE(test_imm_imm3_10),
+	KUNIT_CASE(test_imm_imm6_10),
+	KUNIT_CASE(test_imm_imm7_15),
+	KUNIT_CASE(test_imm_imm9),
+	KUNIT_CASE(test_imm_imm12),
+	KUNIT_CASE(test_imm_imm14),
+	KUNIT_CASE(test_imm_imm16),
+	KUNIT_CASE(test_imm_imm19),
+	KUNIT_CASE(test_imm_imm26),
+	KUNIT_CASE(test_imm_immr),
+	KUNIT_CASE(test_imm_imms),
+	KUNIT_CASE(test_imm_N),
+	KUNIT_CASE(test_imm_hw),
+	KUNIT_CASE(test_imm_sf),
+	KUNIT_CASE(test_imm_sh),
+	KUNIT_CASE(test_imm_ldst_size),
+	KUNIT_CASE(test_imm_ldst_L),
+	KUNIT_CASE(test_imm_ldst_o0),
+	KUNIT_CASE(test_imm_amo_a),
+	KUNIT_CASE(test_imm_amo_r),
+	KUNIT_CASE(test_imm_reg_shift),
+	{ /* sentinel */ }
+};
+
+static struct kunit_suite test_aarch64_insn_imm_suite = {
+	.name = "aarch64_insn_immediate",
+	.test_cases = aarch64_insn_imm_test_cases,
+};
+
+#define TEST_ADR_CASE(test, arg_rd, arg_offset)						\
+do {											\
+	enum aarch64_insn_register rd = REG_IDX(arg_rd), obj_rd, gen_rd;		\
+	s64 offset = (arg_offset), obj_offset, gen_offset;				\
+											\
+	u32 obj_insn = ASM_U32("adr " #arg_rd ", . + %0", "i" (offset));		\
+	u32 gen_insn = aarch64_insn_gen_adr(0, offset, rd, AARCH64_INSN_ADR_TYPE_ADR);	\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, adr, obj_insn);						\
+	INSN_EXPECT_IS(test, adr, gen_insn);						\
+											\
+	obj_rd = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RD, obj_insn);	\
+	gen_rd = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RD, gen_insn);	\
+	KUNIT_EXPECT_EQ(test, obj_rd, rd);						\
+	KUNIT_EXPECT_EQ(test, gen_rd, rd);						\
+											\
+	obj_offset = aarch64_insn_adr_get_offset(obj_insn);				\
+	gen_offset = aarch64_insn_adr_get_offset(gen_insn);				\
+	KUNIT_EXPECT_EQ(test, obj_offset, offset);					\
+	KUNIT_EXPECT_EQ(test, gen_offset, offset);					\
+} while (0)
 
 struct test_insn_adr_adrp_params {
 	enum aarch64_insn_adr_type type;
@@ -404,6 +1199,7 @@ static struct kunit_suite test_aarch64_insn_insn_suite = {
 };
 
 kunit_test_suites(
+	&test_aarch64_insn_imm_suite,
 	&test_aarch64_insn_insn_suite
 );
 
