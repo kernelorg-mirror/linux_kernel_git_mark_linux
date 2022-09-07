@@ -1256,10 +1256,24 @@ u32 aarch64_set_branch_offset(u32 insn, s32 offset)
 	BUG();
 }
 
+s64 aarch64_insn_adr_get_offset(u32 insn)
+{
+	s64 offset;
+	offset = aarch64_insn_decode_immediate(AARCH64_INSN_IMM_ADR, insn);
+	offset = sign_extend64(offset, 20);
+
+	return offset;
+}
+
+u32 aarch64_insn_adr_set_offset(u32 insn, s64 offset)
+{
+	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_ADR, insn,
+						offset);
+}
+
 s64 aarch64_insn_adrp_get_offset(u32 insn)
 {
 	s64 offset;
-	BUG_ON(!aarch64_insn_is_adrp(insn));
 	offset = aarch64_insn_decode_immediate(AARCH64_INSN_IMM_ADR, insn);
 	offset = sign_extend64(offset, 20);
 
@@ -1268,7 +1282,6 @@ s64 aarch64_insn_adrp_get_offset(u32 insn)
 
 u32 aarch64_insn_adrp_set_offset(u32 insn, s64 offset)
 {
-	BUG_ON(!aarch64_insn_is_adrp(insn));
 	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_ADR, insn,
 						offset >> 12);
 }
