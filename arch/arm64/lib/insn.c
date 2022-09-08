@@ -161,6 +161,7 @@ u32 aarch64_insn_decode_register(enum aarch64_insn_register_type type,
 		shift = 10;
 		break;
 	case AARCH64_INSN_REGTYPE_RM:
+	case AARCH64_INSN_REGTYPE_RS:
 		shift = 16;
 		break;
 	default:
