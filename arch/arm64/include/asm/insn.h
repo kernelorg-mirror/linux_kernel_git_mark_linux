@@ -757,6 +757,9 @@ AARCH64_IMMEDIATE_FUNCS(reg_shift,	23, 22)
 
 u32 aarch64_insn_decode_register(enum aarch64_insn_register_type type,
 					 u32 insn);
+u32 aarch64_insn_encode_register(enum aarch64_insn_register_type type,
+				  u32 insn,
+				  enum aarch64_insn_register reg);
 u32 aarch64_insn_gen_branch_imm(unsigned long pc, unsigned long addr,
 				enum aarch64_insn_branch_type type);
 u32 aarch64_insn_gen_comp_branch_imm(unsigned long pc, unsigned long addr,

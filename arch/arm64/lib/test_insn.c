@@ -155,6 +155,22 @@ do {											\
 			       aarch64_insn_try_encode_scaled_##name(insnp, val, scale),\
 			       IMM_MSG(val, scale))
 
+#define INSN_EXPECT_REG_EQ(test, insn, regname, reg)					\
+do {											\
+	KUNIT_EXPECT_EQ_MSG(test,							\
+			    reg,							\
+			    aarch64_insn_decode_reg_##regname(insn),			\
+			    INSN_MSG(insn));						\
+} while (0)
+
+#define INSN_EXPECT_TRY_ENCODE_REG_TRUE(test, insnp, regname, reg)			\
+do {											\
+	KUNIT_EXPECT_TRUE_MSG(test,							\
+			      aarch64_insn_try_encode_reg_##regname(insnp, reg),	\
+			      KUNIT_SUBSUBTEST_INDENT "'" #reg "' is 0x%x\n",		\
+			      reg);							\
+} while (0)
+
 #define TEST_IMM_MIN_MAX(test, immname, min, max, scale)			\
 do {										\
 	INSN_EXPECT_CAN_ENCODE_TRUE(test, immname, min, scale);			\
@@ -890,6 +906,171 @@ static struct kunit_suite test_aarch64_insn_imm_suite = {
 	.test_cases = aarch64_insn_imm_test_cases,
 };
 
+#define TEST_REG_VALUE(test, regname, val)				\
+do {									\
+	u32 insn = 0;							\
+	KUNIT_EXPECT_TRUE(test, aarch64_insn_reg_is_valid(reg));	\
+	INSN_EXPECT_TRY_ENCODE_REG_TRUE(test, &insn, regname, val);	\
+	KUNIT_EXPECT_EQ(test,						\
+			val,						\
+			aarch64_insn_decode_reg_##regname(insn));	\
+} while (0)
+
+#define TEST_REG_RANGE(test, regname)					\
+do {									\
+	enum aarch64_insn_register reg;					\
+	for (reg = AARCH64_INSN_REG_0;					\
+	     reg <= AARCH64_INSN_REG_SP;				\
+	     reg++) {							\
+		TEST_REG_VALUE(test, regname, reg);			\
+	}								\
+} while (0)
+
+#define TEST_REG_MATCHES_LEGACY(test, regname, regtype)				\
+do {										\
+	enum aarch64_insn_register reg;						\
+	for (reg = AARCH64_INSN_REG_0;						\
+	     reg <= AARCH64_INSN_REG_SP;					\
+	     reg++) {								\
+		u32 old = 0;							\
+		u32 new = 0;							\
+		old = aarch64_insn_encode_register(regtype, 0, reg);		\
+		INSN_EXPECT_TRY_ENCODE_REG_TRUE(test, &new, regname, reg);	\
+		KUNIT_EXPECT_EQ(test, old, new);				\
+		INSN_EXPECT_REG_EQ(test, old, regname, reg);			\
+		INSN_EXPECT_REG_EQ(test, new, regname, reg);			\
+	}									\
+} while (0)
+
+#define TEST_REG_CASE(test, regname, asm_insn, arg_reg)			\
+do {									\
+	enum aarch64_insn_register reg = REG_IDX(arg_reg);		\
+	register long reg_var asm(#arg_reg) = 0;			\
+	u32 obj_insn = ASM_U32(asm_insn, [reg] "r" (reg_var));		\
+	INSN_EXPECT_REG_EQ(test, obj_insn, regname, reg);		\
+} while (0)
+
+static void test_reg_rt(struct kunit *test)
+{
+	TEST_REG_MATCHES_LEGACY(test, rt, AARCH64_INSN_REGTYPE_RT);
+
+	TEST_REG_RANGE(test, rt);
+
+	TEST_REG_CASE(test, rt,
+		      "ldr %[reg], [x1]",
+		      x5);
+
+	TEST_REG_CASE(test, rt,
+		      "ldr %[reg], [x1]",
+		      x17);
+}
+
+static void test_reg_rd(struct kunit *test)
+{
+	TEST_REG_MATCHES_LEGACY(test, rd, AARCH64_INSN_REGTYPE_RD);
+
+	TEST_REG_RANGE(test, rd);
+
+	TEST_REG_CASE(test, rd,
+		      "mov %[reg], x0",
+		      x3);
+
+	TEST_REG_CASE(test, rd,
+		      "mov %[reg], x0",
+		      x22);
+}
+
+static void test_reg_rn(struct kunit *test)
+{
+	TEST_REG_MATCHES_LEGACY(test, rn, AARCH64_INSN_REGTYPE_RN);
+
+	TEST_REG_RANGE(test, rn);
+
+	TEST_REG_CASE(test, rn,
+		      "orr x0, %[reg], x0",
+		      x9);
+
+	TEST_REG_CASE(test, rn,
+		      "orr x0, %[reg], x0",
+		      x27);
+}
+
+static void test_reg_rt2(struct kunit *test)
+{
+	TEST_REG_MATCHES_LEGACY(test, rt2, AARCH64_INSN_REGTYPE_RT2);
+
+	TEST_REG_RANGE(test, rt2);
+
+	TEST_REG_CASE(test, rt2,
+		      "ldp x0, %[reg], [x1]",
+		      x14);
+
+	TEST_REG_CASE(test, rt2,
+		      "ldp x0, %[reg], [x1]",
+		      x25);
+}
+
+static void test_reg_ra(struct kunit *test)
+{
+	TEST_REG_MATCHES_LEGACY(test, ra, AARCH64_INSN_REGTYPE_RA);
+
+	TEST_REG_RANGE(test, ra);
+
+	TEST_REG_CASE(test, ra,
+		      "madd x0, x1, x2, %[reg]",
+		      x5);
+
+	TEST_REG_CASE(test, ra,
+		      "madd x0, x1, x2, %[reg]",
+		      x26);
+}
+
+static void test_reg_rm(struct kunit *test)
+{
+	TEST_REG_MATCHES_LEGACY(test, rm, AARCH64_INSN_REGTYPE_RM);
+
+	TEST_REG_RANGE(test, rm);
+
+	TEST_REG_CASE(test, rm,
+		      "orr x0, x1, %[reg]",
+		      x6);
+
+	TEST_REG_CASE(test, rm,
+		      "orr x0, x1, %[reg]",
+		      x19);
+}
+
+static void test_reg_rs(struct kunit *test)
+{
+	TEST_REG_MATCHES_LEGACY(test, rs, AARCH64_INSN_REGTYPE_RS);
+
+	TEST_REG_RANGE(test, rs);
+
+	TEST_REG_CASE(test, rs,
+		      "stxr %w[reg], x0, [x1]",
+		      x2);
+
+	TEST_REG_CASE(test, rs,
+		      "stxr %w[reg], x0, [x1]",
+		      x16);
+}
+
+static struct kunit_case aarch64_insn_reg_test_cases[] = {
+	KUNIT_CASE(test_reg_rt),
+	KUNIT_CASE(test_reg_rd),
+	KUNIT_CASE(test_reg_rn),
+	KUNIT_CASE(test_reg_rt2),
+	KUNIT_CASE(test_reg_ra),
+	KUNIT_CASE(test_reg_rm),
+	KUNIT_CASE(test_reg_rs),
+	{ /* sentinel */ }
+};
+
+static struct kunit_suite test_aarch64_insn_reg_suite = {
+	.name = "aarch64_insn_register",
+	.test_cases = aarch64_insn_reg_test_cases,
+};
+
 #define TEST_ADR_CASE(test, arg_rd, arg_offset)						\
 do {											\
 	enum aarch64_insn_register rd = REG_IDX(arg_rd), obj_rd, gen_rd;		\
@@ -1200,6 +1381,7 @@ static struct kunit_suite test_aarch64_insn_insn_suite = {
 
 kunit_test_suites(
 	&test_aarch64_insn_imm_suite,
+	&test_aarch64_insn_reg_suite,
 	&test_aarch64_insn_insn_suite
 );
 

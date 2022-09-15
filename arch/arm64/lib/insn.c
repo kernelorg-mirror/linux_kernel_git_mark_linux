@@ -173,9 +173,9 @@ u32 aarch64_insn_decode_register(enum aarch64_insn_register_type type,
 	return (insn >> shift) & GENMASK(4, 0);
 }
 
-static u32 aarch64_insn_encode_register(enum aarch64_insn_register_type type,
-					u32 insn,
-					enum aarch64_insn_register reg)
+u32 aarch64_insn_encode_register(enum aarch64_insn_register_type type,
+				 u32 insn,
+				 enum aarch64_insn_register reg)
 {
 	int shift;
 
