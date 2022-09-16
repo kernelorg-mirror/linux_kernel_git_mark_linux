@@ -434,22 +434,17 @@ u32 aarch64_insn_gen_load_literal(unsigned long pc, unsigned long addr,
 				  enum aarch64_insn_register reg,
 				  bool is64bit)
 {
-	u32 insn;
-	long offset;
-
-	offset = label_imm_common(pc, addr, SZ_1M);
-	if (offset >= SZ_1M)
-		return AARCH64_BREAK_FAULT;
-
-	insn = aarch64_insn_get_ldr_lit_value();
+	u32 insn = aarch64_insn_get_ldr_lit_value();
+	s64 offset = addr - pc;
 
 	if (is64bit)
 		insn |= BIT(30);
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RT, insn, reg);
+	if (!aarch64_insn_try_encode_reg_rt(&insn, reg) ||
+	    !aarch64_insn_try_encode_scaled_signed_imm19(&insn, offset, 4))
+		return AARCH64_BREAK_FAULT;
 
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_19, insn,
-					     offset >> 2);
+	return insn;
 }
 
 u32 aarch64_insn_gen_load_store_pair(enum aarch64_insn_register reg1,

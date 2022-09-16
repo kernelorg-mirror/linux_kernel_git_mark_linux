@@ -1470,6 +1470,48 @@ static void test_insn_str_imm(struct kunit *test)
 							AARCH64_INSN_LDST_STORE_IMM_OFFSET));
 }
 
+#define TEST_LDR_LIT_CASE(test, arg_rt, is64, arg_offset)				\
+do {											\
+	enum aarch64_insn_register rt = REG_IDX(arg_rt);				\
+	s64 offset = (arg_offset);							\
+											\
+	u32 obj_insn = ASM_U32("ldr " #arg_rt ", . + %0", "i" (offset));		\
+	u32 gen_insn = aarch64_insn_gen_load_literal(0, offset, rt, is64);		\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, ldr_lit, obj_insn);					\
+	INSN_EXPECT_IS(test, ldr_lit, gen_insn);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rt, rt);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rt, rt);					\
+											\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, signed_imm19, offset, 4);			\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, signed_imm19, offset, 4);			\
+} while (0)
+
+static void test_insn_ldr_lit(struct kunit *test)
+{
+	TEST_LDR_LIT_CASE(test, x0, true, 0);
+	TEST_LDR_LIT_CASE(test, x1, true, 0);
+	TEST_LDR_LIT_CASE(test, x2, true, 16);
+	TEST_LDR_LIT_CASE(test, x3, true, -200);
+	TEST_LDR_LIT_CASE(test, w4, false, 0);
+	TEST_LDR_LIT_CASE(test, w5, false, 32);
+	TEST_LDR_LIT_CASE(test, w6, false, -96);
+
+	/*
+	 * Out-of-range immediates
+	 */
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_literal(0, SZ_1M,
+						      AARCH64_INSN_REG_0, true));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_literal(0, -SZ_1M - 4,
+						      AARCH64_INSN_REG_0, true));
+}
+
 struct test_insn_exclusive_params {
 	enum aarch64_insn_register rt, rn, rs;
 	enum aarch64_insn_size_type size;
@@ -1605,6 +1647,7 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_str_reg),
 	KUNIT_CASE(test_insn_ldr_imm),
 	KUNIT_CASE(test_insn_str_imm),
+	KUNIT_CASE(test_insn_ldr_lit),
 	KUNIT_CASE(test_insn_ldxr),
 	KUNIT_CASE(test_insn_stxr),
 	KUNIT_CASE(test_insn_ldxp),
