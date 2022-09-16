@@ -563,6 +563,43 @@ static __always_inline bool aarch64_insn_is_exclusive(u32 insn)
 	       aarch64_insn_is_stxr(insn);
 }
 
+static __always_inline bool
+aarch64_insn_reg_is_valid(enum aarch64_insn_register reg)
+{
+	return reg >= AARCH64_INSN_REG_0 && reg <= AARCH64_INSN_REG_SP;
+}
+
+#define __AARCH64_REGISTER_FUNCS(abbr, shift)				\
+static __always_inline u32						\
+aarch64_insn_decode_reg_##abbr(u32 insn)				\
+{									\
+	const unsigned long field = GENMASK(shift + 4, shift);		\
+	return FIELD_GET(field, insn);					\
+}									\
+static __always_inline bool __must_check				\
+aarch64_insn_try_encode_reg_##abbr(u32 *insnp,				\
+				   enum aarch64_insn_register reg)	\
+{									\
+	const unsigned long field = GENMASK(shift + 4, shift);		\
+									\
+	if (!aarch64_insn_reg_is_valid(reg))				\
+		return false;						\
+									\
+	*insnp &= ~field;						\
+	*insnp |= FIELD_PREP(field, reg);				\
+	return true;							\
+}									\
+
+__AARCH64_REGISTER_FUNCS(rt,  0)
+__AARCH64_REGISTER_FUNCS(rd,  0)
+__AARCH64_REGISTER_FUNCS(rn,  5)
+__AARCH64_REGISTER_FUNCS(rt2, 10)
+__AARCH64_REGISTER_FUNCS(ra,  10)
+__AARCH64_REGISTER_FUNCS(rm,  16)
+__AARCH64_REGISTER_FUNCS(rs,  16)
+
+#undef __AARCH64_REGISTER_FUNCS
+
 enum aarch64_insn_encoding_class aarch64_get_insn_class(u32 insn);
 u64 aarch64_insn_decode_immediate(enum aarch64_insn_imm_type type, u32 insn);
 u32 aarch64_insn_encode_immediate(enum aarch64_insn_imm_type type,
