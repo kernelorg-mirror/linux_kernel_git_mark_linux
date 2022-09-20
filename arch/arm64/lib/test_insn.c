@@ -1221,6 +1221,64 @@ static void test_insn_adrp(struct kunit *test)
 	}
 }
 
+#define TEST_BRANCH_IMM_CASE(test, insn, arg_type, arg_offset)			\
+do {										\
+	enum aarch64_insn_branch_type type = (arg_type);			\
+	s64 offset = (arg_offset);						\
+										\
+	u32 obj_insn = ASM_U32(#insn " . + %0", "i" (offset));			\
+	u32 gen_insn = aarch64_insn_gen_branch_imm(0, offset, type);		\
+										\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);				\
+	INSN_EXPECT_IS(test, insn, obj_insn);					\
+	INSN_EXPECT_IS(test, insn, gen_insn);					\
+										\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, signed_imm26, offset, 4);		\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, signed_imm26, offset, 4);		\
+} while (0)
+
+static void test_insn_b(struct kunit *test)
+{
+	TEST_BRANCH_IMM_CASE(test, b, AARCH64_INSN_BRANCH_NOLINK, 0);
+	TEST_BRANCH_IMM_CASE(test, b, AARCH64_INSN_BRANCH_NOLINK, 36);
+	TEST_BRANCH_IMM_CASE(test, b, AARCH64_INSN_BRANCH_NOLINK, -24);
+	TEST_BRANCH_IMM_CASE(test, b, AARCH64_INSN_BRANCH_NOLINK, SZ_128M - 4);
+	TEST_BRANCH_IMM_CASE(test, b, AARCH64_INSN_BRANCH_NOLINK, -SZ_128M);
+
+	/*
+	 * Out-of-range immediates
+	 */
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_branch_imm(0, SZ_128M,
+						    AARCH64_INSN_BRANCH_NOLINK));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_branch_imm(0, -SZ_128M + -4,
+						    AARCH64_INSN_BRANCH_NOLINK));
+}
+
+static void test_insn_bl(struct kunit *test)
+{
+	TEST_BRANCH_IMM_CASE(test, bl, AARCH64_INSN_BRANCH_LINK, 0);
+	TEST_BRANCH_IMM_CASE(test, bl, AARCH64_INSN_BRANCH_LINK, 36);
+	TEST_BRANCH_IMM_CASE(test, bl, AARCH64_INSN_BRANCH_LINK, -24);
+	TEST_BRANCH_IMM_CASE(test, bl, AARCH64_INSN_BRANCH_LINK, SZ_128M - 4);
+	TEST_BRANCH_IMM_CASE(test, bl, AARCH64_INSN_BRANCH_LINK, -SZ_128M);
+
+	/*
+	 * Out-of-range immediates
+	 */
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_branch_imm(0, SZ_128M,
+						    AARCH64_INSN_BRANCH_LINK));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_branch_imm(0, -SZ_128M + -4,
+						    AARCH64_INSN_BRANCH_LINK));
+}
+
 #define TEST_LDST_REG_CASE(test, class, insn, arg_rt, arg_rn, arg_rm, arg_size,		\
 			   arg_type)							\
 do {											\
@@ -2134,6 +2192,8 @@ static void test_insn_cas(struct kunit *test)
 static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adr),
 	KUNIT_CASE(test_insn_adrp),
+	KUNIT_CASE(test_insn_b),
+	KUNIT_CASE(test_insn_bl),
 	KUNIT_CASE(test_insn_ldr_reg),
 	KUNIT_CASE(test_insn_str_reg),
 	KUNIT_CASE(test_insn_ldr_imm),

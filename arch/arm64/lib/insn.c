@@ -239,16 +239,7 @@ u32 __kprobes aarch64_insn_gen_branch_imm(unsigned long pc, unsigned long addr,
 					  enum aarch64_insn_branch_type type)
 {
 	u32 insn;
-	long offset;
-
-	/*
-	 * B/BL support [-128M, 128M) offset
-	 * ARM64 virtual address arrangement guarantees all kernel and module
-	 * texts are within +/-128M.
-	 */
-	offset = label_imm_common(pc, addr, SZ_128M);
-	if (offset >= SZ_128M)
-		return AARCH64_BREAK_FAULT;
+	long offset = addr - pc;
 
 	switch (type) {
 	case AARCH64_INSN_BRANCH_LINK:
@@ -262,8 +253,10 @@ u32 __kprobes aarch64_insn_gen_branch_imm(unsigned long pc, unsigned long addr,
 		return AARCH64_BREAK_FAULT;
 	}
 
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_26, insn,
-					     offset >> 2);
+	if (!aarch64_insn_try_encode_scaled_signed_imm26(&insn, offset, 4))
+		return AARCH64_BREAK_FAULT;
+
+	return insn;
 }
 
 u32 aarch64_insn_gen_comp_branch_imm(unsigned long pc, unsigned long addr,
