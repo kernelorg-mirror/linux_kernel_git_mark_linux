@@ -1279,6 +1279,44 @@ static void test_insn_bl(struct kunit *test)
 						    AARCH64_INSN_BRANCH_LINK));
 }
 
+#define TEST_BCOND_CASE(test, asm_cond, arg_cond, arg_offset)			\
+do {										\
+	enum aarch64_insn_condition cond = (arg_cond);				\
+	s64 offset = (arg_offset);						\
+										\
+	u32 obj_insn = ASM_U32("b." asm_cond " . + %0", "i" (offset));		\
+	u32 gen_insn = aarch64_insn_gen_cond_branch_imm(0, offset, cond);	\
+										\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);				\
+	INSN_EXPECT_IS(test, bcond, obj_insn);					\
+	INSN_EXPECT_IS(test, bcond, gen_insn);					\
+										\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, signed_imm19, offset, 4);		\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, signed_imm19, offset, 4);		\
+} while (0)
+
+static void test_insn_bcond(struct kunit *test)
+{
+	TEST_BCOND_CASE(test, "eq", AARCH64_INSN_COND_EQ, 0);
+	TEST_BCOND_CASE(test, "ne", AARCH64_INSN_COND_NE, 0);
+	TEST_BCOND_CASE(test, "mi", AARCH64_INSN_COND_MI, 32);
+	TEST_BCOND_CASE(test, "hi", AARCH64_INSN_COND_HI, -56);
+	TEST_BCOND_CASE(test, "gt", AARCH64_INSN_COND_GT, SZ_1M - 4);
+	TEST_BCOND_CASE(test, "al", AARCH64_INSN_COND_AL, -SZ_1M);
+
+	/*
+	 * Out-of-range immediates
+	 */
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_cond_branch_imm(0, SZ_1M,
+							 AARCH64_INSN_COND_EQ));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_cond_branch_imm(0, -SZ_1M + -4,
+							 AARCH64_INSN_COND_EQ));
+}
+
 #define TEST_COMP_BRANCH_CASE(test, insn, arg_rt, arg_offset, arg_variant, arg_type)	\
 do {											\
 	enum aarch64_insn_register rt = REG_IDX(arg_rt);				\
@@ -2293,6 +2331,7 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adrp),
 	KUNIT_CASE(test_insn_b),
 	KUNIT_CASE(test_insn_bl),
+	KUNIT_CASE(test_insn_bcond),
 	KUNIT_CASE(test_insn_cbnz),
 	KUNIT_CASE(test_insn_cbz),
 	KUNIT_CASE(test_insn_ldr_reg),

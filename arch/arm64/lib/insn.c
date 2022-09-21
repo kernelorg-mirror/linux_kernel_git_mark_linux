@@ -304,9 +304,7 @@ u32 aarch64_insn_gen_cond_branch_imm(unsigned long pc, unsigned long addr,
 				     enum aarch64_insn_condition cond)
 {
 	u32 insn;
-	long offset;
-
-	offset = label_imm_common(pc, addr, SZ_1M);
+	long offset = addr - pc;
 
 	insn = aarch64_insn_get_bcond_value();
 
@@ -316,8 +314,10 @@ u32 aarch64_insn_gen_cond_branch_imm(unsigned long pc, unsigned long addr,
 	}
 	insn |= cond;
 
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_19, insn,
-					     offset >> 2);
+	if (!aarch64_insn_try_encode_scaled_signed_imm19(&insn, offset, 4))
+		return AARCH64_BREAK_FAULT;
+
+	return insn;
 }
 
 u32 aarch64_insn_gen_branch_reg(enum aarch64_insn_register reg,
