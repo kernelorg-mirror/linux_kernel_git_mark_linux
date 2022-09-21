@@ -15,7 +15,8 @@ static struct plt_entry __get_adrp_add_pair(u64 dst, u64 pc,
 {
 	u32 adrp, add;
 
-	adrp = aarch64_insn_gen_adr(pc, dst, reg, AARCH64_INSN_ADR_TYPE_ADRP);
+	adrp = aarch64_insn_gen_adr(pc, ALIGN_DOWN(dst, SZ_4K), reg,
+				    AARCH64_INSN_ADR_TYPE_ADRP);
 	add = aarch64_insn_gen_add_sub_imm(reg, reg, dst % SZ_4K,
 					   AARCH64_INSN_VARIANT_64BIT,
 					   AARCH64_INSN_ADSB_ADD);

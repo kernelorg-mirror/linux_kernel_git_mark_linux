@@ -1173,28 +1173,29 @@ u32 aarch64_insn_gen_adr(unsigned long pc, unsigned long addr,
 			 enum aarch64_insn_adr_type type)
 {
 	u32 insn;
-	s32 offset;
+	s64 offset;
+	int scale;
 
 	switch (type) {
 	case AARCH64_INSN_ADR_TYPE_ADR:
 		insn = aarch64_insn_get_adr_value();
 		offset = addr - pc;
+		scale = 1;
 		break;
 	case AARCH64_INSN_ADR_TYPE_ADRP:
 		insn = aarch64_insn_get_adrp_value();
-		offset = (addr - ALIGN_DOWN(pc, SZ_4K)) >> 12;
+		offset = addr - ALIGN_DOWN(pc, SZ_4K);
+		scale = SZ_4K;
 		break;
 	default:
-		pr_err("%s: unknown adr encoding %d\n", __func__, type);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	if (offset < -SZ_1M || offset >= SZ_1M)
+	if (!aarch64_insn_try_encode_reg_rd(&insn, reg) ||
+	    !aarch64_insn_try_encode_scaled_signed_adr_imm(&insn, offset, scale))
 		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, reg);
-
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_ADR, insn, offset);
+	return insn;
 }
 
 /*
@@ -1251,32 +1252,26 @@ u32 aarch64_set_branch_offset(u32 insn, s32 offset)
 
 s64 aarch64_insn_adr_get_offset(u32 insn)
 {
-	s64 offset;
-	offset = aarch64_insn_decode_immediate(AARCH64_INSN_IMM_ADR, insn);
-	offset = sign_extend64(offset, 20);
-
-	return offset;
+	return aarch64_insn_decode_signed_adr_imm(insn);
 }
 
 u32 aarch64_insn_adr_set_offset(u32 insn, s64 offset)
 {
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_ADR, insn,
-						offset);
+	if (!aarch64_insn_try_encode_signed_adr_imm(&insn, offset))
+		return AARCH64_BREAK_FAULT;
+	return insn;
 }
 
 s64 aarch64_insn_adrp_get_offset(u32 insn)
 {
-	s64 offset;
-	offset = aarch64_insn_decode_immediate(AARCH64_INSN_IMM_ADR, insn);
-	offset = sign_extend64(offset, 20);
-
-	return offset << 12;
+	return aarch64_insn_decode_scaled_signed_adr_imm(insn, SZ_4K);
 }
 
 u32 aarch64_insn_adrp_set_offset(u32 insn, s64 offset)
 {
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_ADR, insn,
-						offset >> 12);
+	if (!aarch64_insn_try_encode_scaled_signed_adr_imm(&insn, offset, SZ_4K))
+		return AARCH64_BREAK_FAULT;
+	return insn;
 }
 
 /*

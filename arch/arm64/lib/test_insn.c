@@ -1073,8 +1073,8 @@ static struct kunit_suite test_aarch64_insn_reg_suite = {
 
 #define TEST_ADR_CASE(test, arg_rd, arg_offset)						\
 do {											\
-	enum aarch64_insn_register rd = REG_IDX(arg_rd), obj_rd, gen_rd;		\
-	s64 offset = (arg_offset), obj_offset, gen_offset;				\
+	enum aarch64_insn_register rd = REG_IDX(arg_rd);				\
+	s64 offset = (arg_offset);							\
 											\
 	u32 obj_insn = ASM_U32("adr " #arg_rd ", . + %0", "i" (offset));		\
 	u32 gen_insn = aarch64_insn_gen_adr(0, offset, rd, AARCH64_INSN_ADR_TYPE_ADR);	\
@@ -1083,15 +1083,11 @@ do {											\
 	INSN_EXPECT_IS(test, adr, obj_insn);						\
 	INSN_EXPECT_IS(test, adr, gen_insn);						\
 											\
-	obj_rd = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RD, obj_insn);	\
-	gen_rd = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RD, gen_insn);	\
-	KUNIT_EXPECT_EQ(test, obj_rd, rd);						\
-	KUNIT_EXPECT_EQ(test, gen_rd, rd);						\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rd, rd);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rd, rd);					\
 											\
-	obj_offset = aarch64_insn_adr_get_offset(obj_insn);				\
-	gen_offset = aarch64_insn_adr_get_offset(gen_insn);				\
-	KUNIT_EXPECT_EQ(test, obj_offset, offset);					\
-	KUNIT_EXPECT_EQ(test, gen_offset, offset);					\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, signed_adr_imm, offset, 1);			\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, signed_adr_imm, offset, 1);			\
 } while (0)
 
 struct test_insn_adr_adrp_params {
@@ -1109,7 +1105,6 @@ struct test_insn_adr_adrp_params {
 static void test_insn_adr_adrp_case(struct kunit *test,
 				    struct test_insn_adr_adrp_params *params)
 {
-	enum aarch64_insn_register rd;
 	s64 offset;
 
 	u32 insn = aarch64_insn_gen_adr(0, params->offset, params->rd,
@@ -1124,8 +1119,7 @@ static void test_insn_adr_adrp_case(struct kunit *test,
 
 	KUNIT_EXPECT_TRUE(test, params->is(insn));
 
-	rd = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RD, insn);
-	KUNIT_EXPECT_EQ(test, rd, params->rd);
+	INSN_EXPECT_REG_EQ(test, insn, rd, params->rd);
 
 	offset = params->get_offset(insn);
 	KUNIT_EXPECT_EQ(test, offset, params->offset);
