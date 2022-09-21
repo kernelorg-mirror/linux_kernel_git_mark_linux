@@ -215,26 +215,6 @@ u32 aarch64_insn_encode_register(enum aarch64_insn_register_type type,
 	return insn;
 }
 
-static inline long label_imm_common(unsigned long pc, unsigned long addr,
-				     long range)
-{
-	long offset;
-
-	if ((pc & 0x3) || (addr & 0x3)) {
-		pr_err("%s: A64 instructions must be word aligned\n", __func__);
-		return range;
-	}
-
-	offset = ((long)addr - (long)pc);
-
-	if (offset < -range || offset >= range) {
-		pr_err("%s: offset out of range\n", __func__);
-		return range;
-	}
-
-	return offset;
-}
-
 u32 __kprobes aarch64_insn_gen_branch_imm(unsigned long pc, unsigned long addr,
 					  enum aarch64_insn_branch_type type)
 {
