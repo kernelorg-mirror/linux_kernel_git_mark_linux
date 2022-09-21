@@ -265,11 +265,8 @@ u32 aarch64_insn_gen_comp_branch_imm(unsigned long pc, unsigned long addr,
 				     enum aarch64_insn_branch_type type)
 {
 	u32 insn;
-	long offset;
-
-	offset = label_imm_common(pc, addr, SZ_1M);
-	if (offset >= SZ_1M)
-		return AARCH64_BREAK_FAULT;
+	long offset = addr - pc;
+	bool sf;
 
 	switch (type) {
 	case AARCH64_INSN_BRANCH_COMP_ZERO:
@@ -285,19 +282,22 @@ u32 aarch64_insn_gen_comp_branch_imm(unsigned long pc, unsigned long addr,
 
 	switch (variant) {
 	case AARCH64_INSN_VARIANT_32BIT:
+		sf = false;
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		insn |= AARCH64_INSN_SF_BIT;
+		sf = true;
 		break;
 	default:
 		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RT, insn, reg);
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf) ||
+	    !aarch64_insn_try_encode_reg_rt(&insn, reg) ||
+	    !aarch64_insn_try_encode_scaled_signed_imm19(&insn, offset, 4))
+		return AARCH64_BREAK_FAULT;
 
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_19, insn,
-					     offset >> 2);
+	return insn;
 }
 
 u32 aarch64_insn_gen_cond_branch_imm(unsigned long pc, unsigned long addr,

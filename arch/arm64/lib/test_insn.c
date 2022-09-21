@@ -1279,6 +1279,105 @@ static void test_insn_bl(struct kunit *test)
 						    AARCH64_INSN_BRANCH_LINK));
 }
 
+#define TEST_COMP_BRANCH_CASE(test, insn, arg_rt, arg_offset, arg_variant, arg_type)	\
+do {											\
+	enum aarch64_insn_register rt = REG_IDX(arg_rt);				\
+	s64 offset = (arg_offset);							\
+	enum aarch64_insn_variant variant = (arg_variant);				\
+	enum aarch64_insn_branch_type type = (arg_type);				\
+											\
+	u32 obj_insn = ASM_U32(#insn " " #arg_rt ", %0", "i" (offset));			\
+	u32 gen_insn = aarch64_insn_gen_comp_branch_imm(0, offset, rt, variant, type);	\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, insn, obj_insn);						\
+	INSN_EXPECT_IS(test, insn, gen_insn);						\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rt, rt);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rt, rt);					\
+											\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, signed_imm19, offset, 4);			\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, signed_imm19, offset, 4);			\
+} while (0)
+
+static void test_insn_cbnz(struct kunit *test)
+{
+	TEST_COMP_BRANCH_CASE(test,
+			      cbnz, x0, 0,
+			      AARCH64_INSN_VARIANT_64BIT,
+			      AARCH64_INSN_BRANCH_COMP_NONZERO);
+
+	TEST_COMP_BRANCH_CASE(test,
+			      cbnz, x1, 56,
+			      AARCH64_INSN_VARIANT_64BIT,
+			      AARCH64_INSN_BRANCH_COMP_NONZERO);
+
+	TEST_COMP_BRANCH_CASE(test,
+			      cbnz, x2, -200,
+			      AARCH64_INSN_VARIANT_64BIT,
+			      AARCH64_INSN_BRANCH_COMP_NONZERO);
+
+	TEST_COMP_BRANCH_CASE(test,
+			      cbnz, w0, 64,
+			      AARCH64_INSN_VARIANT_32BIT,
+			      AARCH64_INSN_BRANCH_COMP_NONZERO);
+
+	/*
+	 * Out-of-range immediates
+	 */
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_comp_branch_imm(0, SZ_1M,
+							 AARCH64_INSN_REG_0,
+							 AARCH64_INSN_VARIANT_64BIT,
+							 AARCH64_INSN_BRANCH_COMP_NONZERO));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_comp_branch_imm(0, -SZ_1M + -1,
+							 AARCH64_INSN_REG_0,
+							 AARCH64_INSN_VARIANT_64BIT,
+							 AARCH64_INSN_BRANCH_COMP_NONZERO));
+}
+
+static void test_insn_cbz(struct kunit *test)
+{
+	TEST_COMP_BRANCH_CASE(test,
+			      cbz, x0, 0,
+			      AARCH64_INSN_VARIANT_64BIT,
+			      AARCH64_INSN_BRANCH_COMP_ZERO);
+
+	TEST_COMP_BRANCH_CASE(test,
+			      cbz, x1, 56,
+			      AARCH64_INSN_VARIANT_64BIT,
+			      AARCH64_INSN_BRANCH_COMP_ZERO);
+
+	TEST_COMP_BRANCH_CASE(test,
+			      cbz, x2, -200,
+			      AARCH64_INSN_VARIANT_64BIT,
+			      AARCH64_INSN_BRANCH_COMP_ZERO);
+
+	TEST_COMP_BRANCH_CASE(test,
+			      cbz, w0, 64,
+			      AARCH64_INSN_VARIANT_32BIT,
+			      AARCH64_INSN_BRANCH_COMP_ZERO);
+
+	/*
+	 * Out-of-range immediates
+	 */
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_comp_branch_imm(0, SZ_1M,
+							 AARCH64_INSN_REG_0,
+							 AARCH64_INSN_VARIANT_64BIT,
+							 AARCH64_INSN_BRANCH_COMP_ZERO));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_comp_branch_imm(0, -SZ_1M + -1,
+							 AARCH64_INSN_REG_0,
+							 AARCH64_INSN_VARIANT_64BIT,
+							 AARCH64_INSN_BRANCH_COMP_ZERO));
+}
+
 #define TEST_LDST_REG_CASE(test, class, insn, arg_rt, arg_rn, arg_rm, arg_size,		\
 			   arg_type)							\
 do {											\
@@ -2194,6 +2293,8 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adrp),
 	KUNIT_CASE(test_insn_b),
 	KUNIT_CASE(test_insn_bl),
+	KUNIT_CASE(test_insn_cbnz),
+	KUNIT_CASE(test_insn_cbz),
 	KUNIT_CASE(test_insn_ldr_reg),
 	KUNIT_CASE(test_insn_str_reg),
 	KUNIT_CASE(test_insn_ldr_imm),
