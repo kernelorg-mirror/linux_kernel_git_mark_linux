@@ -455,7 +455,8 @@ u32 aarch64_insn_gen_load_store_pair(enum aarch64_insn_register reg1,
 				     enum aarch64_insn_ldst_type type)
 {
 	u32 insn;
-	int shift;
+	int scale;
+	bool sf;
 
 	switch (type) {
 	case AARCH64_INSN_LDST_LOAD_PAIR_PRE_INDEX:
@@ -477,38 +478,26 @@ u32 aarch64_insn_gen_load_store_pair(enum aarch64_insn_register reg1,
 
 	switch (variant) {
 	case AARCH64_INSN_VARIANT_32BIT:
-		if ((offset & 0x3) || (offset < -256) || (offset > 252)) {
-			pr_err("%s: offset must be multiples of 4 in the range of [-256, 252] %d\n",
-			       __func__, offset);
-			return AARCH64_BREAK_FAULT;
-		}
-		shift = 2;
+		sf = false;
+		scale = 4;
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		if ((offset & 0x7) || (offset < -512) || (offset > 504)) {
-			pr_err("%s: offset must be multiples of 8 in the range of [-512, 504] %d\n",
-			       __func__, offset);
-			return AARCH64_BREAK_FAULT;
-		}
-		shift = 3;
-		insn |= AARCH64_INSN_SF_BIT;
+		sf = true;
+		scale = 8;
 		break;
 	default:
 		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RT, insn,
-					    reg1);
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf) ||
+	    !aarch64_insn_try_encode_reg_rt(&insn, reg1) ||
+	    !aarch64_insn_try_encode_reg_rt2(&insn, reg2) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, base) ||
+	    !aarch64_insn_try_encode_scaled_signed_imm7_15(&insn, offset, scale))
+		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RT2, insn,
-					    reg2);
-
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn,
-					    base);
-
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_7, insn,
-					     offset >> shift);
+	return insn;
 }
 
 u32 aarch64_insn_gen_load_store_ex(enum aarch64_insn_register reg,
