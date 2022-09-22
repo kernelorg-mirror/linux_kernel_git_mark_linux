@@ -405,20 +405,6 @@ u32 aarch64_insn_gen_load_store_imm(enum aarch64_insn_register reg,
 				    enum aarch64_insn_ldst_type type)
 {
 	u32 insn;
-	u32 shift;
-
-	if (size < AARCH64_INSN_SIZE_8 || size > AARCH64_INSN_SIZE_64) {
-		pr_err("%s: unknown size encoding %d\n", __func__, type);
-		return AARCH64_BREAK_FAULT;
-	}
-
-	shift = size;
-	if (imm & ~(BIT(12 + shift) - BIT(shift))) {
-		pr_err("%s: invalid imm: %d\n", __func__, imm);
-		return AARCH64_BREAK_FAULT;
-	}
-
-	imm >>= shift;
 
 	switch (type) {
 	case AARCH64_INSN_LDST_LOAD_IMM_OFFSET:
@@ -435,14 +421,13 @@ u32 aarch64_insn_gen_load_store_imm(enum aarch64_insn_register reg,
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_ldst_size(size, insn);
+	if (!aarch64_insn_try_encode_unsigned_ldst_size(&insn, size) ||
+	    !aarch64_insn_try_encode_reg_rt(&insn, reg) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, base) ||
+	    !aarch64_insn_try_encode_scaled_unsigned_imm12(&insn, imm, 1 << size))
+		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RT, insn, reg);
-
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn,
-					    base);
-
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_12, insn, imm);
+	return insn;
 }
 
 u32 aarch64_insn_gen_load_literal(unsigned long pc, unsigned long addr,

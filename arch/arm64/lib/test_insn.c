@@ -1293,6 +1293,183 @@ static void test_insn_str_reg(struct kunit *test)
 			   AARCH64_INSN_LDST_STORE_REG_OFFSET);
 }
 
+#define TEST_LDST_IMM_CASE(test, class, insn, arg_rt, arg_rn, arg_offset,		\
+			   arg_size, arg_type)						\
+do {											\
+	enum aarch64_insn_register rt = REG_IDX(arg_rt);				\
+	enum aarch64_insn_register rn = REG_IDX(arg_rn);				\
+	s64 offset = (arg_offset);							\
+	enum aarch64_insn_size_type size = (arg_size);					\
+	enum aarch64_insn_ldst_type type = (arg_type);					\
+	int scale = 1 << size;								\
+											\
+	u32 obj_insn = ASM_U32(#insn " " #arg_rt ", [" #arg_rn ", %0]",	"i" (offset));	\
+	u32 gen_insn = aarch64_insn_gen_load_store_imm(rt, rn, offset, size, type);	\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, class, obj_insn);						\
+	INSN_EXPECT_IS(test, class, gen_insn);						\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rt, rt);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rt, rt);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rn, rn);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rn, rn);					\
+											\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, unsigned_imm12, offset, scale);		\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, unsigned_imm12, offset, scale);		\
+} while (0)
+
+static void test_insn_ldr_imm(struct kunit *test)
+{
+	TEST_LDST_IMM_CASE(test, ldr_imm,
+			   ldr, x0, x1, 0,
+			   AARCH64_INSN_SIZE_64,
+			   AARCH64_INSN_LDST_LOAD_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, ldr_imm,
+			   ldr, x3, x4, 24,
+			   AARCH64_INSN_SIZE_64,
+			   AARCH64_INSN_LDST_LOAD_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, ldr_imm,
+			   ldr, w0, x1, 0,
+			   AARCH64_INSN_SIZE_32,
+			   AARCH64_INSN_LDST_LOAD_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, ldr_imm,
+			   ldr, w3, x4, 28,
+			   AARCH64_INSN_SIZE_32,
+			   AARCH64_INSN_LDST_LOAD_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, ldr_imm,
+			   ldrh, w0, x1, 0,
+			   AARCH64_INSN_SIZE_16,
+			   AARCH64_INSN_LDST_LOAD_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, ldr_imm,
+			   ldrh, w3, x4, 26,
+			   AARCH64_INSN_SIZE_16,
+			   AARCH64_INSN_LDST_LOAD_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, ldr_imm,
+			   ldrb, w0, x1, 0,
+			   AARCH64_INSN_SIZE_8,
+			   AARCH64_INSN_LDST_LOAD_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, ldr_imm,
+			   ldrb, w3, x4, 27,
+			   AARCH64_INSN_SIZE_8,
+			   AARCH64_INSN_LDST_LOAD_IMM_OFFSET);
+
+	/*
+	 * Out-of-range immediates
+	 */
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_store_imm(AARCH64_INSN_REG_0,
+							AARCH64_INSN_REG_1,
+							32768,
+							AARCH64_INSN_SIZE_64,
+							AARCH64_INSN_LDST_LOAD_IMM_OFFSET));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_store_imm(AARCH64_INSN_REG_0,
+							AARCH64_INSN_REG_1,
+							16384,
+							AARCH64_INSN_SIZE_32,
+							AARCH64_INSN_LDST_LOAD_IMM_OFFSET));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_store_imm(AARCH64_INSN_REG_0,
+							AARCH64_INSN_REG_1,
+							8192,
+							AARCH64_INSN_SIZE_16,
+							AARCH64_INSN_LDST_LOAD_IMM_OFFSET));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_store_imm(AARCH64_INSN_REG_0,
+							AARCH64_INSN_REG_1,
+							4096,
+							AARCH64_INSN_SIZE_8,
+							AARCH64_INSN_LDST_LOAD_IMM_OFFSET));
+}
+
+static void test_insn_str_imm(struct kunit *test)
+{
+	TEST_LDST_IMM_CASE(test, str_imm,
+			   str, x0, x1, 0,
+			   AARCH64_INSN_SIZE_64,
+			   AARCH64_INSN_LDST_STORE_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, str_imm,
+			   str, x3, x4, 24,
+			   AARCH64_INSN_SIZE_64,
+			   AARCH64_INSN_LDST_STORE_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, str_imm,
+			   str, w0, x1, 0,
+			   AARCH64_INSN_SIZE_32,
+			   AARCH64_INSN_LDST_STORE_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, str_imm,
+			   str, w3, x4, 28,
+			   AARCH64_INSN_SIZE_32,
+			   AARCH64_INSN_LDST_STORE_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, str_imm,
+			   strh, w0, x1, 0,
+			   AARCH64_INSN_SIZE_16,
+			   AARCH64_INSN_LDST_STORE_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, str_imm,
+			   strh, w3, x4, 26,
+			   AARCH64_INSN_SIZE_16,
+			   AARCH64_INSN_LDST_STORE_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, str_imm,
+			   strb, w0, x1, 0,
+			   AARCH64_INSN_SIZE_8,
+			   AARCH64_INSN_LDST_STORE_IMM_OFFSET);
+
+	TEST_LDST_IMM_CASE(test, str_imm,
+			   strb, w3, x4, 27,
+			   AARCH64_INSN_SIZE_8,
+			   AARCH64_INSN_LDST_STORE_IMM_OFFSET);
+
+	/*
+	 * Out-of-range immediates
+	 */
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_store_imm(AARCH64_INSN_REG_0,
+							AARCH64_INSN_REG_1,
+							32768,
+							AARCH64_INSN_SIZE_64,
+							AARCH64_INSN_LDST_STORE_IMM_OFFSET));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_store_imm(AARCH64_INSN_REG_0,
+							AARCH64_INSN_REG_1,
+							16384,
+							AARCH64_INSN_SIZE_32,
+							AARCH64_INSN_LDST_STORE_IMM_OFFSET));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_store_imm(AARCH64_INSN_REG_0,
+							AARCH64_INSN_REG_1,
+							8192,
+							AARCH64_INSN_SIZE_16,
+							AARCH64_INSN_LDST_STORE_IMM_OFFSET));
+	KUNIT_EXPECT_EQ(test,
+			AARCH64_BREAK_FAULT,
+			aarch64_insn_gen_load_store_imm(AARCH64_INSN_REG_0,
+							AARCH64_INSN_REG_1,
+							4096,
+							AARCH64_INSN_SIZE_8,
+							AARCH64_INSN_LDST_STORE_IMM_OFFSET));
+}
+
 struct test_insn_exclusive_params {
 	enum aarch64_insn_register rt, rn, rs;
 	enum aarch64_insn_size_type size;
@@ -1426,6 +1603,8 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adrp),
 	KUNIT_CASE(test_insn_ldr_reg),
 	KUNIT_CASE(test_insn_str_reg),
+	KUNIT_CASE(test_insn_ldr_imm),
+	KUNIT_CASE(test_insn_str_imm),
 	KUNIT_CASE(test_insn_ldxr),
 	KUNIT_CASE(test_insn_stxr),
 	KUNIT_CASE(test_insn_ldxp),
