@@ -682,6 +682,7 @@ u32 aarch64_insn_gen_bitfield(enum aarch64_insn_register dst,
 {
 	u32 insn;
 	u32 mask;
+	bool sf;
 
 	switch (type) {
 	case AARCH64_INSN_BITFIELD_MOVE:
@@ -701,9 +702,10 @@ u32 aarch64_insn_gen_bitfield(enum aarch64_insn_register dst,
 	switch (variant) {
 	case AARCH64_INSN_VARIANT_32BIT:
 		mask = GENMASK(4, 0);
+		sf = false;
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		insn |= AARCH64_INSN_SF_BIT | AARCH64_INSN_N_BIT;
+		sf = true;
 		mask = GENMASK(5, 0);
 		break;
 	default:
@@ -720,13 +722,18 @@ u32 aarch64_insn_gen_bitfield(enum aarch64_insn_register dst,
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, dst);
+	/*
+	 * N == sf for all valid encodings
+	 */
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf) ||
+	    !aarch64_insn_try_encode_unsigned_N(&insn, sf) ||
+	    !aarch64_insn_try_encode_reg_rd(&insn, dst) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, src) ||
+	    !aarch64_insn_try_encode_unsigned_immr(&insn, immr) ||
+	    !aarch64_insn_try_encode_unsigned_imms(&insn, imms))
+		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn, src);
-
-	insn = aarch64_insn_encode_immediate(AARCH64_INSN_IMM_R, insn, immr);
-
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_S, insn, imms);
+	return insn;
 }
 
 u32 aarch64_insn_gen_movewide(enum aarch64_insn_register dst,

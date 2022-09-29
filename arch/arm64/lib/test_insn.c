@@ -2465,6 +2465,100 @@ void test_insn_subs_imm(struct kunit *test)
 			    AARCH64_INSN_ADSB_SUB_SETFLAGS);
 }
 
+#define TEST_BITFIELD_CASE(test, insn, arg_rd, arg_rn, arg_immr, arg_imms,		\
+			   arg_variant, arg_type)					\
+do {											\
+	enum aarch64_insn_register rd = REG_IDX(arg_rd);				\
+	enum aarch64_insn_register rn = REG_IDX(arg_rn);				\
+	u64 immr = (arg_immr);								\
+	u64 imms = (arg_imms);								\
+	enum aarch64_insn_variant variant = (arg_variant);				\
+	enum aarch64_insn_bitfield_type type = (arg_type);				\
+											\
+	u32 obj_insn = ASM_U32(#insn " " #arg_rd ", " #arg_rn ", %[immr], %[imms]",	\
+			       [immr] "i" (immr),					\
+			       [imms] "i" (imms));					\
+	u32 gen_insn = aarch64_insn_gen_bitfield(rd, rn, immr, imms, variant, type);	\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, insn, obj_insn);						\
+	INSN_EXPECT_IS(test, insn, gen_insn);						\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rd, rd);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rd, rd);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rn, rn);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rn, rn);					\
+											\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, unsigned_immr, immr, 1);			\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, unsigned_immr, immr, 1);			\
+											\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, unsigned_imms, imms, 1);			\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, unsigned_imms, imms, 1);			\
+} while (0)
+
+#define TEST_BITFIELD_CASES(test, insn, type)						\
+do {											\
+	TEST_BITFIELD_CASE(test,							\
+			   insn, x0, x1, 0, 1,						\
+			   AARCH64_INSN_VARIANT_64BIT, type);				\
+											\
+	TEST_BITFIELD_CASE(test,							\
+			   insn, x2, x3, 16, 23,					\
+			   AARCH64_INSN_VARIANT_64BIT, type);				\
+											\
+	TEST_BITFIELD_CASE(test,							\
+			   insn, x4, x5, 55, 42,					\
+			   AARCH64_INSN_VARIANT_64BIT, type);				\
+											\
+	TEST_BITFIELD_CASE(test,							\
+			   insn, w6, w7, 19, 5,						\
+			   AARCH64_INSN_VARIANT_32BIT, type);				\
+											\
+	TEST_BITFIELD_CASE(test,							\
+			   insn, w8, w9, 31, 31,					\
+			   AARCH64_INSN_VARIANT_32BIT, type);				\
+											\
+	/*										\
+	 * Out-of-range immediates							\
+	 */										\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_bitfield(AARCH64_INSN_REG_0,			\
+						  AARCH64_INSN_REG_1, 64, 0,		\
+						  AARCH64_INSN_VARIANT_64BIT, type));	\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_bitfield(AARCH64_INSN_REG_0,			\
+						  AARCH64_INSN_REG_1, 0, 64,		\
+						  AARCH64_INSN_VARIANT_64BIT, type));	\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_bitfield(AARCH64_INSN_REG_0,			\
+						  AARCH64_INSN_REG_1, 32, 0,		\
+						  AARCH64_INSN_VARIANT_32BIT, type));	\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_bitfield(AARCH64_INSN_REG_0,			\
+						  AARCH64_INSN_REG_1, 0, 32,		\
+						  AARCH64_INSN_VARIANT_32BIT, type));	\
+} while (0)
+
+static void test_insn_bfm(struct kunit *test)
+{
+	TEST_BITFIELD_CASES(test, bfm, AARCH64_INSN_BITFIELD_MOVE);
+}
+
+static void test_insn_ubfm(struct kunit *test)
+{
+	TEST_BITFIELD_CASES(test, ubfm, AARCH64_INSN_BITFIELD_MOVE_UNSIGNED);
+}
+
+static void test_insn_sbfm(struct kunit *test)
+{
+	TEST_BITFIELD_CASES(test, sbfm, AARCH64_INSN_BITFIELD_MOVE_SIGNED);
+}
+
 static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adr),
 	KUNIT_CASE(test_insn_adrp),
@@ -2499,6 +2593,9 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adds_imm),
 	KUNIT_CASE(test_insn_sub_imm),
 	KUNIT_CASE(test_insn_subs_imm),
+	KUNIT_CASE(test_insn_bfm),
+	KUNIT_CASE(test_insn_ubfm),
+	KUNIT_CASE(test_insn_sbfm),
 	{ /* sentinel */ }
 };
 
