@@ -695,7 +695,6 @@ u32 aarch64_insn_gen_bitfield(enum aarch64_insn_register dst,
 		insn = aarch64_insn_get_sbfm_value();
 		break;
 	default:
-		pr_err("%s: unknown bitfield encoding %d\n", __func__, type);
 		return AARCH64_BREAK_FAULT;
 	}
 
@@ -709,18 +708,13 @@ u32 aarch64_insn_gen_bitfield(enum aarch64_insn_register dst,
 		mask = GENMASK(5, 0);
 		break;
 	default:
-		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	if (immr & ~mask) {
-		pr_err("%s: invalid immr encoding %d\n", __func__, immr);
+	if (immr & ~mask)
 		return AARCH64_BREAK_FAULT;
-	}
-	if (imms & ~mask) {
-		pr_err("%s: invalid imms encoding %d\n", __func__, imms);
+	if (imms & ~mask)
 		return AARCH64_BREAK_FAULT;
-	}
 
 	/*
 	 * N == sf for all valid encodings
@@ -742,6 +736,7 @@ u32 aarch64_insn_gen_movewide(enum aarch64_insn_register dst,
 			      enum aarch64_insn_movewide_type type)
 {
 	u32 insn;
+	bool sf;
 
 	switch (type) {
 	case AARCH64_INSN_MOVEWIDE_ZERO:
@@ -758,37 +753,29 @@ u32 aarch64_insn_gen_movewide(enum aarch64_insn_register dst,
 		return AARCH64_BREAK_FAULT;
 	}
 
-	if (imm & ~(SZ_64K - 1)) {
-		pr_err("%s: invalid immediate encoding %d\n", __func__, imm);
-		return AARCH64_BREAK_FAULT;
-	}
-
 	switch (variant) {
 	case AARCH64_INSN_VARIANT_32BIT:
-		if (shift != 0 && shift != 16) {
-			pr_err("%s: invalid shift encoding %d\n", __func__,
-			       shift);
+		sf = false;
+		if (shift > 16)
 			return AARCH64_BREAK_FAULT;
-		}
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		insn |= AARCH64_INSN_SF_BIT;
-		if (shift != 0 && shift != 16 && shift != 32 && shift != 48) {
-			pr_err("%s: invalid shift encoding %d\n", __func__,
-			       shift);
+		sf = true;
+		if (shift > 48)
 			return AARCH64_BREAK_FAULT;
-		}
 		break;
 	default:
 		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn |= (shift >> 4) << 21;
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf) ||
+	    !aarch64_insn_try_encode_reg_rd(&insn, dst) ||
+	    !aarch64_insn_try_encode_scaled_unsigned_hw(&insn, shift, 16) ||
+	    !aarch64_insn_try_encode_unsigned_imm16(&insn, imm))
+		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, dst);
-
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_16, insn, imm);
+	return insn;
 }
 
 u32 aarch64_insn_gen_add_sub_shifted_reg(enum aarch64_insn_register dst,

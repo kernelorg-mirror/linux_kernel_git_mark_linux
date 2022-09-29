@@ -2559,6 +2559,98 @@ static void test_insn_sbfm(struct kunit *test)
 	TEST_BITFIELD_CASES(test, sbfm, AARCH64_INSN_BITFIELD_MOVE_SIGNED);
 }
 
+#define TEST_MOVEWIDE_CASE(test, insn, arg_rd, arg_imm, arg_shift,			\
+			   arg_variant, arg_type)					\
+do {											\
+	enum aarch64_insn_register rd = REG_IDX(arg_rd);				\
+	u64 imm = (arg_imm);								\
+	u64 shift = (arg_shift);							\
+	enum aarch64_insn_variant variant = (arg_variant);				\
+	enum aarch64_insn_movewide_type type = (arg_type);				\
+											\
+	u32 obj_insn = ASM_U32(#insn " " #arg_rd ", %[imm], lsl %[shift]",		\
+			       [imm] "i" (imm),						\
+			       [shift] "i" (shift));					\
+	u32 gen_insn = aarch64_insn_gen_movewide(rd, imm, shift, variant, type);	\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, insn, obj_insn);						\
+	INSN_EXPECT_IS(test, insn, gen_insn);						\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rd, rd);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rd, rd);					\
+											\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, unsigned_imm16, imm, 1);			\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, unsigned_imm16, imm, 1);			\
+											\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, unsigned_hw, shift, 16);			\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, unsigned_hw, shift, 16);			\
+} while (0)
+
+#define TEST_MOVEWIDE_CASES(test, insn, type)						\
+do {											\
+	TEST_MOVEWIDE_CASE(test,							\
+			   insn, x0, 0, 0,						\
+			   AARCH64_INSN_VARIANT_64BIT,					\
+			   type);							\
+											\
+	TEST_MOVEWIDE_CASE(test,							\
+			   insn, x1, 0xffff, 16,					\
+			   AARCH64_INSN_VARIANT_64BIT,					\
+			   type);							\
+											\
+	TEST_MOVEWIDE_CASE(test,							\
+			   insn, x2, 0x8000, 32,					\
+			   AARCH64_INSN_VARIANT_64BIT,					\
+			   type);							\
+											\
+	TEST_MOVEWIDE_CASE(test,							\
+			   insn, x3, 0xc000, 48,					\
+			   AARCH64_INSN_VARIANT_64BIT,					\
+			   type);							\
+											\
+	TEST_MOVEWIDE_CASE(test,							\
+			   insn, w4, 0xcccc, 0,						\
+			   AARCH64_INSN_VARIANT_32BIT,					\
+			   type);							\
+											\
+	TEST_MOVEWIDE_CASE(test,							\
+			   insn, w5, 0xaaaa, 16,					\
+			   AARCH64_INSN_VARIANT_32BIT,					\
+			   type);							\
+											\
+	/*										\
+	 * Out-of-range immediates							\
+	 */										\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_movewide(AARCH64_INSN_REG_0, 0xff0000, 0,	\
+						  AARCH64_INSN_VARIANT_64BIT, type));	\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_movewide(AARCH64_INSN_REG_0, 1, 64,		\
+						  AARCH64_INSN_VARIANT_64BIT, type));	\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_movewide(AARCH64_INSN_REG_0, 1, 32,		\
+						  AARCH64_INSN_VARIANT_32BIT, type));	\
+} while (0)
+
+static void test_insn_movz(struct kunit *test)
+{
+	TEST_MOVEWIDE_CASES(test, movz, AARCH64_INSN_MOVEWIDE_ZERO);
+}
+
+static void test_insn_movk(struct kunit *test)
+{
+	TEST_MOVEWIDE_CASES(test, movk, AARCH64_INSN_MOVEWIDE_KEEP);
+}
+
+static void test_insn_movn(struct kunit *test)
+{
+	TEST_MOVEWIDE_CASES(test, movn, AARCH64_INSN_MOVEWIDE_INVERSE);
+}
+
 static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adr),
 	KUNIT_CASE(test_insn_adrp),
@@ -2596,6 +2688,9 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_bfm),
 	KUNIT_CASE(test_insn_ubfm),
 	KUNIT_CASE(test_insn_sbfm),
+	KUNIT_CASE(test_insn_movz),
+	KUNIT_CASE(test_insn_movk),
+	KUNIT_CASE(test_insn_movn),
 	{ /* sentinel */ }
 };
 
