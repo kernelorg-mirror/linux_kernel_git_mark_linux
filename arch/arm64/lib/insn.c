@@ -340,7 +340,10 @@ u32 aarch64_insn_gen_branch_reg(enum aarch64_insn_register reg,
 		return AARCH64_BREAK_FAULT;
 	}
 
-	return aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn, reg);
+	if (!aarch64_insn_try_encode_reg_rn(&insn, reg))
+		return AARCH64_BREAK_FAULT;
+
+	return insn;
 }
 
 u32 aarch64_insn_gen_load_store_reg(enum aarch64_insn_register reg,

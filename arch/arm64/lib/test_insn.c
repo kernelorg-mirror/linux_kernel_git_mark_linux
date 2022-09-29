@@ -1416,6 +1416,43 @@ static void test_insn_cbz(struct kunit *test)
 							 AARCH64_INSN_BRANCH_COMP_ZERO));
 }
 
+#define TEST_BRANCH_REG_CASE(test, insn, arg_rn, arg_type)			\
+do {										\
+	enum aarch64_insn_branch_type type = (arg_type);			\
+	enum aarch64_insn_register rn = REG_IDX(arg_rn);			\
+										\
+	u32 obj_insn = ASM_U32(#insn " " #arg_rn);				\
+	u32 gen_insn = aarch64_insn_gen_branch_reg(rn, type);			\
+										\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);				\
+	INSN_EXPECT_IS(test, insn, obj_insn);					\
+	INSN_EXPECT_IS(test, insn, gen_insn);					\
+										\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rn, rn);				\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rn, rn);				\
+} while (0)
+
+static void test_insn_br(struct kunit *test)
+{
+	TEST_BRANCH_REG_CASE(test, br, x0, AARCH64_INSN_BRANCH_NOLINK);
+	TEST_BRANCH_REG_CASE(test, br, x17, AARCH64_INSN_BRANCH_NOLINK);
+	TEST_BRANCH_REG_CASE(test, br, x30, AARCH64_INSN_BRANCH_NOLINK);
+}
+
+static void test_insn_blr(struct kunit *test)
+{
+	TEST_BRANCH_REG_CASE(test, blr, x0, AARCH64_INSN_BRANCH_LINK);
+	TEST_BRANCH_REG_CASE(test, blr, x17, AARCH64_INSN_BRANCH_LINK);
+	TEST_BRANCH_REG_CASE(test, blr, x30, AARCH64_INSN_BRANCH_LINK);
+}
+
+static void test_insn_ret(struct kunit *test)
+{
+	TEST_BRANCH_REG_CASE(test, ret, x0, AARCH64_INSN_BRANCH_RETURN);
+	TEST_BRANCH_REG_CASE(test, ret, x17, AARCH64_INSN_BRANCH_RETURN);
+	TEST_BRANCH_REG_CASE(test, ret, x30, AARCH64_INSN_BRANCH_RETURN);
+}
+
 #define TEST_LDST_REG_CASE(test, class, insn, arg_rt, arg_rn, arg_rm, arg_size,		\
 			   arg_type)							\
 do {											\
@@ -2334,6 +2371,9 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_bcond),
 	KUNIT_CASE(test_insn_cbnz),
 	KUNIT_CASE(test_insn_cbz),
+	KUNIT_CASE(test_insn_br),
+	KUNIT_CASE(test_insn_blr),
+	KUNIT_CASE(test_insn_ret),
 	KUNIT_CASE(test_insn_ldr_reg),
 	KUNIT_CASE(test_insn_str_reg),
 	KUNIT_CASE(test_insn_ldr_imm),
