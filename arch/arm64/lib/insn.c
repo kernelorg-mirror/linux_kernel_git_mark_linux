@@ -980,11 +980,13 @@ u32 aarch64_insn_gen_data3(enum aarch64_insn_register dst,
 u32 aarch64_insn_gen_logical_shifted_reg(enum aarch64_insn_register dst,
 					 enum aarch64_insn_register src,
 					 enum aarch64_insn_register reg,
+					 enum aarch64_insn_reg_shift_type shift_type,
 					 int shift,
 					 enum aarch64_insn_variant variant,
 					 enum aarch64_insn_logic_type type)
 {
 	u32 insn;
+	bool sf;
 
 	switch (type) {
 	case AARCH64_INSN_LOGIC_AND:
@@ -1012,39 +1014,43 @@ u32 aarch64_insn_gen_logical_shifted_reg(enum aarch64_insn_register dst,
 		insn = aarch64_insn_get_bics_value();
 		break;
 	default:
-		pr_err("%s: unknown logical encoding %d\n", __func__, type);
+		return AARCH64_BREAK_FAULT;
+	}
+
+	switch (shift_type) {
+	case AARCH64_INSN_REG_SHIFT_LSL:
+	case AARCH64_INSN_REG_SHIFT_LSR:
+	case AARCH64_INSN_REG_SHIFT_ASR:
+	case AARCH64_INSN_REG_SHIFT_ROR:
+		break;
+	default:
 		return AARCH64_BREAK_FAULT;
 	}
 
 	switch (variant) {
 	case AARCH64_INSN_VARIANT_32BIT:
-		if (shift & ~(SZ_32 - 1)) {
-			pr_err("%s: invalid shift encoding %d\n", __func__,
-			       shift);
+		sf = false;
+		if (shift > 31)
 			return AARCH64_BREAK_FAULT;
-		}
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		insn |= AARCH64_INSN_SF_BIT;
-		if (shift & ~(SZ_64 - 1)) {
-			pr_err("%s: invalid shift encoding %d\n", __func__,
-			       shift);
+		sf = true;
+		if (shift > 63)
 			return AARCH64_BREAK_FAULT;
-		}
 		break;
 	default:
-		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
 
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf) ||
+	    !aarch64_insn_try_encode_reg_rd(&insn, dst) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, src) ||
+	    !aarch64_insn_try_encode_reg_rm(&insn, reg) ||
+	    !aarch64_insn_try_encode_unsigned_reg_shift(&insn, shift_type) ||
+	    !aarch64_insn_try_encode_unsigned_imm6_10(&insn, shift))
+		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, dst);
-
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn, src);
-
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RM, insn, reg);
-
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_6, insn, shift);
+	return insn;
 }
 
 /*
@@ -1055,8 +1061,9 @@ u32 aarch64_insn_gen_move_reg(enum aarch64_insn_register dst,
 			      enum aarch64_insn_register src,
 			      enum aarch64_insn_variant variant)
 {
-	return aarch64_insn_gen_logical_shifted_reg(dst, AARCH64_INSN_REG_ZR,
-						    src, 0, variant,
+	return aarch64_insn_gen_logical_shifted_reg(dst, AARCH64_INSN_REG_ZR, src,
+						    AARCH64_INSN_REG_SHIFT_LSL, 0,
+						    variant,
 						    AARCH64_INSN_LOGIC_ORR);
 }
 
