@@ -210,7 +210,8 @@
 
 /* Add/subtract (shifted register) */
 #define A64_ADDSUB_SREG(sf, Rd, Rn, Rm, type) \
-	aarch64_insn_gen_add_sub_shifted_reg(Rd, Rn, Rm, 0, \
+	aarch64_insn_gen_add_sub_shifted_reg(Rd, Rn, Rm, \
+		AARCH64_INSN_REG_SHIFT_LSL, 0, \
 		A64_VARIANT(sf), AARCH64_INSN_ADSB_##type)
 /* Rd = Rn OP Rm */
 #define A64_ADD(sf, Rd, Rn, Rm)  A64_ADDSUB_SREG(sf, Rd, Rn, Rm, ADD)

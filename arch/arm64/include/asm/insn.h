@@ -825,6 +825,7 @@ u32 aarch64_insn_gen_movewide(enum aarch64_insn_register dst,
 u32 aarch64_insn_gen_add_sub_shifted_reg(enum aarch64_insn_register dst,
 					 enum aarch64_insn_register src,
 					 enum aarch64_insn_register reg,
+					 enum aarch64_insn_reg_shift_type shift_type,
 					 int shift,
 					 enum aarch64_insn_variant variant,
 					 enum aarch64_insn_adsb_type type);

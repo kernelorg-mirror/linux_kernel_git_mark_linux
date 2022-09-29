@@ -109,6 +109,8 @@
 
 #define REG_IDX(r)	(AARCH64_REG_IDX_##r)
 
+#define SHIFT_TYPE(arg)	(AARCH64_INSN_REG_SHIFT_##arg)
+
 #define INSN_MSG(insn)							\
 	KUNIT_SUBSUBTEST_INDENT "'" #insn "' is 0x%08x", insn
 
@@ -2651,6 +2653,132 @@ static void test_insn_movn(struct kunit *test)
 	TEST_MOVEWIDE_CASES(test, movn, AARCH64_INSN_MOVEWIDE_INVERSE);
 }
 
+#define TEST_ADSB_SHIFTED_REG_CASE(test, insn, arg_rd, arg_rn, arg_rm,			\
+				   arg_shift_type, arg_shift, arg_variant,		\
+				   arg_type)						\
+do {											\
+	enum aarch64_insn_register rd = REG_IDX(arg_rd);				\
+	enum aarch64_insn_register rn = REG_IDX(arg_rn);				\
+	enum aarch64_insn_register rm = REG_IDX(arg_rm);				\
+	enum aarch64_insn_reg_shift_type shift_type = SHIFT_TYPE(arg_shift_type);	\
+	u64 shift = (arg_shift);							\
+	enum aarch64_insn_variant variant = (arg_variant);				\
+	enum aarch64_insn_adsb_type type = (arg_type);					\
+											\
+	u32 obj_insn = ASM_U32(#insn " " #arg_rd ", " #arg_rn ", " #arg_rm ", " 	\
+			       #arg_shift_type " %[shift]",				\
+			       [shift] "i" (shift));					\
+	u32 gen_insn = aarch64_insn_gen_add_sub_shifted_reg(rd, rn, rm, shift_type,	\
+							    shift, variant, type);	\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, insn, obj_insn);						\
+	INSN_EXPECT_IS(test, insn, gen_insn);						\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rd, rd);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rd, rd);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rn, rn);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rn, rn);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rm, rm);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rm, rm);					\
+											\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, unsigned_reg_shift, shift_type, 1);		\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, unsigned_reg_shift, shift_type, 1);		\
+											\
+	INSN_EXPECT_IMM_EQ(test, obj_insn, unsigned_imm6_10, shift, 1);			\
+	INSN_EXPECT_IMM_EQ(test, gen_insn, unsigned_imm6_10, shift, 1);			\
+} while (0)
+
+#define TEST_ADSB_SHIFTED_REG_CASES(test, insn, type)					\
+do {											\
+	TEST_ADSB_SHIFTED_REG_CASE(test,						\
+				   insn, x0, x1, x2, LSL, 15,				\
+				   AARCH64_INSN_VARIANT_64BIT,				\
+				   type);						\
+											\
+	TEST_ADSB_SHIFTED_REG_CASE(test,						\
+				   insn, x3, x4, x5, LSR, 41,				\
+				   AARCH64_INSN_VARIANT_64BIT,				\
+				   type);						\
+											\
+	TEST_ADSB_SHIFTED_REG_CASE(test,						\
+				   insn, x6, x7, x8, ASR, 29,				\
+				   AARCH64_INSN_VARIANT_64BIT,				\
+				   type);						\
+											\
+	TEST_ADSB_SHIFTED_REG_CASE(test,						\
+				   insn, w9, w10, w11, LSL, 11,				\
+				   AARCH64_INSN_VARIANT_32BIT,				\
+				   type);						\
+											\
+	TEST_ADSB_SHIFTED_REG_CASE(test,						\
+				   insn, w12, w13, w14, LSR, 22,			\
+				   AARCH64_INSN_VARIANT_32BIT,				\
+				   type);						\
+											\
+	TEST_ADSB_SHIFTED_REG_CASE(test,						\
+				   insn, w15, w16, w17, ASR, 29,			\
+				   AARCH64_INSN_VARIANT_32BIT,				\
+				   type);						\
+											\
+	/*										\
+	 * Unsupported shift type							\
+	 */										\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_add_sub_shifted_reg(AARCH64_INSN_REG_0,	\
+							     AARCH64_INSN_REG_1,	\
+							     AARCH64_INSN_REG_2,	\
+							     AARCH64_INSN_REG_SHIFT_ROR,\
+							     0,				\
+							     AARCH64_INSN_VARIANT_64BIT,\
+							     type));			\
+											\
+	/*										\
+	 * Out-of-range immediates							\
+	 */										\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_add_sub_shifted_reg(AARCH64_INSN_REG_0,	\
+							     AARCH64_INSN_REG_1,	\
+							     AARCH64_INSN_REG_2,	\
+							     AARCH64_INSN_REG_SHIFT_LSL,\
+							     64,			\
+							     AARCH64_INSN_VARIANT_64BIT,\
+							     type));			\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_add_sub_shifted_reg(AARCH64_INSN_REG_0,	\
+							     AARCH64_INSN_REG_1,	\
+							     AARCH64_INSN_REG_2,	\
+							     AARCH64_INSN_REG_SHIFT_LSL,\
+							     32,			\
+							     AARCH64_INSN_VARIANT_32BIT,\
+							     type));			\
+} while (0)
+
+static void test_insn_add_shifted_reg(struct kunit *test)
+{
+	TEST_ADSB_SHIFTED_REG_CASES(test, add, AARCH64_INSN_ADSB_ADD);
+}
+
+static void test_insn_adds_shifted_reg(struct kunit *test)
+{
+	TEST_ADSB_SHIFTED_REG_CASES(test, adds, AARCH64_INSN_ADSB_ADD_SETFLAGS);
+}
+
+static void test_insn_sub_shifted_reg(struct kunit *test)
+{
+	TEST_ADSB_SHIFTED_REG_CASES(test, sub, AARCH64_INSN_ADSB_SUB);
+}
+
+static void test_insn_subs_shifted_reg(struct kunit *test)
+{
+	TEST_ADSB_SHIFTED_REG_CASES(test, subs, AARCH64_INSN_ADSB_SUB_SETFLAGS);
+}
+
 static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adr),
 	KUNIT_CASE(test_insn_adrp),
@@ -2691,6 +2819,10 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_movz),
 	KUNIT_CASE(test_insn_movk),
 	KUNIT_CASE(test_insn_movn),
+	KUNIT_CASE(test_insn_add_shifted_reg),
+	KUNIT_CASE(test_insn_adds_shifted_reg),
+	KUNIT_CASE(test_insn_sub_shifted_reg),
+	KUNIT_CASE(test_insn_subs_shifted_reg),
 	{ /* sentinel */ }
 };
 
