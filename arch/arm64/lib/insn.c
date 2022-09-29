@@ -1350,29 +1350,38 @@ u32 aarch64_insn_gen_extr(enum aarch64_insn_variant variant,
 			  u8 lsb)
 {
 	u32 insn;
+	bool sf;
 
 	insn = aarch64_insn_get_extr_value();
 
 	switch (variant) {
 	case AARCH64_INSN_VARIANT_32BIT:
+		sf = false;
 		if (lsb > 31)
 			return AARCH64_BREAK_FAULT;
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
+		sf = true;
 		if (lsb > 63)
 			return AARCH64_BREAK_FAULT;
-		insn |= AARCH64_INSN_SF_BIT;
-		insn = aarch64_insn_encode_immediate(AARCH64_INSN_IMM_N, insn, 1);
 		break;
 	default:
 		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_immediate(AARCH64_INSN_IMM_S, insn, lsb);
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, Rd);
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn, Rn);
-	return aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RM, insn, Rm);
+	/*
+	 * N == sf for all valid encodings
+	 */
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf) ||
+	    !aarch64_insn_try_encode_unsigned_N(&insn, sf) ||
+	    !aarch64_insn_try_encode_unsigned_imms(&insn, lsb) ||
+	    !aarch64_insn_try_encode_reg_rd(&insn, Rd) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, Rn) ||
+	    !aarch64_insn_try_encode_reg_rm(&insn, Rm))
+		return AARCH64_BREAK_FAULT;
+
+	return insn;
 }
 
 u32 aarch64_insn_gen_dmb(enum aarch64_insn_mb_type type)
