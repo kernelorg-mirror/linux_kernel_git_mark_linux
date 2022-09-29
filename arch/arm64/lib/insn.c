@@ -847,6 +847,7 @@ u32 aarch64_insn_gen_data1(enum aarch64_insn_register dst,
 			   enum aarch64_insn_data1_type type)
 {
 	u32 insn;
+	bool sf;
 
 	switch (type) {
 	case AARCH64_INSN_DATA1_REVERSE_16:
@@ -870,18 +871,22 @@ u32 aarch64_insn_gen_data1(enum aarch64_insn_register dst,
 
 	switch (variant) {
 	case AARCH64_INSN_VARIANT_32BIT:
+		sf = false;
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		insn |= AARCH64_INSN_SF_BIT;
+		sf = true;
 		break;
 	default:
 		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, dst);
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf) ||
+	    !aarch64_insn_try_encode_reg_rd(&insn, dst) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, src))
+		return AARCH64_BREAK_FAULT;
 
-	return aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn, src);
+	return insn;
 }
 
 u32 aarch64_insn_gen_data2(enum aarch64_insn_register dst,
