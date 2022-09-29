@@ -622,6 +622,8 @@ u32 aarch64_insn_gen_add_sub_imm(enum aarch64_insn_register dst,
 				 enum aarch64_insn_adsb_type type)
 {
 	u32 insn;
+	bool sf;
+	bool sh;
 
 	switch (type) {
 	case AARCH64_INSN_ADSB_ADD:
@@ -643,38 +645,33 @@ u32 aarch64_insn_gen_add_sub_imm(enum aarch64_insn_register dst,
 
 	switch (variant) {
 	case AARCH64_INSN_VARIANT_32BIT:
+		sf = false;
 		break;
 	case AARCH64_INSN_VARIANT_64BIT:
-		insn |= AARCH64_INSN_SF_BIT;
+		sf = true;
 		break;
 	default:
 		pr_err("%s: unknown variant encoding %d\n", __func__, variant);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	/* We can't encode more than a 24bit value (12bit + 12bit shift) */
-	if (imm & ~(BIT(24) - 1))
-		goto out;
-
-	/* If we have something in the top 12 bits... */
-	if (imm & ~(SZ_4K - 1)) {
-		/* ... and in the low 12 bits -> error */
-		if (imm & (SZ_4K - 1))
-			goto out;
-
+	if (!(imm & ~GENMASK(11, 0))) {
+		sh = false;
+	} else if (!(imm & ~GENMASK(23, 12))) {
+		sh = true;
 		imm >>= 12;
-		insn |= AARCH64_INSN_LSL_12;
+	} else {
+		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, dst);
+	if (!aarch64_insn_try_encode_unsigned_sf(&insn, sf) ||
+	    !aarch64_insn_try_encode_unsigned_sh(&insn, sh) ||
+	    !aarch64_insn_try_encode_reg_rd(&insn, dst) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, src) ||
+	    !aarch64_insn_try_encode_unsigned_imm12(&insn, imm))
+		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn, src);
-
-	return aarch64_insn_encode_immediate(AARCH64_INSN_IMM_12, insn, imm);
-
-out:
-	pr_err("%s: invalid immediate encoding %d\n", __func__, imm);
-	return AARCH64_BREAK_FAULT;
+	return insn;
 }
 
 u32 aarch64_insn_gen_bitfield(enum aarch64_insn_register dst,

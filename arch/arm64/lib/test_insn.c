@@ -2363,6 +2363,108 @@ static void test_insn_cas(struct kunit *test)
 			  AARCH64_INSN_MEM_ORDER_ACQREL);
 }
 
+#define TEST_ADSB_IMM_CASE(test, insn, arg_rd, arg_rn, arg_imm, arg_variant, arg_type)	\
+do {											\
+	enum aarch64_insn_register rd = REG_IDX(arg_rd);				\
+	enum aarch64_insn_register rn = REG_IDX(arg_rn);				\
+	u64 imm = (arg_imm), obj_imm, gen_imm;						\
+	enum aarch64_insn_variant variant = (arg_variant);				\
+	enum aarch64_insn_adsb_type type = (arg_type);					\
+	u64 obj_shift, gen_shift;							\
+											\
+	u32 obj_insn = ASM_U32(#insn " " #arg_rd ", " #arg_rn ", %[imm]",		\
+			       [imm] "i" (imm));					\
+	u32 gen_insn = aarch64_insn_gen_add_sub_imm(rd, rn, imm, variant, type);	\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, insn##_imm, obj_insn);					\
+	INSN_EXPECT_IS(test, insn##_imm, gen_insn);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rd, rd);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rd, rd);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rn, rn);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rn, rn);					\
+											\
+	obj_imm = aarch64_insn_decode_unsigned_imm12(obj_insn);				\
+	gen_imm = aarch64_insn_decode_unsigned_imm12(gen_insn);				\
+	obj_shift = aarch64_insn_decode_scaled_unsigned_sh(obj_insn, 12);		\
+	gen_shift = aarch64_insn_decode_scaled_unsigned_sh(gen_insn, 12);		\
+	KUNIT_EXPECT_EQ(test, obj_imm << obj_shift, imm);				\
+	KUNIT_EXPECT_EQ(test, gen_imm << gen_shift, imm);				\
+} while (0)
+
+#define TEST_ADSB_IMM_CASES(test, insn, variant, type)					\
+do {											\
+	TEST_ADSB_IMM_CASE(test,							\
+			   insn, x0, x1, 0,						\
+			   variant, type);						\
+											\
+	TEST_ADSB_IMM_CASE(test,							\
+			   insn, x2, x3, 3000,						\
+			   variant, type);						\
+											\
+	TEST_ADSB_IMM_CASE(test,							\
+			   insn, x4, x5, 4095,						\
+			   variant, type);						\
+											\
+	TEST_ADSB_IMM_CASE(test,							\
+			   insn, x6, x7, 4096,						\
+			   variant, type);						\
+											\
+	TEST_ADSB_IMM_CASE(test,							\
+			   insn, x6, x7, 16773120,					\
+			   variant, type);						\
+											\
+	/*										\
+	 * Out-of-range immediates							\
+	 */										\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_add_sub_imm(AARCH64_INSN_REG_0,		\
+						     AARCH64_INSN_REG_1,		\
+						     GENMASK(23, 0),			\
+						     variant, type));			\
+	KUNIT_EXPECT_EQ(test,								\
+			AARCH64_BREAK_FAULT,						\
+			aarch64_insn_gen_add_sub_imm(AARCH64_INSN_REG_0,		\
+						     AARCH64_INSN_REG_1,		\
+						     BIT(24),				\
+						     variant, type));			\
+} while (0)
+
+void test_insn_add_imm(struct kunit *test)
+{
+	TEST_ADSB_IMM_CASES(test,
+			    add,
+			    AARCH64_INSN_VARIANT_64BIT,
+			    AARCH64_INSN_ADSB_ADD);
+}
+
+void test_insn_adds_imm(struct kunit *test)
+{
+	TEST_ADSB_IMM_CASES(test,
+			    adds,
+			    AARCH64_INSN_VARIANT_64BIT,
+			    AARCH64_INSN_ADSB_ADD_SETFLAGS);
+}
+
+void test_insn_sub_imm(struct kunit *test)
+{
+	TEST_ADSB_IMM_CASES(test,
+			    sub,
+			    AARCH64_INSN_VARIANT_64BIT,
+			    AARCH64_INSN_ADSB_SUB);
+}
+
+void test_insn_subs_imm(struct kunit *test)
+{
+	TEST_ADSB_IMM_CASES(test,
+			    subs,
+			    AARCH64_INSN_VARIANT_64BIT,
+			    AARCH64_INSN_ADSB_SUB_SETFLAGS);
+}
+
 static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adr),
 	KUNIT_CASE(test_insn_adrp),
@@ -2393,6 +2495,10 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_ldset),
 	KUNIT_CASE(test_insn_swp),
 	KUNIT_CASE(test_insn_cas),
+	KUNIT_CASE(test_insn_add_imm),
+	KUNIT_CASE(test_insn_adds_imm),
+	KUNIT_CASE(test_insn_sub_imm),
+	KUNIT_CASE(test_insn_subs_imm),
 	{ /* sentinel */ }
 };
 
