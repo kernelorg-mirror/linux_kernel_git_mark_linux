@@ -1330,9 +1330,9 @@ static bool range_of_ones(u64 val)
 	return ((sval + 1) & (sval)) == 0;
 }
 
-static u32 aarch64_encode_immediate(u64 imm,
-				    enum aarch64_insn_variant variant,
-				    u32 insn)
+static u32 aarch64_encode_bitmask_immediate(u64 imm,
+					    enum aarch64_insn_variant variant,
+					    u32 insn)
 {
 	unsigned int immr, imms, n, ones, ror, esz, tmp;
 	u64 mask;
@@ -1454,7 +1454,7 @@ u32 aarch64_insn_gen_logical_immediate(enum aarch64_insn_logic_type type,
 
 	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RD, insn, Rd);
 	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn, Rn);
-	return aarch64_encode_immediate(imm, variant, insn);
+	return aarch64_encode_bitmask_immediate(imm, variant, insn);
 }
 
 u32 aarch64_insn_gen_extr(enum aarch64_insn_variant variant,
