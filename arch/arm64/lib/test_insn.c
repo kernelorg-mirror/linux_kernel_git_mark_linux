@@ -1221,6 +1221,78 @@ static void test_insn_adrp(struct kunit *test)
 	}
 }
 
+#define TEST_LDST_REG_CASE(test, class, insn, arg_rt, arg_rn, arg_rm, arg_size,		\
+			   arg_type)							\
+do {											\
+	enum aarch64_insn_register rt = REG_IDX(arg_rt);				\
+	enum aarch64_insn_register rn = REG_IDX(arg_rn);				\
+	enum aarch64_insn_register rm = REG_IDX(arg_rm);				\
+	enum aarch64_insn_size_type size = (arg_size);					\
+	enum aarch64_insn_ldst_type type = (arg_type);					\
+											\
+	u32 obj_insn = ASM_U32(#insn " " #arg_rt ", [" #arg_rn "," #arg_rm "]");	\
+	u32 gen_insn = aarch64_insn_gen_load_store_reg(rt, rn, rm, size, type);		\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, class, obj_insn);						\
+	INSN_EXPECT_IS(test, class, gen_insn);						\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rt, rt);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rt, rt);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rn, rn);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rn, rn);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rm, rm);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rm, rm);					\
+} while (0)
+
+static void test_insn_ldr_reg(struct kunit *test)
+{
+	TEST_LDST_REG_CASE(test, ldr_reg,
+			   ldr, x0, x1, x2,
+			   AARCH64_INSN_SIZE_64,
+			   AARCH64_INSN_LDST_LOAD_REG_OFFSET);
+
+	TEST_LDST_REG_CASE(test, ldr_reg,
+			   ldr, w3, x4, x5,
+			   AARCH64_INSN_SIZE_32,
+			   AARCH64_INSN_LDST_LOAD_REG_OFFSET);
+
+	TEST_LDST_REG_CASE(test, ldr_reg,
+			   ldrh, w6, x7, x8,
+			   AARCH64_INSN_SIZE_16,
+			   AARCH64_INSN_LDST_LOAD_REG_OFFSET);
+
+	TEST_LDST_REG_CASE(test, ldr_reg,
+			   ldrb, w9, x10, x11,
+			   AARCH64_INSN_SIZE_8,
+			   AARCH64_INSN_LDST_LOAD_REG_OFFSET);
+}
+
+static void test_insn_str_reg(struct kunit *test)
+{
+	TEST_LDST_REG_CASE(test, str_reg,
+			   str, x0, x1, x2,
+			   AARCH64_INSN_SIZE_64,
+			   AARCH64_INSN_LDST_STORE_REG_OFFSET);
+
+	TEST_LDST_REG_CASE(test, str_reg,
+			   str, w3, x4, x5,
+			   AARCH64_INSN_SIZE_32,
+			   AARCH64_INSN_LDST_STORE_REG_OFFSET);
+
+	TEST_LDST_REG_CASE(test, str_reg,
+			   strh, w6, x7, x8,
+			   AARCH64_INSN_SIZE_16,
+			   AARCH64_INSN_LDST_STORE_REG_OFFSET);
+
+	TEST_LDST_REG_CASE(test, str_reg,
+			   strb, w9, x10, x11,
+			   AARCH64_INSN_SIZE_8,
+			   AARCH64_INSN_LDST_STORE_REG_OFFSET);
+}
+
 struct test_insn_exclusive_params {
 	enum aarch64_insn_register rt, rn, rs;
 	enum aarch64_insn_size_type size;
@@ -1352,6 +1424,8 @@ static void test_insn_stxp(struct kunit *test)
 static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adr),
 	KUNIT_CASE(test_insn_adrp),
+	KUNIT_CASE(test_insn_ldr_reg),
+	KUNIT_CASE(test_insn_str_reg),
 	KUNIT_CASE(test_insn_ldxr),
 	KUNIT_CASE(test_insn_stxr),
 	KUNIT_CASE(test_insn_ldxp),

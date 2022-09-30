@@ -389,15 +389,13 @@ u32 aarch64_insn_gen_load_store_reg(enum aarch64_insn_register reg,
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_ldst_size(size, insn);
+	if (!aarch64_insn_try_encode_unsigned_ldst_size(&insn, size) ||
+	    !aarch64_insn_try_encode_reg_rt(&insn, reg) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, base) ||
+	    !aarch64_insn_try_encode_reg_rm(&insn, offset))
+		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RT, insn, reg);
-
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn,
-					    base);
-
-	return aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RM, insn,
-					    offset);
+	return insn;
 }
 
 u32 aarch64_insn_gen_load_store_imm(enum aarch64_insn_register reg,
