@@ -540,38 +540,33 @@ u32 aarch64_insn_gen_load_store_ex(enum aarch64_insn_register reg,
 				   enum aarch64_insn_ldst_type type)
 {
 	u32 insn;
+	bool order;
 
 	switch (type) {
 	case AARCH64_INSN_LDST_LOAD_EX:
 	case AARCH64_INSN_LDST_LOAD_ACQ_EX:
 		insn = aarch64_insn_get_ldxr_value();
-		if (type == AARCH64_INSN_LDST_LOAD_ACQ_EX)
-			insn |= BIT(15);
+		order = (type == AARCH64_INSN_LDST_LOAD_ACQ_EX);
 		break;
 	case AARCH64_INSN_LDST_STORE_EX:
 	case AARCH64_INSN_LDST_STORE_REL_EX:
 		insn = aarch64_insn_get_stxr_value();
-		if (type == AARCH64_INSN_LDST_STORE_REL_EX)
-			insn |= BIT(15);
+		order = (type == AARCH64_INSN_LDST_STORE_REL_EX);
 		break;
 	default:
 		pr_err("%s: unknown load/store exclusive encoding %d\n", __func__, type);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_ldst_size(size, insn);
+	if (!aarch64_insn_try_encode_unsigned_ldst_size(&insn, size) ||
+	    !aarch64_insn_try_encode_unsigned_ldst_o0(&insn, order) ||
+	    !aarch64_insn_try_encode_reg_rt(&insn, reg) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, base) ||
+	    !aarch64_insn_try_encode_reg_rt2(&insn, AARCH64_INSN_REG_ZR) ||
+	    !aarch64_insn_try_encode_reg_rs(&insn, state))
+		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RT, insn,
-					    reg);
-
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn,
-					    base);
-
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RT2, insn,
-					    AARCH64_INSN_REG_ZR);
-
-	return aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RS, insn,
-					    state);
+	return insn;
 }
 
 #ifdef CONFIG_ARM64_LSE_ATOMICS

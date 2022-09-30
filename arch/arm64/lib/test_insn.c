@@ -1235,8 +1235,6 @@ struct test_insn_exclusive_params {
 static void test_insn_exclusive_case(struct kunit *test,
 				     struct test_insn_exclusive_params *params)
 {
-	enum aarch64_insn_register rt, rt2, rn, rs;
-
 	u32 insn = aarch64_insn_gen_load_store_ex(params->rt, params->rn,
 						  params->rs, params->size,
 						  params->type);
@@ -1250,17 +1248,10 @@ static void test_insn_exclusive_case(struct kunit *test,
 
 	KUNIT_EXPECT_TRUE(test, params->is(insn));
 
-	rt = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RT, insn);
-	KUNIT_EXPECT_EQ(test, rt, params->rt);
-
-	rt2 = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RT2, insn);
-	KUNIT_EXPECT_EQ(test, rt2, AARCH64_INSN_REG_ZR);
-
-	rn = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RN, insn);
-	KUNIT_EXPECT_EQ(test, rn, params->rn);
-
-	rs = aarch64_insn_decode_register(AARCH64_INSN_REGTYPE_RS, insn);
-	KUNIT_EXPECT_EQ(test, rs, params->rs);
+	INSN_EXPECT_REG_EQ(test, insn, rt, params->rt);
+	INSN_EXPECT_REG_EQ(test, insn, rt2, AARCH64_INSN_REG_ZR);
+	INSN_EXPECT_REG_EQ(test, insn, rn, params->rn);
+	INSN_EXPECT_REG_EQ(test, insn, rs, params->rs);
 }
 
 #define __CASE_EXCLUSIVE(_rt, _rs, _rn, _size, _type, _fail, _insn, _is)	\
