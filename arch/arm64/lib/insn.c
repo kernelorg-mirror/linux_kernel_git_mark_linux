@@ -537,35 +537,6 @@ u32 aarch64_insn_gen_load_store_ex(enum aarch64_insn_register reg,
 }
 
 #ifdef CONFIG_ARM64_LSE_ATOMICS
-static u32 aarch64_insn_encode_ldst_order(enum aarch64_insn_mem_order_type type,
-					  u32 insn)
-{
-	u32 order;
-
-	switch (type) {
-	case AARCH64_INSN_MEM_ORDER_NONE:
-		order = 0;
-		break;
-	case AARCH64_INSN_MEM_ORDER_ACQ:
-		order = 2;
-		break;
-	case AARCH64_INSN_MEM_ORDER_REL:
-		order = 1;
-		break;
-	case AARCH64_INSN_MEM_ORDER_ACQREL:
-		order = 3;
-		break;
-	default:
-		pr_err("%s: unknown mem order %d\n", __func__, type);
-		return AARCH64_BREAK_FAULT;
-	}
-
-	insn &= ~GENMASK(23, 22);
-	insn |= order << 22;
-
-	return insn;
-}
-
 u32 aarch64_insn_gen_atomic_ld_op(enum aarch64_insn_register result,
 				  enum aarch64_insn_register address,
 				  enum aarch64_insn_register value,
@@ -574,6 +545,8 @@ u32 aarch64_insn_gen_atomic_ld_op(enum aarch64_insn_register result,
 				  enum aarch64_insn_mem_order_type order)
 {
 	u32 insn;
+	bool acquire = false;
+	bool release = false;
 
 	switch (op) {
 	case AARCH64_INSN_MEM_ATOMIC_ADD:
@@ -605,18 +578,33 @@ u32 aarch64_insn_gen_atomic_ld_op(enum aarch64_insn_register result,
 		return AARCH64_BREAK_FAULT;
 	}
 
-	insn = aarch64_insn_encode_ldst_size(size, insn);
+	switch (order) {
+	case AARCH64_INSN_MEM_ORDER_NONE:
+		break;
+	case AARCH64_INSN_MEM_ORDER_ACQ:
+		acquire = true;
+		break;
+	case AARCH64_INSN_MEM_ORDER_REL:
+		release = true;
+		break;
+	case AARCH64_INSN_MEM_ORDER_ACQREL:
+		acquire = true;
+		release = true;
+		break;
+	default:
+		pr_err("%s: unknown mem order %d\n", __func__, order);
+		return AARCH64_BREAK_FAULT;
+	}
 
-	insn = aarch64_insn_encode_ldst_order(order, insn);
+	if (!aarch64_insn_try_encode_unsigned_ldst_size(&insn, size) ||
+	    !aarch64_insn_try_encode_unsigned_amo_a(&insn, acquire) ||
+	    !aarch64_insn_try_encode_unsigned_amo_r(&insn, release) ||
+	    !aarch64_insn_try_encode_reg_rt(&insn, result) ||
+	    !aarch64_insn_try_encode_reg_rn(&insn, address) ||
+	    !aarch64_insn_try_encode_reg_rs(&insn, value))
+		return AARCH64_BREAK_FAULT;
 
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RT, insn,
-					    result);
-
-	insn = aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RN, insn,
-					    address);
-
-	return aarch64_insn_encode_register(AARCH64_INSN_REGTYPE_RS, insn,
-					    value);
+	return insn;
 }
 
 static u32 aarch64_insn_encode_cas_order(enum aarch64_insn_mem_order_type type,

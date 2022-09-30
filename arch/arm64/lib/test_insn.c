@@ -1968,6 +1968,98 @@ static void test_insn_stxp(struct kunit *test)
 	INSN_EXPECT_IS_NOT(test, stxp, 0x08200000);
 }
 
+#define TEST_LSE_LD_CASE(test, class, insn, arg_rs, arg_rt, arg_rn, arg_size,		\
+			 arg_op, arg_order)						\
+do {											\
+	enum aarch64_insn_register rs = REG_IDX(arg_rs);				\
+	enum aarch64_insn_register rt = REG_IDX(arg_rt);				\
+	enum aarch64_insn_register rn = REG_IDX(arg_rn);				\
+	enum aarch64_insn_size_type size = (arg_size);					\
+	enum aarch64_insn_mem_atomic_op op = (arg_op);					\
+	enum aarch64_insn_mem_order_type order = (arg_order);				\
+											\
+	u32 obj_insn = ASM_U32(#insn " " #arg_rs ", " #arg_rt ", [" #arg_rn "]");	\
+	u32 gen_insn = aarch64_insn_gen_atomic_ld_op(rt, rn, rs, size, op, order);	\
+											\
+	KUNIT_EXPECT_EQ(test, obj_insn, gen_insn);					\
+	INSN_EXPECT_IS(test, class, obj_insn);						\
+	INSN_EXPECT_IS(test, class, gen_insn);						\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rs, rs);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rs, rs);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rt, rt);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rt, rt);					\
+											\
+	INSN_EXPECT_REG_EQ(test, obj_insn, rn, rn);					\
+	INSN_EXPECT_REG_EQ(test, gen_insn, rn, rn);					\
+} while (0)
+
+#define TEST_LSE_LD_ORDER_CASES(test, insn, xw, size, op)				\
+do {											\
+	TEST_LSE_LD_CASE(test, insn,							\
+			 insn, xw##0, xw##1, x2,					\
+			 size, op, AARCH64_INSN_MEM_ORDER_NONE);			\
+											\
+	TEST_LSE_LD_CASE(test, insn,							\
+			 insn##a, xw##3, xw##4, x5,					\
+			 size, op, AARCH64_INSN_MEM_ORDER_ACQ);				\
+											\
+	TEST_LSE_LD_CASE(test, insn,							\
+			 insn##l, xw##6, xw##7, x8,					\
+			 size, op, AARCH64_INSN_MEM_ORDER_REL);				\
+											\
+	TEST_LSE_LD_CASE(test, insn,							\
+			 insn##al, xw##9, xw##10, x11,					\
+			 size, op, AARCH64_INSN_MEM_ORDER_ACQREL);			\
+} while (0)
+
+#define TEST_LSE_LD_CASES(test, insn, op)						\
+do {											\
+	TEST_LSE_LD_ORDER_CASES(test, insn, x, AARCH64_INSN_SIZE_64, op);		\
+	TEST_LSE_LD_ORDER_CASES(test, insn, w, AARCH64_INSN_SIZE_32, op);		\
+} while (0)
+
+static void test_insn_ldadd(struct kunit *test)
+{
+	if (!IS_ENABLED(CONFIG_AS_HAS_LSE_ATOMICS))
+		kunit_skip(test, "Missing toolchain support for LSE atomics");
+
+	TEST_LSE_LD_CASES(test, ldadd, AARCH64_INSN_MEM_ATOMIC_ADD);
+}
+
+static void test_insn_ldclr(struct kunit *test)
+{
+	if (!IS_ENABLED(CONFIG_AS_HAS_LSE_ATOMICS))
+		kunit_skip(test, "Missing toolchain support for LSE atomics");
+
+	TEST_LSE_LD_CASES(test, ldclr, AARCH64_INSN_MEM_ATOMIC_CLR);
+}
+
+static void test_insn_ldeor(struct kunit *test)
+{
+	if (!IS_ENABLED(CONFIG_AS_HAS_LSE_ATOMICS))
+		kunit_skip(test, "Missing toolchain support for LSE atomics");
+
+	TEST_LSE_LD_CASES(test, ldeor, AARCH64_INSN_MEM_ATOMIC_EOR);
+}
+
+static void test_insn_ldset(struct kunit *test)
+{
+	if (!IS_ENABLED(CONFIG_AS_HAS_LSE_ATOMICS))
+		kunit_skip(test, "Missing toolchain support for LSE atomics");
+
+	TEST_LSE_LD_CASES(test, ldset, AARCH64_INSN_MEM_ATOMIC_SET);
+}
+
+static void test_insn_swp(struct kunit *test)
+{
+	if (!IS_ENABLED(CONFIG_AS_HAS_LSE_ATOMICS))
+		kunit_skip(test, "Missing toolchain support for LSE atomics");
+
+	TEST_LSE_LD_CASES(test, swp, AARCH64_INSN_MEM_ATOMIC_SWP);
+}
+
 static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_adr),
 	KUNIT_CASE(test_insn_adrp),
@@ -1984,6 +2076,11 @@ static struct kunit_case aarch64_insn_insn_test_cases[] = {
 	KUNIT_CASE(test_insn_stxr),
 	KUNIT_CASE(test_insn_ldxp),
 	KUNIT_CASE(test_insn_stxp),
+	KUNIT_CASE(test_insn_ldadd),
+	KUNIT_CASE(test_insn_ldclr),
+	KUNIT_CASE(test_insn_ldeor),
+	KUNIT_CASE(test_insn_ldset),
+	KUNIT_CASE(test_insn_swp),
 	{ /* sentinel */ }
 };
 
