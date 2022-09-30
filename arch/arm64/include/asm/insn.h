@@ -167,10 +167,10 @@ enum aarch64_insn_branch_type {
 };
 
 enum aarch64_insn_size_type {
-	AARCH64_INSN_SIZE_8,
-	AARCH64_INSN_SIZE_16,
-	AARCH64_INSN_SIZE_32,
-	AARCH64_INSN_SIZE_64,
+	AARCH64_INSN_SIZE_8  = 0,
+	AARCH64_INSN_SIZE_16 = 1,
+	AARCH64_INSN_SIZE_32 = 2,
+	AARCH64_INSN_SIZE_64 = 3,
 };
 
 enum aarch64_insn_ldst_type {

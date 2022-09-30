@@ -215,24 +215,16 @@ static u32 aarch64_insn_encode_register(enum aarch64_insn_register_type type,
 	return insn;
 }
 
-static const u32 aarch64_insn_ldst_size[] = {
-	[AARCH64_INSN_SIZE_8] = 0,
-	[AARCH64_INSN_SIZE_16] = 1,
-	[AARCH64_INSN_SIZE_32] = 2,
-	[AARCH64_INSN_SIZE_64] = 3,
-};
-
 static u32 aarch64_insn_encode_ldst_size(enum aarch64_insn_size_type type,
 					 u32 insn)
 {
-	u32 size;
+	u32 size = type;
 
-	if (type < AARCH64_INSN_SIZE_8 || type > AARCH64_INSN_SIZE_64) {
+	if (size < AARCH64_INSN_SIZE_8 || size > AARCH64_INSN_SIZE_64) {
 		pr_err("%s: unknown size encoding %d\n", __func__, type);
 		return AARCH64_BREAK_FAULT;
 	}
 
-	size = aarch64_insn_ldst_size[type];
 	insn &= ~GENMASK(31, 30);
 	insn |= size << 30;
 
@@ -422,7 +414,7 @@ u32 aarch64_insn_gen_load_store_imm(enum aarch64_insn_register reg,
 		return AARCH64_BREAK_FAULT;
 	}
 
-	shift = aarch64_insn_ldst_size[size];
+	shift = size;
 	if (imm & ~(BIT(12 + shift) - BIT(shift))) {
 		pr_err("%s: invalid imm: %d\n", __func__, imm);
 		return AARCH64_BREAK_FAULT;
