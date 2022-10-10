@@ -178,9 +178,77 @@ check_redirected:
 		"CONFIG_ARM64_PTR_AUTH_KERNEL", "CONFIG_SHADOW_CALL_STACK");
 }
 
+#define NR_BENCHMARK_CALLS	(1000000)
+
+static noinline void lkdtm_cfi_forward_callee(void)
+{
+	/*
+	 * Prevent the compiler from optimizing away calls to this function by
+	 * giving the function side-effects.
+	 */
+	barrier();
+}
+
+static void lkdtm_CFI_FORWARD_BENCHMARK_DIRECT(void)
+{
+	for (int i = 0; i < NR_BENCHMARK_CALLS; i++)
+		lkdtm_cfi_forward_callee();
+}
+
+static void lkdtm_CFI_FORWARD_BENCHMARK_INDIRECT(void)
+{
+	/*
+	 * Ensure the compiler doesn't emit a direct call by hiding the
+	 * identity of the callee.
+	 */
+	void (*func)(void) = lkdtm_cfi_forward_callee;
+	OPTIMIZER_HIDE_VAR(func);
+
+	for (int i = 0; i < NR_BENCHMARK_CALLS; i++)
+		func();
+}
+
+static noinline __no_ret_protection
+void lkdtm_cfi_empty_callee(void)
+{
+	/*
+	 * Prevent the compiler from optimizing away calls to this function by
+	 * giving the function side-effects.
+	 */
+	barrier();
+}
+
+static noinline
+void lkdtm_cfi_backward_callee_checked(void)
+{
+	lkdtm_cfi_empty_callee();
+}
+
+static noinline __no_ret_protection
+void lkdtm_cfi_backward_callee_unchecked(void)
+{
+	lkdtm_cfi_empty_callee();
+}
+
+static void lkdtm_CFI_BACKWARD_BENCHMARK_CHECKED(void)
+{
+	for (int i = 0; i < NR_BENCHMARK_CALLS; i++)
+		lkdtm_cfi_backward_callee_checked();
+}
+
+static void lkdtm_CFI_BACKWARD_BENCHMARK_UNCHECKED(void)
+{
+	for (int i = 0; i < NR_BENCHMARK_CALLS; i++)
+		lkdtm_cfi_backward_callee_unchecked();
+}
+
 static struct crashtype crashtypes[] = {
 	CRASHTYPE(CFI_FORWARD_PROTO),
 	CRASHTYPE(CFI_BACKWARD),
+	CRASHTYPE(CFI_FORWARD_BENCHMARK_DIRECT),
+	CRASHTYPE(CFI_FORWARD_BENCHMARK_INDIRECT),
+	CRASHTYPE(CFI_BACKWARD_BENCHMARK_CHECKED),
+	CRASHTYPE(CFI_BACKWARD_BENCHMARK_UNCHECKED),
 };
 
 struct crashtype_category cfi_crashtypes = {
