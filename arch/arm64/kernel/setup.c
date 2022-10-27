@@ -418,12 +418,15 @@ static void dump_kernel_offset(void)
 	}
 }
 
+void show_kctx(void);
+
 static int arm64_panic_block_dump(struct notifier_block *self,
 				  unsigned long v, void *p)
 {
 	dump_kernel_offset();
 	dump_cpu_features();
 	dump_mem_limit();
+	show_kctx();
 	return 0;
 }
 

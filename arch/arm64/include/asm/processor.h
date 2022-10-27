@@ -138,8 +138,47 @@ struct cpu_context {
 	unsigned long pc;
 };
 
+struct kernel_context {
+	/*
+	 * The exception context that was executing immediately before this
+	 * exception was taken. Can be NULL for exceptions taken from
+	 * userspace, and for NMIs taken early during exception entry or late
+	 * during exception exit.
+	 */
+	struct kernel_context	*parent;
+
+	/*
+	 * How many execptions deep are we?
+	 *
+	 * TODO: find a use for the next 56 bits; probably RCU, preempt_count,
+	 * etc.
+	 */
+	u8				level;
+
+	/*
+	 * Timing information for this exception context.
+	 */
+	u64				time_entry;
+
+	/*
+	 * Timing information for exceptions which nested within this exception
+	 * context.
+	 */
+	u64				nested_last_entry;
+	u64				nested_last_exit;
+	u64				nested_total_stolen;
+
+	/*
+	 * How many exceptions were taken during this exception context?
+	 */
+	u64				nested_count;
+};
+
 struct thread_struct {
 	struct cpu_context	cpu_context;	/* cpu context */
+
+	struct kernel_context	kctx0;
+	struct kernel_context	*kctx;
 
 	/*
 	 * Whitelisted fields for hardened usercopy:
@@ -266,8 +305,9 @@ static inline void arch_thread_struct_whitelist(unsigned long *offset,
 /* Sync TPIDR_EL0 back to thread_struct for current */
 void tls_preserve_current_state(void);
 
-#define INIT_THREAD {				\
-	.fpsimd_cpu = NR_CPUS,			\
+#define INIT_THREAD {							\
+	.fpsimd_cpu = NR_CPUS,						\
+	.kctx = &task_kctx0(&init_task),				\
 }
 
 static inline void start_thread_common(struct pt_regs *regs, unsigned long pc)
@@ -331,8 +371,17 @@ void update_sctlr_el1(u64 sctlr);
 extern struct task_struct *cpu_switch_to(struct task_struct *prev,
 					 struct task_struct *next);
 
+#define stack_pt_regs(s) \
+	((struct pt_regs *)(THREAD_SIZE + (s)) - 1)
+
 #define task_pt_regs(p) \
-	((struct pt_regs *)(THREAD_SIZE + task_stack_page(p)) - 1)
+	stack_pt_regs(task_stack_page(p))
+
+#define task_kctx(p) \
+	((p)->thread.kctx)
+
+#define task_kctx0(p) \
+	((p)->thread.kctx0)
 
 #define KSTK_EIP(tsk)	((unsigned long)task_pt_regs(tsk)->pc)
 #define KSTK_ESP(tsk)	user_stack_pointer(task_pt_regs(tsk))

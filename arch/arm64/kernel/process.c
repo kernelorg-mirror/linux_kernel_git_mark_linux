@@ -240,6 +240,29 @@ void __show_regs(struct pt_regs *regs)
 	}
 }
 
+void show_kctx(void)
+{
+	// TODO associated with regs
+	struct kernel_context *kctx;
+
+	printk("Kernel context nesting:\n");
+
+	for (kctx = task_kctx(current); kctx; kctx = kctx->parent) {
+		printk("  level %hhu:\n"
+		       "    entered:           %lld\n"
+		       "    last nested entry: %lld\n"
+		       "    last nested exit:  %lld\n"
+		       "    nested time total: %lld\n"
+		       "    nested exceptions: %lld\n",
+		       kctx->level,
+		       kctx->time_entry,
+		       kctx->nested_last_entry,
+		       kctx->nested_last_exit,
+		       kctx->nested_total_stolen,
+		       kctx->nested_count);
+	}
+}
+
 void show_regs(struct pt_regs *regs)
 {
 	__show_regs(regs);
@@ -289,6 +312,15 @@ int arch_dup_task_struct(struct task_struct *dst, struct task_struct *src)
 	if (current->mm)
 		fpsimd_preserve_current_state();
 	*dst = *src;
+
+	do {
+		WARN_ONCE(!task_kctx(src), "NULL src kctx\n");
+		WARN_ONCE(task_kctx(src)->level > 0, "kctx->level = %hhu\n",
+			  task_kctx(src)->level);
+
+		task_kctx0(dst) = (struct kernel_context) { };
+		task_kctx(dst) = &task_kctx0(dst);
+	} while (0);
 
 	/* We rely on the above assignment to initialize dst's thread_flags: */
 	BUILD_BUG_ON(!IS_ENABLED(CONFIG_THREAD_INFO_IN_TASK));

@@ -350,6 +350,8 @@ static int softlockup_fn(void *data)
 	return 0;
 }
 
+void show_kctx(void);
+
 /* watchdog kicker functions */
 static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 {
@@ -433,6 +435,8 @@ static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 			show_regs(regs);
 		else
 			dump_stack();
+
+		show_kctx();
 
 		if (softlockup_all_cpu_backtrace) {
 			trigger_allbutself_cpu_backtrace();

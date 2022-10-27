@@ -622,6 +622,8 @@ static void print_other_cpu_stall(unsigned long gp_seq, unsigned long gps)
 	rcu_force_quiescent_state();  /* Kick them all. */
 }
 
+void show_kctx(void);
+
 static void print_cpu_stall(unsigned long gps)
 {
 	int cpu;
@@ -652,6 +654,8 @@ static void print_cpu_stall(unsigned long gps)
 	pr_cont("\t(t=%lu jiffies g=%ld q=%lu ncpus=%d)\n",
 		jiffies - gps,
 		(long)rcu_seq_current(&rcu_state.gp_seq), totqlen, rcu_state.n_online_cpus);
+
+	show_kctx();
 
 	rcu_check_gp_kthread_expired_fqs_timer();
 	rcu_check_gp_kthread_starvation();

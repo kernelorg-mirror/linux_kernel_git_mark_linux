@@ -147,6 +147,8 @@ static __always_inline void exit_to_user_mode(struct pt_regs *regs)
 asmlinkage void noinstr asm_exit_to_user_mode(struct pt_regs *regs)
 {
 	exit_to_user_mode(regs);
+
+	task_kctx(current) = NULL;
 }
 
 /*
@@ -296,6 +298,54 @@ static void noinstr __panic_unhandled(struct pt_regs *regs, const char *vector,
 	panic("Unhandled exception");
 }
 
+typedef void (*exc_handler_t)(struct pt_regs *regs);
+
+static __always_inline void
+handle_in_kctx(struct pt_regs *regs, struct kernel_context *kctx,
+	       exc_handler_t handler)
+{
+	struct kernel_context *parent = task_kctx(current);
+	u64 entry = read_sysreg(cntvct_el0);
+
+	kctx->parent = parent;
+	kctx->level = parent ? parent->level + 1 : 0;
+
+	kctx->time_entry = entry;
+
+	WRITE_ONCE(task_kctx(current), kctx);
+
+	handler(regs);
+
+	if (parent) {
+		u64 exit = read_sysreg(cntvct_el0);
+
+		parent->nested_last_entry = entry;
+		parent->nested_last_exit = exit;
+		parent->nested_total_stolen += exit - entry;
+
+		parent->nested_count++;
+	}
+
+	WRITE_ONCE(task_kctx(current), parent);
+}
+
+#define DEFINE_HANDLER(el10, ht, regsize, vector)					\
+static __always_inline void								\
+__el##el10##ht##_##regsize##_##vector##_handler(struct pt_regs *regs);			\
+asmlinkage noinstr void									\
+el##el10##ht##_##regsize##_##vector##_handler(struct pt_regs *regs)			\
+{											\
+	exc_handler_t handler = __el##el10##ht##_##regsize##_##vector##_handler;	\
+	struct kernel_context kctx;							\
+	if (el10 == 0) {								\
+		handle_in_kctx(regs, &task_kctx0(current), handler);			\
+	} else {									\
+		handle_in_kctx(regs, &kctx, handler);					\
+	}										\
+}											\
+static __always_inline void								\
+__el##el10##ht##_##regsize##_##vector##_handler(struct pt_regs *regs)
+
 #define UNHANDLED(el, regsize, vector)							\
 asmlinkage void noinstr el##_##regsize##_##vector##_handler(struct pt_regs *regs)	\
 {											\
@@ -416,7 +466,7 @@ static void noinstr el1_fpac(struct pt_regs *regs, unsigned long esr)
 	exit_to_kernel_mode(regs);
 }
 
-asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs)
+DEFINE_HANDLER(1, h, 64, sync)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -485,17 +535,20 @@ static void noinstr el1_interrupt(struct pt_regs *regs,
 		__el1_irq(regs, handler);
 }
 
-asmlinkage void noinstr el1h_64_irq_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el1h_64_irq_handler(struct pt_regs *regs)
+DEFINE_HANDLER(1, h, 64, irq)
 {
 	el1_interrupt(regs, handle_arch_irq);
 }
 
-asmlinkage void noinstr el1h_64_fiq_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el1h_64_fiq_handler(struct pt_regs *regs)
+DEFINE_HANDLER(1, h, 64, fiq)
 {
 	el1_interrupt(regs, handle_arch_fiq);
 }
 
-asmlinkage void noinstr el1h_64_error_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el1h_64_error_handler(struct pt_regs *regs)
+DEFINE_HANDLER(1, h, 64, error)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -645,7 +698,8 @@ static void noinstr el0_fpac(struct pt_regs *regs, unsigned long esr)
 	exit_to_user_mode(regs);
 }
 
-asmlinkage void noinstr el0t_64_sync_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el0t_64_sync_handler(struct pt_regs *regs)
+DEFINE_HANDLER(0, t, 64, sync)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -723,7 +777,8 @@ static void noinstr __el0_irq_handler_common(struct pt_regs *regs)
 	el0_interrupt(regs, handle_arch_irq);
 }
 
-asmlinkage void noinstr el0t_64_irq_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el0t_64_irq_handler(struct pt_regs *regs)
+DEFINE_HANDLER(0, t, 64, irq)
 {
 	__el0_irq_handler_common(regs);
 }
@@ -733,7 +788,8 @@ static void noinstr __el0_fiq_handler_common(struct pt_regs *regs)
 	el0_interrupt(regs, handle_arch_fiq);
 }
 
-asmlinkage void noinstr el0t_64_fiq_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el0t_64_fiq_handler(struct pt_regs *regs)
+DEFINE_HANDLER(0, t, 64, fiq)
 {
 	__el0_fiq_handler_common(regs);
 }
@@ -751,7 +807,8 @@ static void noinstr __el0_error_handler_common(struct pt_regs *regs)
 	exit_to_user_mode(regs);
 }
 
-asmlinkage void noinstr el0t_64_error_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el0t_64_error_handler(struct pt_regs *regs)
+DEFINE_HANDLER(0, t, 64, error)
 {
 	__el0_error_handler_common(regs);
 }
@@ -773,7 +830,8 @@ static void noinstr el0_svc_compat(struct pt_regs *regs)
 	exit_to_user_mode(regs);
 }
 
-asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
+DEFINE_HANDLER(0, t, 32, sync)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -817,17 +875,20 @@ asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
 	}
 }
 
-asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs)
+DEFINE_HANDLER(0, t, 32, irq)
 {
 	__el0_irq_handler_common(regs);
 }
 
-asmlinkage void noinstr el0t_32_fiq_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el0t_32_fiq_handler(struct pt_regs *regs)
+DEFINE_HANDLER(0, t, 32, fiq)
 {
 	__el0_fiq_handler_common(regs);
 }
 
-asmlinkage void noinstr el0t_32_error_handler(struct pt_regs *regs)
+//asmlinkage void noinstr el0t_32_error_handler(struct pt_regs *regs)
+DEFINE_HANDLER(0, t, 32, error)
 {
 	__el0_error_handler_common(regs);
 }
