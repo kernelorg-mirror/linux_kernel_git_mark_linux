@@ -262,12 +262,12 @@ NOKPROBE_SYMBOL(kgdb_step_brk_fn);
 
 static struct break_hook kgdb_brkpt_hook = {
 	.fn		= kgdb_brk_fn,
-	.imm		= KGDB_DYN_DBG_BRK_IMM,
+	.imm		= BRK_IMM_KGDB_DYNAMIC,
 };
 
 static struct break_hook kgdb_compiled_brkpt_hook = {
 	.fn		= kgdb_compiled_brk_fn,
-	.imm		= KGDB_COMPILED_DBG_BRK_IMM,
+	.imm		= BRK_IMM_KGDB_COMPILED,
 };
 
 static struct step_hook kgdb_step_hook = {
@@ -348,7 +348,7 @@ int kgdb_arch_set_breakpoint(struct kgdb_bkpt *bpt)
 		return err;
 
 	return aarch64_insn_write((void *)bpt->bpt_addr,
-			(u32)AARCH64_BREAK_KGDB_DYN_DBG);
+			(u32)AARCH64_BREAK_KGDB_DYNAMIC);
 }
 
 int kgdb_arch_remove_breakpoint(struct kgdb_bkpt *bpt)

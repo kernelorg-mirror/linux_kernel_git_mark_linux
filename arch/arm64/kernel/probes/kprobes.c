@@ -343,7 +343,7 @@ kprobe_breakpoint_handler(struct pt_regs *regs, unsigned long esr)
 }
 
 static struct break_hook kprobes_break_hook = {
-	.imm = KPROBES_BRK_IMM,
+	.imm = BRK_IMM_KPROBES,
 	.fn = kprobe_breakpoint_handler,
 };
 
@@ -367,7 +367,7 @@ kprobe_breakpoint_ss_handler(struct pt_regs *regs, unsigned long esr)
 }
 
 static struct break_hook kprobes_break_ss_hook = {
-	.imm = KPROBES_BRK_SS_IMM,
+	.imm = BRK_IMM_KPROBES_SS,
 	.fn = kprobe_breakpoint_ss_handler,
 };
 

@@ -18,6 +18,6 @@
  * BRK instruction for provoking a fault on purpose
  * Unlike kgdb, #imm16 value with unallocated handler is used for faulting.
  */
-#define AARCH64_BREAK_FAULT	(AARCH64_BREAK_MON | (FAULT_BRK_IMM << 5))
+#define AARCH64_BREAK_FAULT	(AARCH64_BREAK_MON | (BRK_IMM_FAULT << 5))
 
 #endif /* __ASM_INSN_DEF_H */

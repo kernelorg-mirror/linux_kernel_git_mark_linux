@@ -963,7 +963,7 @@ void do_serror(struct pt_regs *regs, unsigned long esr)
 int is_valid_bugaddr(unsigned long addr)
 {
 	/*
-	 * bug_handler() only called for BRK #BUG_BRK_IMM.
+	 * bug_handler() only called for BRK #BRK_IMM_BUG.
 	 * So the answer is trivial -- any spurious instances with no
 	 * bug table entry will be rejected by report_bug() and passed
 	 * back to the debug-monitors code and handled as a fatal
@@ -995,7 +995,7 @@ static int bug_handler(struct pt_regs *regs, unsigned long esr)
 
 static struct break_hook bug_break_hook = {
 	.fn = bug_handler,
-	.imm = BUG_BRK_IMM,
+	.imm = BRK_IMM_BUG,
 };
 
 #ifdef CONFIG_CFI_CLANG
@@ -1004,8 +1004,8 @@ static int cfi_handler(struct pt_regs *regs, unsigned long esr)
 	unsigned long target;
 	u32 type;
 
-	target = pt_regs_read_reg(regs, FIELD_GET(CFI_BRK_IMM_TARGET, esr));
-	type = (u32)pt_regs_read_reg(regs, FIELD_GET(CFI_BRK_IMM_TYPE, esr));
+	target = pt_regs_read_reg(regs, FIELD_GET(BRK_IMM_CFI_TARGET, esr));
+	type = (u32)pt_regs_read_reg(regs, FIELD_GET(BRK_IMM_CFI_TYPE, esr));
 
 	switch (report_cfi_failure(regs, regs->pc, &target, type)) {
 	case BUG_TRAP_TYPE_BUG:
@@ -1025,8 +1025,8 @@ static int cfi_handler(struct pt_regs *regs, unsigned long esr)
 
 static struct break_hook cfi_break_hook = {
 	.fn = cfi_handler,
-	.imm = CFI_BRK_IMM_BASE,
-	.mask = CFI_BRK_IMM_MASK,
+	.imm = BRK_IMM_CFI_BASE,
+	.mask = BRK_IMM_CFI_MASK,
 };
 #endif /* CONFIG_CFI_CLANG */
 
@@ -1042,7 +1042,7 @@ static int reserved_fault_handler(struct pt_regs *regs, unsigned long esr)
 
 static struct break_hook fault_break_hook = {
 	.fn = reserved_fault_handler,
-	.imm = FAULT_BRK_IMM,
+	.imm = BRK_IMM_FAULT,
 };
 
 #ifdef CONFIG_KASAN_SW_TAGS
@@ -1086,22 +1086,22 @@ static int kasan_handler(struct pt_regs *regs, unsigned long esr)
 
 static struct break_hook kasan_break_hook = {
 	.fn	= kasan_handler,
-	.imm	= KASAN_BRK_IMM,
-	.mask	= KASAN_BRK_MASK,
+	.imm	= BRK_IMM_KASAN_BASE,
+	.mask	= BRK_IMM_KASAN_MASK,
 };
 #endif
 
 #ifdef CONFIG_UBSAN_TRAP
 static int ubsan_handler(struct pt_regs *regs, unsigned long esr)
 {
-	die(report_ubsan_failure(regs, esr & UBSAN_BRK_MASK), regs, esr);
+	die(report_ubsan_failure(regs, esr & BRK_IMM_UBSAN_MASK), regs, esr);
 	return DBG_HOOK_HANDLED;
 }
 
 static struct break_hook ubsan_break_hook = {
 	.fn	= ubsan_handler,
-	.imm	= UBSAN_BRK_IMM,
-	.mask	= UBSAN_BRK_MASK,
+	.imm	= BRK_IMM_UBSAN_BASE,
+	.mask	= BRK_IMM_UBSAN_MASK,
 };
 #endif
 
@@ -1115,15 +1115,15 @@ int __init early_brk64(unsigned long addr, unsigned long esr,
 		struct pt_regs *regs)
 {
 #ifdef CONFIG_CFI_CLANG
-	if ((esr_comment(esr) & ~CFI_BRK_IMM_MASK) == CFI_BRK_IMM_BASE)
+	if ((esr_comment(esr) & ~BRK_IMM_CFI_MASK) == BRK_IMM_CFI_BASE)
 		return cfi_handler(regs, esr) != DBG_HOOK_HANDLED;
 #endif
 #ifdef CONFIG_KASAN_SW_TAGS
-	if ((esr_comment(esr) & ~KASAN_BRK_MASK) == KASAN_BRK_IMM)
+	if ((esr_comment(esr) & ~BRK_IMM_KASAN_MASK) == BRK_IMM_KASAN_BASE)
 		return kasan_handler(regs, esr) != DBG_HOOK_HANDLED;
 #endif
 #ifdef CONFIG_UBSAN_TRAP
-	if ((esr_comment(esr) & ~UBSAN_BRK_MASK) == UBSAN_BRK_IMM)
+	if ((esr_comment(esr) & ~BRK_IMM_UBSAN_MASK) == BRK_IMM_UBSAN_BASE)
 		return ubsan_handler(regs, esr) != DBG_HOOK_HANDLED;
 #endif
 	return bug_handler(regs, esr) != DBG_HOOK_HANDLED;

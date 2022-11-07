@@ -36,7 +36,7 @@ _BUGVERBOSE_LOCATION(__FILE__, __LINE__)		\
 
 #define ASM_BUG_FLAGS(flags)				\
 	__BUG_ENTRY(flags)				\
-	brk	BUG_BRK_IMM
+	brk	BRK_IMM_BUG
 
 #define ASM_BUG()	ASM_BUG_FLAGS(0)
 
