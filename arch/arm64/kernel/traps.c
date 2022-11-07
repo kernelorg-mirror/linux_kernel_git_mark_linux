@@ -1105,8 +1105,6 @@ static struct break_hook ubsan_break_hook = {
 };
 #endif
 
-#define esr_comment(esr) ((esr) & ESR_ELx_BRK64_ISS_COMMENT_MASK)
-
 /*
  * Initial handler for AArch64 BRK exceptions
  * This handler only used until debug_traps_init().
@@ -1114,19 +1112,26 @@ static struct break_hook ubsan_break_hook = {
 int __init early_brk64(unsigned long addr, unsigned long esr,
 		struct pt_regs *regs)
 {
+	u16 imm = FIELD_GET(ESR_ELx_BRK64_ISS_COMMENT_MASK, esr);
+
+	switch (imm) {
 #ifdef CONFIG_CFI_CLANG
-	if ((esr_comment(esr) & ~BRK_IMM_CFI_MASK) == BRK_IMM_CFI_BASE)
+	case BRK_IMM_CFI_BASE ... (BRK_IMM_CFI_BASE | BRK_IMM_CFI_MASK):
 		return cfi_handler(regs, esr) != DBG_HOOK_HANDLED;
 #endif
 #ifdef CONFIG_KASAN_SW_TAGS
-	if ((esr_comment(esr) & ~BRK_IMM_KASAN_MASK) == BRK_IMM_KASAN_BASE)
+	case BRK_IMM_KASAN_BASE ... (BRK_IMM_KASAN_BASE | BRK_IMM_KASAN_MASK):
 		return kasan_handler(regs, esr) != DBG_HOOK_HANDLED;
 #endif
 #ifdef CONFIG_UBSAN_TRAP
-	if ((esr_comment(esr) & ~BRK_IMM_UBSAN_MASK) == BRK_IMM_UBSAN_BASE)
+	case BRK_IMM_UBSAN_BASE ... (BRK_IMM_UBSAN_BASE | BRK_IMM_UBSAN_MASK):
 		return ubsan_handler(regs, esr) != DBG_HOOK_HANDLED;
 #endif
-	return bug_handler(regs, esr) != DBG_HOOK_HANDLED;
+	case BRK_IMM_BUG:
+		return bug_handler(regs, esr) != DBG_HOOK_HANDLED;
+	default:
+		return -EINVAL;
+	}
 }
 
 void __init trap_init(void)
