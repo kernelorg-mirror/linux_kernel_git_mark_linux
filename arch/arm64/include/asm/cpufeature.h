@@ -447,7 +447,7 @@ static __always_inline bool system_capabilities_finalized(void)
  */
 static __always_inline bool cpus_have_cap(unsigned int num)
 {
-	if (num >= ARM64_NCAPS)
+	if (!cpucap_is_compiletime_possible(num))
 		return false;
 	return arch_test_bit(num, system_cpucaps);
 }
@@ -462,8 +462,6 @@ static __always_inline bool cpus_have_cap(unsigned int num)
  */
 static __always_inline bool __cpus_have_const_cap(int num)
 {
-	if (num >= ARM64_NCAPS)
-		return false;
 	return alternative_has_cap_unlikely(num);
 }
 
@@ -496,6 +494,13 @@ static __always_inline bool cpus_have_final_cap(int num)
  */
 static __always_inline bool cpus_have_const_cap(int num)
 {
+	/*
+	 * Avoid the system_capabilities_finalized() alternative if we know the
+	 * cap isn't possible.
+	 */
+	if (!cpucap_is_compiletime_possible(num))
+		return false;
+
 	if (is_hyp_code())
 		return cpus_have_final_cap(num);
 	else if (system_capabilities_finalized())

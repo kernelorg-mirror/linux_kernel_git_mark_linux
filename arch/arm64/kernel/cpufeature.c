@@ -939,14 +939,18 @@ static void __init
 init_cpucap_indirect_list_from_array(const struct arm64_cpu_capabilities *caps)
 {
 	for (; caps->matches; caps++) {
-		if (WARN(caps->capability >= ARM64_NCAPS,
-			"Invalid capability %d\n", caps->capability))
+		unsigned int cap = caps->capability;
+
+		if (WARN(cap >= ARM64_NCAPS,
+			 "cpucap %d is invalid\n", cap))
 			continue;
-		if (WARN(cpucap_ptrs[caps->capability],
-			"Duplicate entry for capability %d\n",
-			caps->capability))
+		if (WARN(!cpucap_is_compiletime_possible(cap),
+			 "cpucap %d is not compile-time possible\n", cap))
 			continue;
-		cpucap_ptrs[caps->capability] = caps;
+		if (WARN(cpucap_ptrs[cap],
+			 "cpucap %d has duplicate entries\n", cap))
+			continue;
+		cpucap_ptrs[cap] = caps;
 	}
 }
 
