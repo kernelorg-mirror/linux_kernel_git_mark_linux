@@ -185,7 +185,7 @@ static void __apply_alternatives(const struct alt_region *region,
 	 */
 	if (!is_module) {
 		dsb(ish);
-		icache_inval_all_pou();
+		icache_inval_all_pou_nopatch();
 		isb();
 
 		bitmap_or(applied_alternatives, applied_alternatives,
