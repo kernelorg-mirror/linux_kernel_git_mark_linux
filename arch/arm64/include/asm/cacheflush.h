@@ -136,7 +136,7 @@ static __always_inline void icache_inval_all_pou_nopatch(void)
 
 static __always_inline void icache_inval_all_pou(void)
 {
-	if (cpus_have_const_cap(ARM64_HAS_CACHE_DIC))
+	if (alternative_has_cap_unlikely(ARM64_HAS_CACHE_DIC))
 		return;
 
 	icache_inval_all_pou_nopatch();
