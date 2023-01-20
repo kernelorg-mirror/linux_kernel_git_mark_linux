@@ -21,6 +21,7 @@
 
 #ifndef __ASSEMBLY__
 
+#include <linux/bug.h>
 #include <linux/stringify.h>
 
 #define ALTINSTR_ENTRY(cpucap)					              \
@@ -265,6 +266,28 @@ l_yes:
 	return true;
 }
 
+static __always_inline bool system_capabilities_finalized(void)
+{
+	return alternative_has_cap_likely(ARM64_ALWAYS_SYSTEM);
+}
+
+static __always_inline bool
+alternative_has_final_cap_likely(const unsigned long cpucap)
+{
+	if (!system_capabilities_finalized())
+		BUG();
+
+	return alternative_has_cap_likely(cpucap);
+}
+
+static __always_inline bool
+alternative_has_final_cap_unlikely(const unsigned long cpucap)
+{
+	if (!system_capabilities_finalized())
+		BUG();
+
+	return alternative_has_cap_unlikely(cpucap);
+}
 #endif /* __ASSEMBLY__ */
 
 #endif /* __ASM_ALTERNATIVE_MACROS_H */
