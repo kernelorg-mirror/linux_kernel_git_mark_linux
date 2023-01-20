@@ -27,6 +27,8 @@ cpucap_is_compiletime_possible(unsigned int cap)
 		return false;
 
 	switch (cap) {
+	case ARM64_WORKAROUND_NVIDIA_CARMEL_CNP:
+		return IS_ENABLED(CONFIG_NVIDIA_CARMEL_CNP_ERRATUM);
 	default:
 		return true;
 	}
