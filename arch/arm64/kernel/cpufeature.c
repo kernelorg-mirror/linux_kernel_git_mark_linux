@@ -2091,10 +2091,8 @@ static void cpu_enable_mte(struct arm64_cpu_capabilities const *cap)
 
 static void elf_hwcap_fixup(void)
 {
-#ifdef CONFIG_ARM64_ERRATUM_1742098
-	if (cpus_have_const_cap(ARM64_WORKAROUND_1742098))
+	if (cpus_have_cap(ARM64_WORKAROUND_1742098))
 		compat_elf_hwcap2 &= ~COMPAT_HWCAP2_AES;
-#endif /* ARM64_ERRATUM_1742098 */
 }
 
 #ifdef CONFIG_KVM
