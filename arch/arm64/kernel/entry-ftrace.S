@@ -82,8 +82,7 @@ SYM_CODE_START(ftrace_caller)
 	str	x30, [sp, #FREGS_PC]
 
 #ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
-	/* Set custom_tramp to zero  */
-	str	xzr, [sp, #FREGS_CUSTOM_TRAMP]
+	str	xzr, [sp, #FREGS_DIRECT_TRAMP]
 #endif
 
 	/* Create a frame record for the callsite above the ftrace regs */
@@ -129,7 +128,7 @@ SYM_INNER_LABEL(ftrace_call, SYM_L_GLOBAL)
 	ldr	x10, [sp, #FREGS_PC]
 
 #ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
-	ldr	x11, [sp, #FREGS_CUSTOM_TRAMP]
+	ldr	x11, [sp, #FREGS_DIRECT_TRAMP]
 	cbz	x11, 1f
 	/* Set x9 to parent ip before jump to custom trampoline */
 	mov	x9,  x30

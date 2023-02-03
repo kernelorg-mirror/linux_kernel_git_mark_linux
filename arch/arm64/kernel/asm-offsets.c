@@ -94,7 +94,7 @@ int main(void)
   DEFINE(FREGS_SP,		offsetof(struct ftrace_regs, sp));
   DEFINE(FREGS_PC,		offsetof(struct ftrace_regs, pc));
 #ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
-  DEFINE(FREGS_CUSTOM_TRAMP,	offsetof(struct ftrace_regs, custom_tramp));
+  DEFINE(FREGS_DIRECT_TRAMP,	offsetof(struct ftrace_regs, direct_tramp));
 #endif
   DEFINE(FREGS_SIZE,		sizeof(struct ftrace_regs));
   BLANK();

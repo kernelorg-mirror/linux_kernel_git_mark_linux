@@ -79,7 +79,7 @@ struct ftrace_regs {
 	unsigned long regs[9];
 
 #ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
-	unsigned long custom_tramp;
+	unsigned long direct_tramp;
 #else
 	unsigned long __unused;
 #endif
@@ -154,7 +154,7 @@ static inline void arch_ftrace_set_direct_caller(struct ftrace_regs *fregs,
 	 * The ftrace trampoline will return to this address instead of the
 	 * instrumented function.
 	 */
-	fregs->custom_tramp = addr;
+	fregs->direct_tramp = addr;
 }
 #endif /* CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS */
 
