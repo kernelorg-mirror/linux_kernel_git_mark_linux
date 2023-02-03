@@ -70,20 +70,25 @@ struct ftrace_ops;
 
 #define arch_ftrace_get_regs(regs) NULL
 
+/*
+ * Note: sizeof(struct ftrace_regs) must be a multiple of 16 to ensure correct
+ * stack alignment
+ */
 struct ftrace_regs {
 	/* x0 - x8 */
 	unsigned long regs[9];
+
+#ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
+	unsigned long custom_tramp;
+#else
 	unsigned long __unused;
+#endif
 
 	unsigned long fp;
 	unsigned long lr;
 
 	unsigned long sp;
 	unsigned long pc;
-
-#ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
-	unsigned long custom_tramp;
-#endif
 };
 
 static __always_inline unsigned long
