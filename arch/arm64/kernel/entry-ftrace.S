@@ -52,11 +52,12 @@ SYM_CODE_START(ftrace_caller)
 	ldr	x11, [x11, #-(4 * AARCH64_INSN_SIZE)]		// op
 
 #ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
-	/* If the op has a direct call address, return to it */
-	ldr	x12, [x11, #FTRACE_OPS_DIRECT_CALL]		// op->direct_call
-	cbz	x12, 1f
-	ret	x12
-1:
+	/*
+	 * If the op has a direct call, handle it immediately without
+	 * saving/restoring registers.
+	 */
+	ldr	x17, [x11, #FTRACE_OPS_DIRECT_CALL]		// op->direct_call
+	cbnz	x17, ftrace_caller_direct
 #endif
 #endif
 
@@ -73,6 +74,10 @@ SYM_CODE_START(ftrace_caller)
 	stp	x6, x7, [sp, #FREGS_X6]
 	str	x8,     [sp, #FREGS_X8]
 
+#ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
+	str	xzr, [sp, #FREGS_DIRECT_TRAMP]
+#endif
+
 	/* Save the callsite's FP, LR, SP */
 	str	x29, [sp, #FREGS_FP]
 	str	x9,  [sp, #FREGS_LR]
@@ -80,10 +85,6 @@ SYM_CODE_START(ftrace_caller)
 
 	/* Save the PC after the ftrace callsite */
 	str	x30, [sp, #FREGS_PC]
-
-#ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
-	str	xzr, [sp, #FREGS_DIRECT_TRAMP]
-#endif
 
 	/* Create a frame record for the callsite above the ftrace regs */
 	stp	x29, x9, [sp, #FREGS_SIZE + 16]
@@ -122,35 +123,60 @@ SYM_INNER_LABEL(ftrace_call, SYM_L_GLOBAL)
 	ldp	x6, x7, [sp, #FREGS_X6]
 	ldr	x8,     [sp, #FREGS_X8]
 
-	/* Restore the callsite's FP, LR, PC */
+	/* Restore the callsite's FP */
 	ldr	x29, [sp, #FREGS_FP]
-	ldr	x30, [sp, #FREGS_LR]
-	ldr	x10, [sp, #FREGS_PC]
 
 #ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
-	ldr	x11, [sp, #FREGS_DIRECT_TRAMP]
-	cbz	x11, 1f
-	/* Set x9 to parent ip before jump to custom trampoline */
-	mov	x9,  x30
-	/* Set lr to self ip */
-	ldr	x30, [sp, #FREGS_PC]
-	/* Set x10 (used for return address) to custom trampoline */
-	mov	x10, x11
-1:
+	ldr	x17, [sp, #FREGS_DIRECT_TRAMP]
+	cbnz	x17, ftrace_caller_direct_late
 #endif
+
+	/* Restore the callsite's LR and PC */
+	ldr	x30, [sp, #FREGS_LR]
+	ldr	x9,  [sp, #FREGS_PC]
 
 	/* Restore the callsite's SP */
 	add	sp, sp, #FREGS_SIZE + 32
 
-	ret	x10
+	ret	x9
+
+#ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
+SYM_INNER_LABEL(ftrace_caller_direct_late, SYM_L_LOCAL)
+	/*
+	 * Head to a direct trmapoline in x17 after having run other tracers.
+	 * The ftrace_regs are live, and x0-x8 and FP have been restored. The
+	 * LR, PC, and SP have not been restored.
+	 */
+
+	/*
+	 * Restore the callsite's LR and PC matching the trampoline calling
+	 * convention.
+	 */
+	ldr	x9,  [sp, #FREGS_LR]
+	ldr	x30, [sp, #FREGS_PC]
+
+	/* Restore the callsite's SP */
+	add	sp, sp, #FREGS_SIZE + 32
+
+SYM_INNER_LABEL(ftrace_caller_direct, SYM_L_LOCAL)
+	/*
+	 * Head to a direct trampoline in x17.
+	 *
+	 * We use `BR X17` as this can safely land on a `BTI C` or `PACIASP` in
+	 * the trampoline, and will not unbalance any return stack.
+	 */
+	br	x17
+#endif /* CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS */
 SYM_CODE_END(ftrace_caller)
 
+#ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
 SYM_CODE_START(ftrace_stub_direct_tramp)
 	bti	c
 	mov	x10, x30
 	mov	x30, x9
 	ret	x10
 SYM_CODE_END(ftrace_stub_direct_tramp)
+#endif /* CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS */
 
 #else /* CONFIG_DYNAMIC_FTRACE_WITH_ARGS */
 
