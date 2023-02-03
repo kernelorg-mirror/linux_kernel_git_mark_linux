@@ -146,6 +146,13 @@ SYM_INNER_LABEL(ftrace_call, SYM_L_GLOBAL)
 	ret	x10
 SYM_CODE_END(ftrace_caller)
 
+SYM_CODE_START(ftrace_stub_direct_tramp)
+	bti	c
+	mov	x10, x30
+	mov	x30, x9
+	ret	x10
+SYM_CODE_END(ftrace_stub_direct_tramp)
+
 #else /* CONFIG_DYNAMIC_FTRACE_WITH_ARGS */
 
 /*
