@@ -1129,6 +1129,8 @@ int __init early_brk64(unsigned long addr, unsigned long esr,
 #endif
 	case BRK_IMM_BUG:
 		return bug_handler(regs, esr) != DBG_HOOK_HANDLED;
+	case BRK_IMM_FAULT:
+		return reserved_fault_handler(regs, esr) != DBG_HOOK_HANDLED;
 	default:
 		return -EINVAL;
 	}
