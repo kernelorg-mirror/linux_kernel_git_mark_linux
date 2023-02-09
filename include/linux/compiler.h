@@ -157,17 +157,27 @@ void ftrace_likely_update(struct ftrace_likely_data *f, int val,
 
 #define absolute_pointer(val)	RELOC_HIDE((void *)(val), 0)
 
+/* Format: __UNIQUE_ID_<name>_<__COUNTER__> */
+#define __UNIQUE_ID(name)					\
+	__PASTE(__UNIQUE_ID_,					\
+	__PASTE(name,						\
+	__PASTE(_, __COUNTER__)))
+
 #ifndef OPTIMIZER_HIDE_VAR
 /* Make the optimizer believe the variable can be manipulated arbitrarily. */
 #define OPTIMIZER_HIDE_VAR(var)						\
 	__asm__ ("" : "=r" (var) : "0" (var))
 #endif
 
-/* Format: __UNIQUE_ID_<name>_<__COUNTER__> */
-#define __UNIQUE_ID(name)					\
-	__PASTE(__UNIQUE_ID_,					\
-	__PASTE(name,						\
-	__PASTE(_, __COUNTER__)))
+#define __OPTIMIZER_HIDE_UNIQUE(expr, hidden_var)		\
+({								\
+	typeof(expr) hidden_var = (expr);			\
+	OPTIMIZER_HIDE_VAR(hidden_var);				\
+	hidden_var;						\
+})
+
+#define OPTIMIZER_HIDE_EXPR(expr)				\
+	__OPTIMIZER_HIDE_UNIQUE((expr), __UNIQUE_ID(hidden))
 
 /**
  * data_race - mark an expression as containing intentional data races
