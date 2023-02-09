@@ -2965,6 +2965,16 @@ config RATIONAL_KUNIT_TEST
 
 	  If unsure, say N.
 
+config RELIABLE_STACKTRACE_KUNIT_TEST
+	bool "KUnit test for reliable stacktrace functions"
+	depends on HAVE_RELIABLE_STACKTRACE
+	depends on KUNIT
+	default KUNIT_ALL_TESTS
+	help
+	  Test if the kernel's reliable stacktrace functions behave correctly.
+
+	  If unsure, say N.
+
 config MEMCPY_KUNIT_TEST
 	tristate "Test memcpy(), memmove(), and memset() functions at runtime" if !KUNIT_ALL_TESTS
 	depends on KUNIT
