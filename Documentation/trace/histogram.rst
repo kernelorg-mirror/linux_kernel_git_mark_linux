@@ -1771,8 +1771,8 @@ using the same key and variable from yet another event::
 
   # echo 'hist:key=pid:wakeupswitch_lat=$wakeup_lat+$switchtime_lat ...' >> event3/trigger
 
-Expressions support the use of addition, subtraction, multiplication and
-division operators (+-\*/).
+Expressions support the use of addition, subtraction, multiplication,
+division, modulus operators (+-\*/%).
 
 Note if division by zero cannot be detected at parse time (i.e. the
 divisor is not a constant), the result will be -1.

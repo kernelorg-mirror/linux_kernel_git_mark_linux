@@ -103,6 +103,7 @@ enum field_op_id {
 	FIELD_OP_UNARY_MINUS,
 	FIELD_OP_DIV,
 	FIELD_OP_MULT,
+	FIELD_OP_MOD,
 };
 
 enum hist_field_fn {
@@ -131,6 +132,7 @@ enum hist_field_fn {
 	HIST_FIELD_FN_PLUS,
 	HIST_FIELD_FN_DIV,
 	HIST_FIELD_FN_MULT,
+	HIST_FIELD_FN_MOD,
 	HIST_FIELD_FN_DIV_POWER2,
 	HIST_FIELD_FN_DIV_NOT_POWER2,
 	HIST_FIELD_FN_DIV_MULT_SHIFT,
@@ -434,6 +436,21 @@ static u64 hist_field_mult(struct hist_field *hist_field,
 	u64 val2 = hist_fn_call(operand2, elt, buffer, rbe, event);
 
 	return val1 * val2;
+}
+
+static u64 hist_field_mod(struct hist_field *hist_field,
+			  struct tracing_map_elt *elt,
+			  struct trace_buffer *buffer,
+			  struct ring_buffer_event *rbe,
+			  void *event)
+{
+	struct hist_field *operand1 = hist_field->operands[0];
+	struct hist_field *operand2 = hist_field->operands[1];
+
+	u64 val1 = hist_fn_call(operand1, elt, buffer, rbe, event);
+	u64 val2 = hist_fn_call(operand2, elt, buffer, rbe, event);
+
+	return val1 % val2;
 }
 
 static u64 hist_field_unary_minus(struct hist_field *hist_field,
@@ -1796,6 +1813,9 @@ static char *expr_str(struct hist_field *field, unsigned int level)
 	case FIELD_OP_MULT:
 		strcat(expr, "*");
 		break;
+	case FIELD_OP_MOD:
+		strcat(expr, "%");
+		break;
 	default:
 		kfree(expr);
 		return NULL;
@@ -1859,8 +1879,8 @@ static int contains_operator(char *str, char **sep)
 		return field_op;
 
 	/*
-	 * Second, consider the higher precedence multiplication and division
-	 * operators.
+	 * Second, consider the higher precedence multiplication, division, and
+	 * modulus operators.
 	 */
 	op = strrchr(str, '/');
 	if (op > *sep) {
@@ -1872,6 +1892,12 @@ static int contains_operator(char *str, char **sep)
 	if (op > *sep) {
 		*sep = op;
 		field_op = FIELD_OP_MULT;
+	}
+
+	op = strrchr(str, '%');
+	if (op > *sep) {
+		*sep = op;
+		field_op = FIELD_OP_MOD;
 	}
 
 	return field_op;
@@ -2697,6 +2723,9 @@ static struct hist_field *parse_expr(struct hist_trigger_data *hist_data,
 		break;
 	case FIELD_OP_MULT:
 		op_fn = HIST_FIELD_FN_MULT;
+		break;
+	case FIELD_OP_MOD:
+		op_fn = HIST_FIELD_FN_MOD;
 		break;
 	default:
 		ret = -EINVAL;
@@ -4289,6 +4318,8 @@ static u64 hist_fn_call(struct hist_field *hist_field,
 		return hist_field_div(hist_field, elt, buffer, rbe, event);
 	case HIST_FIELD_FN_MULT:
 		return hist_field_mult(hist_field, elt, buffer, rbe, event);
+	case HIST_FIELD_FN_MOD:
+		return hist_field_mod(hist_field, elt, buffer, rbe, event);
 	case HIST_FIELD_FN_DIV_POWER2:
 		return div_by_power_of_two(hist_field, elt, buffer, rbe, event);
 	case HIST_FIELD_FN_DIV_NOT_POWER2:
