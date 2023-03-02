@@ -1813,13 +1813,15 @@ static char *expr_str(struct hist_field *field, unsigned int level)
 static int contains_operator(char *str, char **sep)
 {
 	enum field_op_id field_op = FIELD_OP_NONE;
-	char *minus_op, *plus_op, *div_op, *mult_op;
+	char *op;
 
+	*sep = NULL;
 
 	/*
-	 * Report the last occurrence of the operators first, so that the
-	 * expression is evaluated left to right. This is important since
-	 * subtraction and division are not associative.
+	 * For operators of the same precedence report the last occurrence of
+	 * the operators first, so that the expression is evaluated left to
+	 * right. This is important since subtraction and division are not
+	 * associative.
 	 *
 	 *	e.g
 	 *		64/8/4/2 is 1, i.e 64/8/4/2 = ((64/8)/4)/2
@@ -1830,68 +1832,46 @@ static int contains_operator(char *str, char **sep)
 	 * First, find lower precedence addition and subtraction
 	 * since the expression will be evaluated recursively.
 	 */
-	minus_op = strrchr(str, '-');
-	if (minus_op) {
+	op = strrchr(str, '-');
+	if (op > *sep) {
+		*sep = op;
+
 		/*
 		 * Unary minus is not supported in sub-expressions. If
 		 * present, it is always the next root operator.
 		 */
-		if (minus_op == str) {
-			field_op = FIELD_OP_UNARY_MINUS;
-			goto out;
-		}
+		if (op == str)
+			return FIELD_OP_UNARY_MINUS;
 
 		field_op = FIELD_OP_MINUS;
 	}
 
-	plus_op = strrchr(str, '+');
-	if (plus_op || minus_op) {
-		/*
-		 * For operators of the same precedence use to rightmost as the
-		 * root, so that the expression is evaluated left to right.
-		 */
-		if (plus_op > minus_op)
-			field_op = FIELD_OP_PLUS;
-		goto out;
+	op = strrchr(str, '+');
+	if (op > *sep) {
+		*sep = op;
+		field_op = FIELD_OP_PLUS;
 	}
 
 	/*
-	 * Multiplication and division have higher precedence than addition and
-	 * subtraction.
+	 * If we've found a low-precedence operator, we're done.
 	 */
-	div_op = strrchr(str, '/');
-	if (div_op)
-		field_op = FIELD_OP_DIV;
+	if (*sep)
+		return field_op;
 
-	mult_op = strrchr(str, '*');
 	/*
-	 * For operators of the same precedence use to rightmost as the
-	 * root, so that the expression is evaluated left to right.
+	 * Second, consider the higher precedence multiplication and division
+	 * operators.
 	 */
-	if (mult_op > div_op)
-		field_op = FIELD_OP_MULT;
+	op = strrchr(str, '/');
+	if (op > *sep) {
+		*sep = op;
+		field_op = FIELD_OP_DIV;
+	}
 
-out:
-	if (sep) {
-		switch (field_op) {
-		case FIELD_OP_UNARY_MINUS:
-		case FIELD_OP_MINUS:
-			*sep = minus_op;
-			break;
-		case FIELD_OP_PLUS:
-			*sep = plus_op;
-			break;
-		case FIELD_OP_DIV:
-			*sep = div_op;
-			break;
-		case FIELD_OP_MULT:
-			*sep = mult_op;
-			break;
-		case FIELD_OP_NONE:
-		default:
-			*sep = NULL;
-			break;
-		}
+	op = strrchr(str, '*');
+	if (op > *sep) {
+		*sep = op;
+		field_op = FIELD_OP_MULT;
 	}
 
 	return field_op;
