@@ -155,6 +155,11 @@ static void usercopy_test_exit(struct kunit *test)
 	usercopy_env_free(env);
 }
 
+static char buf_zero(int offset)
+{
+	return 0;
+}
+
 static char buf_pattern(int offset)
 {
 	return offset & 0xff;
@@ -230,6 +235,7 @@ static void assert_size_valid(struct kunit *test,
 
 static void assert_src_valid(struct kunit *test,
 			     const struct usercopy_params *params,
+			     char (*buf_expected)(int),
 			     const char *src, long src_offset,
 			     unsigned long ret)
 {
@@ -240,9 +246,10 @@ static void assert_src_valid(struct kunit *test,
 	 * A usercopy MUST NOT modify the source buffer.
 	 */
 	for (int i = 0; i < PAGE_SIZE; i++) {
+		char expected = buf_expected(i);
 		char val = src[i];
 
-		if (val == buf_pattern(i))
+		if (val == expected)
 			continue;
 
 		KUNIT_ASSERT_FAILURE(test,
@@ -253,6 +260,7 @@ static void assert_src_valid(struct kunit *test,
 
 static void assert_dst_valid(struct kunit *test,
 			     const struct usercopy_params *params,
+			     char (*buf_expected)(int),
 			     const char *dst, long dst_offset,
 			     unsigned long ret)
 {
@@ -263,9 +271,10 @@ static void assert_dst_valid(struct kunit *test,
 	 * A usercopy MUST NOT modify any bytes before the destination buffer.
 	 */
 	for (int i = 0; i < dst_offset; i++) {
+		char expected = buf_expected(i);
 		char val = dst[i];
 
-		if (val == 0)
+		if (val == expected)
 			continue;
 
 		KUNIT_ASSERT_FAILURE(test,
@@ -278,9 +287,10 @@ static void assert_dst_valid(struct kunit *test,
 	 * buffer.
 	 */
 	for (int i = dst_offset + size - ret; i < PAGE_SIZE; i++) {
+		char expected = buf_expected(i);
 		char val = dst[i];
 
-		if (val == 0)
+		if (val == expected)
 			continue;
 
 		KUNIT_ASSERT_FAILURE(test,
@@ -316,6 +326,29 @@ static void assert_copy_valid(struct kunit *test,
 	}
 }
 
+static void assert_clear_valid(struct kunit *test,
+			       const struct usercopy_params *params,
+			       const char *dst, long dst_offset,
+			       unsigned long ret)
+{
+	const unsigned long size = params->size;
+	const long offset = params->offset;
+
+	/*
+	 * Have we actually zeroed the bytes we expected to?
+	 */
+	for (int i = 0; i < params->size - ret; i++) {
+		char dst_val = dst[dst_offset + i];
+
+		if (dst_val == 0)
+			continue;
+
+		KUNIT_ASSERT_FAILURE(test,
+			"zeroed bytes incorrect (dst_page[%ld+%d]=0x%x, offset=%ld, size=%lu, ret=%lu",
+			dst_offset, i, dst_val,
+			offset, size, ret);
+	}
+}
 static unsigned long do_copy_to_user(const struct usercopy_env *env,
 				     const struct usercopy_params *params)
 {
@@ -339,6 +372,19 @@ static unsigned long do_copy_from_user(const struct usercopy_env *env,
 
 	kthread_use_mm(env->mm);
 	ret = raw_copy_from_user(kptr, uptr, params->size);
+	kthread_unuse_mm(env->mm);
+
+	return ret;
+}
+
+static unsigned long do_clear_user(const struct usercopy_env *env,
+				   const struct usercopy_params *params)
+{
+	void __user *uptr = (void __user *)UBUF_ADDR_BASE + params->offset;
+	unsigned long ret;
+
+	kthread_use_mm(env->mm);
+	ret = clear_user(uptr, params->size);
 	kthread_unuse_mm(env->mm);
 
 	return ret;
@@ -378,8 +424,10 @@ static void test_copy_to_user(struct kunit *test)
 		ret = do_copy_to_user(env, &params);
 
 		assert_size_valid(test, &params, ret);
-		assert_src_valid(test, &params, env->kbuf, 0, ret);
-		assert_dst_valid(test, &params, env->ubuf, params.offset, ret);
+		assert_src_valid(test, &params, buf_pattern,
+				 env->kbuf, 0, ret);
+		assert_dst_valid(test, &params, buf_zero,
+				 env->ubuf, params.offset, ret);
 		assert_copy_valid(test, &params,
 				  env->ubuf, params.offset,
 				  env->kbuf, 0,
@@ -404,8 +452,10 @@ static void test_copy_from_user(struct kunit *test)
 		ret = do_copy_from_user(env, &params);
 
 		assert_size_valid(test, &params, ret);
-		assert_src_valid(test, &params, env->ubuf, params.offset, ret);
-		assert_dst_valid(test, &params, env->kbuf, 0, ret);
+		assert_src_valid(test, &params, buf_pattern,
+				 env->ubuf, params.offset, ret);
+		assert_dst_valid(test, &params, buf_zero,
+				 env->kbuf, 0, ret);
 		assert_copy_valid(test, &params,
 				  env->kbuf, 0,
 				  env->ubuf, params.offset,
@@ -413,9 +463,34 @@ static void test_copy_from_user(struct kunit *test)
 	}
 }
 
+static void test_clear_user(struct kunit *test)
+{
+	const struct usercopy_env *env = test->priv;
+
+	for_each_size_offset(size, offset) {
+		const struct usercopy_params params = {
+			.size = size,
+			.offset = offset,
+		};
+		unsigned long ret;
+
+		buf_init_pattern(env->ubuf);
+
+		ret = do_clear_user(env, &params);
+
+		assert_size_valid(test, &params, ret);
+		assert_dst_valid(test, &params, buf_pattern,
+				 env->ubuf, params.offset, ret);
+		assert_clear_valid(test, &params,
+				   env->ubuf, params.offset,
+				   ret);
+	}
+}
+
 static struct kunit_case usercopy_cases[] = {
 	KUNIT_CASE(test_copy_to_user),
 	KUNIT_CASE(test_copy_from_user),
+	KUNIT_CASE(test_clear_user),
 	{ /* sentinel */ }
 };
 
