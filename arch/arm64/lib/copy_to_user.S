@@ -7,7 +7,6 @@
 
 #include <asm/asm-uaccess.h>
 #include <asm/assembler.h>
-#include <asm/cache.h>
 
 #define USER_OFF(off, x...)	USER(fixup_offset_##off, x)
 
