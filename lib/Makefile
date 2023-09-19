@@ -36,6 +36,8 @@ lib-y := ctype.o string.o vsprintf.o cmdline.o \
 	 nmi_backtrace.o win_minmax.o memcat_p.o \
 	 buildid.o
 
+lib-y	+= atomic_outlined.o
+
 lib-$(CONFIG_PRINTK) += dump_stack.o
 lib-$(CONFIG_SMP) += cpumask.o
 
