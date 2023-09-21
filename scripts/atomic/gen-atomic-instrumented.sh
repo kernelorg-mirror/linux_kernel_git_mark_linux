@@ -62,7 +62,7 @@ gen_proto_order_variant()
 
 	local atomicname="${atomic}_${pfx}${name}${sfx}${order}"
 
-	local ret="$(gen_ret_type "${meta}" "${int}")"
+	local rettype="$(gen_ret_type "${meta}" "${int}")"
 	local params="$(gen_params "${int}" "${atomic}" "$@")"
 	local checks="$(gen_params_checks "${meta}" "${order}" "$@")"
 	local args="$(gen_args "$@")"
@@ -71,7 +71,7 @@ gen_proto_order_variant()
 	gen_kerneldoc "" "${meta}" "${pfx}" "${name}" "${sfx}" "${order}" "${atomic}" "${int}" "$@"
 
 cat <<EOF
-static __always_inline ${ret}
+static __always_inline ${rettype}
 ${atomicname}(${params})
 {
 ${checks}
