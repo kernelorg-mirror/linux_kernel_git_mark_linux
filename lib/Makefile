@@ -249,6 +249,8 @@ obj-$(CONFIG_LRU_CACHE) += lru_cache.o
 
 obj-$(CONFIG_GENERIC_CSUM) += checksum.o
 
+obj-$(CONFIG_ATOMIC_STATS) += atomic_stats.o
+
 obj-$(CONFIG_GENERIC_ATOMIC64) += atomic64.o
 
 obj-$(CONFIG_ATOMIC64_SELFTEST) += atomic64_test.o

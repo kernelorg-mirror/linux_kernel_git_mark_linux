@@ -3039,4 +3039,14 @@ config RUST_KERNEL_DOCTESTS
 
 endmenu # "Rust"
 
+config ATOMIC_STATS
+	bool "Collect statistics for atomic operations"
+	help
+	  This option instruments atomic/atomic64/atomic_long operations with
+	  code to gather statistics such as number of times called.
+
+	  This will impact performance.
+
+	  If unsure, say N.
+
 endmenu # Kernel hacking

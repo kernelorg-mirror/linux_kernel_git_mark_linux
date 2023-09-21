@@ -77,6 +77,11 @@ gen_proto_order_variant()
 		ret=$(printf "\treturn ret;")
 	fi
 
+	local stats="$(printf "\tatomic_stats_inc(${atomicname});")"
+	if meta_in "$meta" "bB"; then
+		stats="$(printf "\tatomic_stats_bool_inc(${atomicname}, ret);")"
+	fi
+
 	gen_kerneldoc "" "${meta}" "${pfx}" "${name}" "${sfx}" "${order}" "${atomic}" "${int}" "$@"
 
 cat <<EOF
@@ -86,6 +91,7 @@ ${atomicname}(${params})
 ${retdef}
 ${checks}
 	${reteq}raw_${atomicname}(${args});
+${stats}
 ${ret}
 }
 EOF
@@ -154,6 +160,7 @@ cat << EOF
 #ifndef _LINUX_ATOMIC_INSTRUMENTED_H
 #define _LINUX_ATOMIC_INSTRUMENTED_H
 
+#include <linux/atomic/atomic-stats.h>
 #include <linux/build_bug.h>
 #include <linux/compiler.h>
 #include <linux/instrumented.h>
