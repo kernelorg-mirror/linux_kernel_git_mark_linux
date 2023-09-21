@@ -29,8 +29,10 @@
 static __always_inline int
 atomic_read(const atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read(v, sizeof(*v));
-	return raw_atomic_read(v);
+	ret = raw_atomic_read(v);
+	return ret;
 }
 
 /**
@@ -46,8 +48,10 @@ atomic_read(const atomic_t *v)
 static __always_inline int
 atomic_read_acquire(const atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read(v, sizeof(*v));
-	return raw_atomic_read_acquire(v);
+	ret = raw_atomic_read_acquire(v);
+	return ret;
 }
 
 /**
@@ -64,8 +68,10 @@ atomic_read_acquire(const atomic_t *v)
 static __always_inline void
 atomic_set(atomic_t *v, int i)
 {
+
 	instrument_atomic_write(v, sizeof(*v));
 	raw_atomic_set(v, i);
+
 }
 
 /**
@@ -82,9 +88,11 @@ atomic_set(atomic_t *v, int i)
 static __always_inline void
 atomic_set_release(atomic_t *v, int i)
 {
+
 	kcsan_release();
 	instrument_atomic_write(v, sizeof(*v));
 	raw_atomic_set_release(v, i);
+
 }
 
 /**
@@ -101,8 +109,10 @@ atomic_set_release(atomic_t *v, int i)
 static __always_inline void
 atomic_add(int i, atomic_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_add(i, v);
+
 }
 
 /**
@@ -119,9 +129,11 @@ atomic_add(int i, atomic_t *v)
 static __always_inline int
 atomic_add_return(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_add_return(i, v);
+	ret = raw_atomic_add_return(i, v);
+	return ret;
 }
 
 /**
@@ -138,8 +150,10 @@ atomic_add_return(int i, atomic_t *v)
 static __always_inline int
 atomic_add_return_acquire(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_add_return_acquire(i, v);
+	ret = raw_atomic_add_return_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -156,9 +170,11 @@ atomic_add_return_acquire(int i, atomic_t *v)
 static __always_inline int
 atomic_add_return_release(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_add_return_release(i, v);
+	ret = raw_atomic_add_return_release(i, v);
+	return ret;
 }
 
 /**
@@ -175,8 +191,10 @@ atomic_add_return_release(int i, atomic_t *v)
 static __always_inline int
 atomic_add_return_relaxed(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_add_return_relaxed(i, v);
+	ret = raw_atomic_add_return_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -193,9 +211,11 @@ atomic_add_return_relaxed(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_add(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_add(i, v);
+	ret = raw_atomic_fetch_add(i, v);
+	return ret;
 }
 
 /**
@@ -212,8 +232,10 @@ atomic_fetch_add(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_add_acquire(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_add_acquire(i, v);
+	ret = raw_atomic_fetch_add_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -230,9 +252,11 @@ atomic_fetch_add_acquire(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_add_release(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_add_release(i, v);
+	ret = raw_atomic_fetch_add_release(i, v);
+	return ret;
 }
 
 /**
@@ -249,8 +273,10 @@ atomic_fetch_add_release(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_add_relaxed(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_add_relaxed(i, v);
+	ret = raw_atomic_fetch_add_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -267,8 +293,10 @@ atomic_fetch_add_relaxed(int i, atomic_t *v)
 static __always_inline void
 atomic_sub(int i, atomic_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_sub(i, v);
+
 }
 
 /**
@@ -285,9 +313,11 @@ atomic_sub(int i, atomic_t *v)
 static __always_inline int
 atomic_sub_return(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_sub_return(i, v);
+	ret = raw_atomic_sub_return(i, v);
+	return ret;
 }
 
 /**
@@ -304,8 +334,10 @@ atomic_sub_return(int i, atomic_t *v)
 static __always_inline int
 atomic_sub_return_acquire(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_sub_return_acquire(i, v);
+	ret = raw_atomic_sub_return_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -322,9 +354,11 @@ atomic_sub_return_acquire(int i, atomic_t *v)
 static __always_inline int
 atomic_sub_return_release(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_sub_return_release(i, v);
+	ret = raw_atomic_sub_return_release(i, v);
+	return ret;
 }
 
 /**
@@ -341,8 +375,10 @@ atomic_sub_return_release(int i, atomic_t *v)
 static __always_inline int
 atomic_sub_return_relaxed(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_sub_return_relaxed(i, v);
+	ret = raw_atomic_sub_return_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -359,9 +395,11 @@ atomic_sub_return_relaxed(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_sub(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_sub(i, v);
+	ret = raw_atomic_fetch_sub(i, v);
+	return ret;
 }
 
 /**
@@ -378,8 +416,10 @@ atomic_fetch_sub(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_sub_acquire(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_sub_acquire(i, v);
+	ret = raw_atomic_fetch_sub_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -396,9 +436,11 @@ atomic_fetch_sub_acquire(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_sub_release(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_sub_release(i, v);
+	ret = raw_atomic_fetch_sub_release(i, v);
+	return ret;
 }
 
 /**
@@ -415,8 +457,10 @@ atomic_fetch_sub_release(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_sub_relaxed(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_sub_relaxed(i, v);
+	ret = raw_atomic_fetch_sub_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -432,8 +476,10 @@ atomic_fetch_sub_relaxed(int i, atomic_t *v)
 static __always_inline void
 atomic_inc(atomic_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_inc(v);
+
 }
 
 /**
@@ -449,9 +495,11 @@ atomic_inc(atomic_t *v)
 static __always_inline int
 atomic_inc_return(atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_inc_return(v);
+	ret = raw_atomic_inc_return(v);
+	return ret;
 }
 
 /**
@@ -467,8 +515,10 @@ atomic_inc_return(atomic_t *v)
 static __always_inline int
 atomic_inc_return_acquire(atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_inc_return_acquire(v);
+	ret = raw_atomic_inc_return_acquire(v);
+	return ret;
 }
 
 /**
@@ -484,9 +534,11 @@ atomic_inc_return_acquire(atomic_t *v)
 static __always_inline int
 atomic_inc_return_release(atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_inc_return_release(v);
+	ret = raw_atomic_inc_return_release(v);
+	return ret;
 }
 
 /**
@@ -502,8 +554,10 @@ atomic_inc_return_release(atomic_t *v)
 static __always_inline int
 atomic_inc_return_relaxed(atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_inc_return_relaxed(v);
+	ret = raw_atomic_inc_return_relaxed(v);
+	return ret;
 }
 
 /**
@@ -519,9 +573,11 @@ atomic_inc_return_relaxed(atomic_t *v)
 static __always_inline int
 atomic_fetch_inc(atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_inc(v);
+	ret = raw_atomic_fetch_inc(v);
+	return ret;
 }
 
 /**
@@ -537,8 +593,10 @@ atomic_fetch_inc(atomic_t *v)
 static __always_inline int
 atomic_fetch_inc_acquire(atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_inc_acquire(v);
+	ret = raw_atomic_fetch_inc_acquire(v);
+	return ret;
 }
 
 /**
@@ -554,9 +612,11 @@ atomic_fetch_inc_acquire(atomic_t *v)
 static __always_inline int
 atomic_fetch_inc_release(atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_inc_release(v);
+	ret = raw_atomic_fetch_inc_release(v);
+	return ret;
 }
 
 /**
@@ -572,8 +632,10 @@ atomic_fetch_inc_release(atomic_t *v)
 static __always_inline int
 atomic_fetch_inc_relaxed(atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_inc_relaxed(v);
+	ret = raw_atomic_fetch_inc_relaxed(v);
+	return ret;
 }
 
 /**
@@ -589,8 +651,10 @@ atomic_fetch_inc_relaxed(atomic_t *v)
 static __always_inline void
 atomic_dec(atomic_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_dec(v);
+
 }
 
 /**
@@ -606,9 +670,11 @@ atomic_dec(atomic_t *v)
 static __always_inline int
 atomic_dec_return(atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_dec_return(v);
+	ret = raw_atomic_dec_return(v);
+	return ret;
 }
 
 /**
@@ -624,8 +690,10 @@ atomic_dec_return(atomic_t *v)
 static __always_inline int
 atomic_dec_return_acquire(atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_dec_return_acquire(v);
+	ret = raw_atomic_dec_return_acquire(v);
+	return ret;
 }
 
 /**
@@ -641,9 +709,11 @@ atomic_dec_return_acquire(atomic_t *v)
 static __always_inline int
 atomic_dec_return_release(atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_dec_return_release(v);
+	ret = raw_atomic_dec_return_release(v);
+	return ret;
 }
 
 /**
@@ -659,8 +729,10 @@ atomic_dec_return_release(atomic_t *v)
 static __always_inline int
 atomic_dec_return_relaxed(atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_dec_return_relaxed(v);
+	ret = raw_atomic_dec_return_relaxed(v);
+	return ret;
 }
 
 /**
@@ -676,9 +748,11 @@ atomic_dec_return_relaxed(atomic_t *v)
 static __always_inline int
 atomic_fetch_dec(atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_dec(v);
+	ret = raw_atomic_fetch_dec(v);
+	return ret;
 }
 
 /**
@@ -694,8 +768,10 @@ atomic_fetch_dec(atomic_t *v)
 static __always_inline int
 atomic_fetch_dec_acquire(atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_dec_acquire(v);
+	ret = raw_atomic_fetch_dec_acquire(v);
+	return ret;
 }
 
 /**
@@ -711,9 +787,11 @@ atomic_fetch_dec_acquire(atomic_t *v)
 static __always_inline int
 atomic_fetch_dec_release(atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_dec_release(v);
+	ret = raw_atomic_fetch_dec_release(v);
+	return ret;
 }
 
 /**
@@ -729,8 +807,10 @@ atomic_fetch_dec_release(atomic_t *v)
 static __always_inline int
 atomic_fetch_dec_relaxed(atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_dec_relaxed(v);
+	ret = raw_atomic_fetch_dec_relaxed(v);
+	return ret;
 }
 
 /**
@@ -747,8 +827,10 @@ atomic_fetch_dec_relaxed(atomic_t *v)
 static __always_inline void
 atomic_and(int i, atomic_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_and(i, v);
+
 }
 
 /**
@@ -765,9 +847,11 @@ atomic_and(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_and(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_and(i, v);
+	ret = raw_atomic_fetch_and(i, v);
+	return ret;
 }
 
 /**
@@ -784,8 +868,10 @@ atomic_fetch_and(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_and_acquire(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_and_acquire(i, v);
+	ret = raw_atomic_fetch_and_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -802,9 +888,11 @@ atomic_fetch_and_acquire(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_and_release(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_and_release(i, v);
+	ret = raw_atomic_fetch_and_release(i, v);
+	return ret;
 }
 
 /**
@@ -821,8 +909,10 @@ atomic_fetch_and_release(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_and_relaxed(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_and_relaxed(i, v);
+	ret = raw_atomic_fetch_and_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -839,8 +929,10 @@ atomic_fetch_and_relaxed(int i, atomic_t *v)
 static __always_inline void
 atomic_andnot(int i, atomic_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_andnot(i, v);
+
 }
 
 /**
@@ -857,9 +949,11 @@ atomic_andnot(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_andnot(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_andnot(i, v);
+	ret = raw_atomic_fetch_andnot(i, v);
+	return ret;
 }
 
 /**
@@ -876,8 +970,10 @@ atomic_fetch_andnot(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_andnot_acquire(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_andnot_acquire(i, v);
+	ret = raw_atomic_fetch_andnot_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -894,9 +990,11 @@ atomic_fetch_andnot_acquire(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_andnot_release(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_andnot_release(i, v);
+	ret = raw_atomic_fetch_andnot_release(i, v);
+	return ret;
 }
 
 /**
@@ -913,8 +1011,10 @@ atomic_fetch_andnot_release(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_andnot_relaxed(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_andnot_relaxed(i, v);
+	ret = raw_atomic_fetch_andnot_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -931,8 +1031,10 @@ atomic_fetch_andnot_relaxed(int i, atomic_t *v)
 static __always_inline void
 atomic_or(int i, atomic_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_or(i, v);
+
 }
 
 /**
@@ -949,9 +1051,11 @@ atomic_or(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_or(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_or(i, v);
+	ret = raw_atomic_fetch_or(i, v);
+	return ret;
 }
 
 /**
@@ -968,8 +1072,10 @@ atomic_fetch_or(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_or_acquire(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_or_acquire(i, v);
+	ret = raw_atomic_fetch_or_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -986,9 +1092,11 @@ atomic_fetch_or_acquire(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_or_release(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_or_release(i, v);
+	ret = raw_atomic_fetch_or_release(i, v);
+	return ret;
 }
 
 /**
@@ -1005,8 +1113,10 @@ atomic_fetch_or_release(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_or_relaxed(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_or_relaxed(i, v);
+	ret = raw_atomic_fetch_or_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -1023,8 +1133,10 @@ atomic_fetch_or_relaxed(int i, atomic_t *v)
 static __always_inline void
 atomic_xor(int i, atomic_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_xor(i, v);
+
 }
 
 /**
@@ -1041,9 +1153,11 @@ atomic_xor(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_xor(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_xor(i, v);
+	ret = raw_atomic_fetch_xor(i, v);
+	return ret;
 }
 
 /**
@@ -1060,8 +1174,10 @@ atomic_fetch_xor(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_xor_acquire(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_xor_acquire(i, v);
+	ret = raw_atomic_fetch_xor_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -1078,9 +1194,11 @@ atomic_fetch_xor_acquire(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_xor_release(int i, atomic_t *v)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_xor_release(i, v);
+	ret = raw_atomic_fetch_xor_release(i, v);
+	return ret;
 }
 
 /**
@@ -1097,8 +1215,10 @@ atomic_fetch_xor_release(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_xor_relaxed(int i, atomic_t *v)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_xor_relaxed(i, v);
+	ret = raw_atomic_fetch_xor_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -1115,9 +1235,11 @@ atomic_fetch_xor_relaxed(int i, atomic_t *v)
 static __always_inline int
 atomic_xchg(atomic_t *v, int new)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_xchg(v, new);
+	ret = raw_atomic_xchg(v, new);
+	return ret;
 }
 
 /**
@@ -1134,8 +1256,10 @@ atomic_xchg(atomic_t *v, int new)
 static __always_inline int
 atomic_xchg_acquire(atomic_t *v, int new)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_xchg_acquire(v, new);
+	ret = raw_atomic_xchg_acquire(v, new);
+	return ret;
 }
 
 /**
@@ -1152,9 +1276,11 @@ atomic_xchg_acquire(atomic_t *v, int new)
 static __always_inline int
 atomic_xchg_release(atomic_t *v, int new)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_xchg_release(v, new);
+	ret = raw_atomic_xchg_release(v, new);
+	return ret;
 }
 
 /**
@@ -1171,8 +1297,10 @@ atomic_xchg_release(atomic_t *v, int new)
 static __always_inline int
 atomic_xchg_relaxed(atomic_t *v, int new)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_xchg_relaxed(v, new);
+	ret = raw_atomic_xchg_relaxed(v, new);
+	return ret;
 }
 
 /**
@@ -1190,9 +1318,11 @@ atomic_xchg_relaxed(atomic_t *v, int new)
 static __always_inline int
 atomic_cmpxchg(atomic_t *v, int old, int new)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_cmpxchg(v, old, new);
+	ret = raw_atomic_cmpxchg(v, old, new);
+	return ret;
 }
 
 /**
@@ -1210,8 +1340,10 @@ atomic_cmpxchg(atomic_t *v, int old, int new)
 static __always_inline int
 atomic_cmpxchg_acquire(atomic_t *v, int old, int new)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_cmpxchg_acquire(v, old, new);
+	ret = raw_atomic_cmpxchg_acquire(v, old, new);
+	return ret;
 }
 
 /**
@@ -1229,9 +1361,11 @@ atomic_cmpxchg_acquire(atomic_t *v, int old, int new)
 static __always_inline int
 atomic_cmpxchg_release(atomic_t *v, int old, int new)
 {
+	int ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_cmpxchg_release(v, old, new);
+	ret = raw_atomic_cmpxchg_release(v, old, new);
+	return ret;
 }
 
 /**
@@ -1249,8 +1383,10 @@ atomic_cmpxchg_release(atomic_t *v, int old, int new)
 static __always_inline int
 atomic_cmpxchg_relaxed(atomic_t *v, int old, int new)
 {
+	int ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_cmpxchg_relaxed(v, old, new);
+	ret = raw_atomic_cmpxchg_relaxed(v, old, new);
+	return ret;
 }
 
 /**
@@ -1269,10 +1405,12 @@ atomic_cmpxchg_relaxed(atomic_t *v, int old, int new)
 static __always_inline bool
 atomic_try_cmpxchg(atomic_t *v, int *old, int new)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic_try_cmpxchg(v, old, new);
+	ret = raw_atomic_try_cmpxchg(v, old, new);
+	return ret;
 }
 
 /**
@@ -1291,9 +1429,11 @@ atomic_try_cmpxchg(atomic_t *v, int *old, int new)
 static __always_inline bool
 atomic_try_cmpxchg_acquire(atomic_t *v, int *old, int new)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic_try_cmpxchg_acquire(v, old, new);
+	ret = raw_atomic_try_cmpxchg_acquire(v, old, new);
+	return ret;
 }
 
 /**
@@ -1312,10 +1452,12 @@ atomic_try_cmpxchg_acquire(atomic_t *v, int *old, int new)
 static __always_inline bool
 atomic_try_cmpxchg_release(atomic_t *v, int *old, int new)
 {
+	bool ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic_try_cmpxchg_release(v, old, new);
+	ret = raw_atomic_try_cmpxchg_release(v, old, new);
+	return ret;
 }
 
 /**
@@ -1334,9 +1476,11 @@ atomic_try_cmpxchg_release(atomic_t *v, int *old, int new)
 static __always_inline bool
 atomic_try_cmpxchg_relaxed(atomic_t *v, int *old, int new)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic_try_cmpxchg_relaxed(v, old, new);
+	ret = raw_atomic_try_cmpxchg_relaxed(v, old, new);
+	return ret;
 }
 
 /**
@@ -1353,9 +1497,11 @@ atomic_try_cmpxchg_relaxed(atomic_t *v, int *old, int new)
 static __always_inline bool
 atomic_sub_and_test(int i, atomic_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_sub_and_test(i, v);
+	ret = raw_atomic_sub_and_test(i, v);
+	return ret;
 }
 
 /**
@@ -1371,9 +1517,11 @@ atomic_sub_and_test(int i, atomic_t *v)
 static __always_inline bool
 atomic_dec_and_test(atomic_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_dec_and_test(v);
+	ret = raw_atomic_dec_and_test(v);
+	return ret;
 }
 
 /**
@@ -1389,9 +1537,11 @@ atomic_dec_and_test(atomic_t *v)
 static __always_inline bool
 atomic_inc_and_test(atomic_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_inc_and_test(v);
+	ret = raw_atomic_inc_and_test(v);
+	return ret;
 }
 
 /**
@@ -1408,9 +1558,11 @@ atomic_inc_and_test(atomic_t *v)
 static __always_inline bool
 atomic_add_negative(int i, atomic_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_add_negative(i, v);
+	ret = raw_atomic_add_negative(i, v);
+	return ret;
 }
 
 /**
@@ -1427,8 +1579,10 @@ atomic_add_negative(int i, atomic_t *v)
 static __always_inline bool
 atomic_add_negative_acquire(int i, atomic_t *v)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_add_negative_acquire(i, v);
+	ret = raw_atomic_add_negative_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -1445,9 +1599,11 @@ atomic_add_negative_acquire(int i, atomic_t *v)
 static __always_inline bool
 atomic_add_negative_release(int i, atomic_t *v)
 {
+	bool ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_add_negative_release(i, v);
+	ret = raw_atomic_add_negative_release(i, v);
+	return ret;
 }
 
 /**
@@ -1464,8 +1620,10 @@ atomic_add_negative_release(int i, atomic_t *v)
 static __always_inline bool
 atomic_add_negative_relaxed(int i, atomic_t *v)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_add_negative_relaxed(i, v);
+	ret = raw_atomic_add_negative_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -1483,9 +1641,11 @@ atomic_add_negative_relaxed(int i, atomic_t *v)
 static __always_inline int
 atomic_fetch_add_unless(atomic_t *v, int a, int u)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_fetch_add_unless(v, a, u);
+	ret = raw_atomic_fetch_add_unless(v, a, u);
+	return ret;
 }
 
 /**
@@ -1503,9 +1663,11 @@ atomic_fetch_add_unless(atomic_t *v, int a, int u)
 static __always_inline bool
 atomic_add_unless(atomic_t *v, int a, int u)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_add_unless(v, a, u);
+	ret = raw_atomic_add_unless(v, a, u);
+	return ret;
 }
 
 /**
@@ -1521,9 +1683,11 @@ atomic_add_unless(atomic_t *v, int a, int u)
 static __always_inline bool
 atomic_inc_not_zero(atomic_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_inc_not_zero(v);
+	ret = raw_atomic_inc_not_zero(v);
+	return ret;
 }
 
 /**
@@ -1539,9 +1703,11 @@ atomic_inc_not_zero(atomic_t *v)
 static __always_inline bool
 atomic_inc_unless_negative(atomic_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_inc_unless_negative(v);
+	ret = raw_atomic_inc_unless_negative(v);
+	return ret;
 }
 
 /**
@@ -1557,9 +1723,11 @@ atomic_inc_unless_negative(atomic_t *v)
 static __always_inline bool
 atomic_dec_unless_positive(atomic_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_dec_unless_positive(v);
+	ret = raw_atomic_dec_unless_positive(v);
+	return ret;
 }
 
 /**
@@ -1575,9 +1743,11 @@ atomic_dec_unless_positive(atomic_t *v)
 static __always_inline int
 atomic_dec_if_positive(atomic_t *v)
 {
+	int ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_dec_if_positive(v);
+	ret = raw_atomic_dec_if_positive(v);
+	return ret;
 }
 
 /**
@@ -1593,8 +1763,10 @@ atomic_dec_if_positive(atomic_t *v)
 static __always_inline s64
 atomic64_read(const atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read(v, sizeof(*v));
-	return raw_atomic64_read(v);
+	ret = raw_atomic64_read(v);
+	return ret;
 }
 
 /**
@@ -1610,8 +1782,10 @@ atomic64_read(const atomic64_t *v)
 static __always_inline s64
 atomic64_read_acquire(const atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read(v, sizeof(*v));
-	return raw_atomic64_read_acquire(v);
+	ret = raw_atomic64_read_acquire(v);
+	return ret;
 }
 
 /**
@@ -1628,8 +1802,10 @@ atomic64_read_acquire(const atomic64_t *v)
 static __always_inline void
 atomic64_set(atomic64_t *v, s64 i)
 {
+
 	instrument_atomic_write(v, sizeof(*v));
 	raw_atomic64_set(v, i);
+
 }
 
 /**
@@ -1646,9 +1822,11 @@ atomic64_set(atomic64_t *v, s64 i)
 static __always_inline void
 atomic64_set_release(atomic64_t *v, s64 i)
 {
+
 	kcsan_release();
 	instrument_atomic_write(v, sizeof(*v));
 	raw_atomic64_set_release(v, i);
+
 }
 
 /**
@@ -1665,8 +1843,10 @@ atomic64_set_release(atomic64_t *v, s64 i)
 static __always_inline void
 atomic64_add(s64 i, atomic64_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic64_add(i, v);
+
 }
 
 /**
@@ -1683,9 +1863,11 @@ atomic64_add(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_add_return(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_add_return(i, v);
+	ret = raw_atomic64_add_return(i, v);
+	return ret;
 }
 
 /**
@@ -1702,8 +1884,10 @@ atomic64_add_return(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_add_return_acquire(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_add_return_acquire(i, v);
+	ret = raw_atomic64_add_return_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -1720,9 +1904,11 @@ atomic64_add_return_acquire(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_add_return_release(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_add_return_release(i, v);
+	ret = raw_atomic64_add_return_release(i, v);
+	return ret;
 }
 
 /**
@@ -1739,8 +1925,10 @@ atomic64_add_return_release(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_add_return_relaxed(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_add_return_relaxed(i, v);
+	ret = raw_atomic64_add_return_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -1757,9 +1945,11 @@ atomic64_add_return_relaxed(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_add(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_add(i, v);
+	ret = raw_atomic64_fetch_add(i, v);
+	return ret;
 }
 
 /**
@@ -1776,8 +1966,10 @@ atomic64_fetch_add(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_add_acquire(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_add_acquire(i, v);
+	ret = raw_atomic64_fetch_add_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -1794,9 +1986,11 @@ atomic64_fetch_add_acquire(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_add_release(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_add_release(i, v);
+	ret = raw_atomic64_fetch_add_release(i, v);
+	return ret;
 }
 
 /**
@@ -1813,8 +2007,10 @@ atomic64_fetch_add_release(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_add_relaxed(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_add_relaxed(i, v);
+	ret = raw_atomic64_fetch_add_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -1831,8 +2027,10 @@ atomic64_fetch_add_relaxed(s64 i, atomic64_t *v)
 static __always_inline void
 atomic64_sub(s64 i, atomic64_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic64_sub(i, v);
+
 }
 
 /**
@@ -1849,9 +2047,11 @@ atomic64_sub(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_sub_return(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_sub_return(i, v);
+	ret = raw_atomic64_sub_return(i, v);
+	return ret;
 }
 
 /**
@@ -1868,8 +2068,10 @@ atomic64_sub_return(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_sub_return_acquire(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_sub_return_acquire(i, v);
+	ret = raw_atomic64_sub_return_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -1886,9 +2088,11 @@ atomic64_sub_return_acquire(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_sub_return_release(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_sub_return_release(i, v);
+	ret = raw_atomic64_sub_return_release(i, v);
+	return ret;
 }
 
 /**
@@ -1905,8 +2109,10 @@ atomic64_sub_return_release(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_sub_return_relaxed(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_sub_return_relaxed(i, v);
+	ret = raw_atomic64_sub_return_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -1923,9 +2129,11 @@ atomic64_sub_return_relaxed(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_sub(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_sub(i, v);
+	ret = raw_atomic64_fetch_sub(i, v);
+	return ret;
 }
 
 /**
@@ -1942,8 +2150,10 @@ atomic64_fetch_sub(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_sub_acquire(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_sub_acquire(i, v);
+	ret = raw_atomic64_fetch_sub_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -1960,9 +2170,11 @@ atomic64_fetch_sub_acquire(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_sub_release(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_sub_release(i, v);
+	ret = raw_atomic64_fetch_sub_release(i, v);
+	return ret;
 }
 
 /**
@@ -1979,8 +2191,10 @@ atomic64_fetch_sub_release(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_sub_relaxed(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_sub_relaxed(i, v);
+	ret = raw_atomic64_fetch_sub_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -1996,8 +2210,10 @@ atomic64_fetch_sub_relaxed(s64 i, atomic64_t *v)
 static __always_inline void
 atomic64_inc(atomic64_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic64_inc(v);
+
 }
 
 /**
@@ -2013,9 +2229,11 @@ atomic64_inc(atomic64_t *v)
 static __always_inline s64
 atomic64_inc_return(atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_inc_return(v);
+	ret = raw_atomic64_inc_return(v);
+	return ret;
 }
 
 /**
@@ -2031,8 +2249,10 @@ atomic64_inc_return(atomic64_t *v)
 static __always_inline s64
 atomic64_inc_return_acquire(atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_inc_return_acquire(v);
+	ret = raw_atomic64_inc_return_acquire(v);
+	return ret;
 }
 
 /**
@@ -2048,9 +2268,11 @@ atomic64_inc_return_acquire(atomic64_t *v)
 static __always_inline s64
 atomic64_inc_return_release(atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_inc_return_release(v);
+	ret = raw_atomic64_inc_return_release(v);
+	return ret;
 }
 
 /**
@@ -2066,8 +2288,10 @@ atomic64_inc_return_release(atomic64_t *v)
 static __always_inline s64
 atomic64_inc_return_relaxed(atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_inc_return_relaxed(v);
+	ret = raw_atomic64_inc_return_relaxed(v);
+	return ret;
 }
 
 /**
@@ -2083,9 +2307,11 @@ atomic64_inc_return_relaxed(atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_inc(atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_inc(v);
+	ret = raw_atomic64_fetch_inc(v);
+	return ret;
 }
 
 /**
@@ -2101,8 +2327,10 @@ atomic64_fetch_inc(atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_inc_acquire(atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_inc_acquire(v);
+	ret = raw_atomic64_fetch_inc_acquire(v);
+	return ret;
 }
 
 /**
@@ -2118,9 +2346,11 @@ atomic64_fetch_inc_acquire(atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_inc_release(atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_inc_release(v);
+	ret = raw_atomic64_fetch_inc_release(v);
+	return ret;
 }
 
 /**
@@ -2136,8 +2366,10 @@ atomic64_fetch_inc_release(atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_inc_relaxed(atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_inc_relaxed(v);
+	ret = raw_atomic64_fetch_inc_relaxed(v);
+	return ret;
 }
 
 /**
@@ -2153,8 +2385,10 @@ atomic64_fetch_inc_relaxed(atomic64_t *v)
 static __always_inline void
 atomic64_dec(atomic64_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic64_dec(v);
+
 }
 
 /**
@@ -2170,9 +2404,11 @@ atomic64_dec(atomic64_t *v)
 static __always_inline s64
 atomic64_dec_return(atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_dec_return(v);
+	ret = raw_atomic64_dec_return(v);
+	return ret;
 }
 
 /**
@@ -2188,8 +2424,10 @@ atomic64_dec_return(atomic64_t *v)
 static __always_inline s64
 atomic64_dec_return_acquire(atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_dec_return_acquire(v);
+	ret = raw_atomic64_dec_return_acquire(v);
+	return ret;
 }
 
 /**
@@ -2205,9 +2443,11 @@ atomic64_dec_return_acquire(atomic64_t *v)
 static __always_inline s64
 atomic64_dec_return_release(atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_dec_return_release(v);
+	ret = raw_atomic64_dec_return_release(v);
+	return ret;
 }
 
 /**
@@ -2223,8 +2463,10 @@ atomic64_dec_return_release(atomic64_t *v)
 static __always_inline s64
 atomic64_dec_return_relaxed(atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_dec_return_relaxed(v);
+	ret = raw_atomic64_dec_return_relaxed(v);
+	return ret;
 }
 
 /**
@@ -2240,9 +2482,11 @@ atomic64_dec_return_relaxed(atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_dec(atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_dec(v);
+	ret = raw_atomic64_fetch_dec(v);
+	return ret;
 }
 
 /**
@@ -2258,8 +2502,10 @@ atomic64_fetch_dec(atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_dec_acquire(atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_dec_acquire(v);
+	ret = raw_atomic64_fetch_dec_acquire(v);
+	return ret;
 }
 
 /**
@@ -2275,9 +2521,11 @@ atomic64_fetch_dec_acquire(atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_dec_release(atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_dec_release(v);
+	ret = raw_atomic64_fetch_dec_release(v);
+	return ret;
 }
 
 /**
@@ -2293,8 +2541,10 @@ atomic64_fetch_dec_release(atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_dec_relaxed(atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_dec_relaxed(v);
+	ret = raw_atomic64_fetch_dec_relaxed(v);
+	return ret;
 }
 
 /**
@@ -2311,8 +2561,10 @@ atomic64_fetch_dec_relaxed(atomic64_t *v)
 static __always_inline void
 atomic64_and(s64 i, atomic64_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic64_and(i, v);
+
 }
 
 /**
@@ -2329,9 +2581,11 @@ atomic64_and(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_and(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_and(i, v);
+	ret = raw_atomic64_fetch_and(i, v);
+	return ret;
 }
 
 /**
@@ -2348,8 +2602,10 @@ atomic64_fetch_and(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_and_acquire(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_and_acquire(i, v);
+	ret = raw_atomic64_fetch_and_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -2366,9 +2622,11 @@ atomic64_fetch_and_acquire(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_and_release(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_and_release(i, v);
+	ret = raw_atomic64_fetch_and_release(i, v);
+	return ret;
 }
 
 /**
@@ -2385,8 +2643,10 @@ atomic64_fetch_and_release(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_and_relaxed(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_and_relaxed(i, v);
+	ret = raw_atomic64_fetch_and_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -2403,8 +2663,10 @@ atomic64_fetch_and_relaxed(s64 i, atomic64_t *v)
 static __always_inline void
 atomic64_andnot(s64 i, atomic64_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic64_andnot(i, v);
+
 }
 
 /**
@@ -2421,9 +2683,11 @@ atomic64_andnot(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_andnot(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_andnot(i, v);
+	ret = raw_atomic64_fetch_andnot(i, v);
+	return ret;
 }
 
 /**
@@ -2440,8 +2704,10 @@ atomic64_fetch_andnot(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_andnot_acquire(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_andnot_acquire(i, v);
+	ret = raw_atomic64_fetch_andnot_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -2458,9 +2724,11 @@ atomic64_fetch_andnot_acquire(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_andnot_release(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_andnot_release(i, v);
+	ret = raw_atomic64_fetch_andnot_release(i, v);
+	return ret;
 }
 
 /**
@@ -2477,8 +2745,10 @@ atomic64_fetch_andnot_release(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_andnot_relaxed(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_andnot_relaxed(i, v);
+	ret = raw_atomic64_fetch_andnot_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -2495,8 +2765,10 @@ atomic64_fetch_andnot_relaxed(s64 i, atomic64_t *v)
 static __always_inline void
 atomic64_or(s64 i, atomic64_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic64_or(i, v);
+
 }
 
 /**
@@ -2513,9 +2785,11 @@ atomic64_or(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_or(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_or(i, v);
+	ret = raw_atomic64_fetch_or(i, v);
+	return ret;
 }
 
 /**
@@ -2532,8 +2806,10 @@ atomic64_fetch_or(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_or_acquire(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_or_acquire(i, v);
+	ret = raw_atomic64_fetch_or_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -2550,9 +2826,11 @@ atomic64_fetch_or_acquire(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_or_release(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_or_release(i, v);
+	ret = raw_atomic64_fetch_or_release(i, v);
+	return ret;
 }
 
 /**
@@ -2569,8 +2847,10 @@ atomic64_fetch_or_release(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_or_relaxed(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_or_relaxed(i, v);
+	ret = raw_atomic64_fetch_or_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -2587,8 +2867,10 @@ atomic64_fetch_or_relaxed(s64 i, atomic64_t *v)
 static __always_inline void
 atomic64_xor(s64 i, atomic64_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic64_xor(i, v);
+
 }
 
 /**
@@ -2605,9 +2887,11 @@ atomic64_xor(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_xor(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_xor(i, v);
+	ret = raw_atomic64_fetch_xor(i, v);
+	return ret;
 }
 
 /**
@@ -2624,8 +2908,10 @@ atomic64_fetch_xor(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_xor_acquire(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_xor_acquire(i, v);
+	ret = raw_atomic64_fetch_xor_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -2642,9 +2928,11 @@ atomic64_fetch_xor_acquire(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_xor_release(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_xor_release(i, v);
+	ret = raw_atomic64_fetch_xor_release(i, v);
+	return ret;
 }
 
 /**
@@ -2661,8 +2949,10 @@ atomic64_fetch_xor_release(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_xor_relaxed(s64 i, atomic64_t *v)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_xor_relaxed(i, v);
+	ret = raw_atomic64_fetch_xor_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -2679,9 +2969,11 @@ atomic64_fetch_xor_relaxed(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_xchg(atomic64_t *v, s64 new)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_xchg(v, new);
+	ret = raw_atomic64_xchg(v, new);
+	return ret;
 }
 
 /**
@@ -2698,8 +2990,10 @@ atomic64_xchg(atomic64_t *v, s64 new)
 static __always_inline s64
 atomic64_xchg_acquire(atomic64_t *v, s64 new)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_xchg_acquire(v, new);
+	ret = raw_atomic64_xchg_acquire(v, new);
+	return ret;
 }
 
 /**
@@ -2716,9 +3010,11 @@ atomic64_xchg_acquire(atomic64_t *v, s64 new)
 static __always_inline s64
 atomic64_xchg_release(atomic64_t *v, s64 new)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_xchg_release(v, new);
+	ret = raw_atomic64_xchg_release(v, new);
+	return ret;
 }
 
 /**
@@ -2735,8 +3031,10 @@ atomic64_xchg_release(atomic64_t *v, s64 new)
 static __always_inline s64
 atomic64_xchg_relaxed(atomic64_t *v, s64 new)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_xchg_relaxed(v, new);
+	ret = raw_atomic64_xchg_relaxed(v, new);
+	return ret;
 }
 
 /**
@@ -2754,9 +3052,11 @@ atomic64_xchg_relaxed(atomic64_t *v, s64 new)
 static __always_inline s64
 atomic64_cmpxchg(atomic64_t *v, s64 old, s64 new)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_cmpxchg(v, old, new);
+	ret = raw_atomic64_cmpxchg(v, old, new);
+	return ret;
 }
 
 /**
@@ -2774,8 +3074,10 @@ atomic64_cmpxchg(atomic64_t *v, s64 old, s64 new)
 static __always_inline s64
 atomic64_cmpxchg_acquire(atomic64_t *v, s64 old, s64 new)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_cmpxchg_acquire(v, old, new);
+	ret = raw_atomic64_cmpxchg_acquire(v, old, new);
+	return ret;
 }
 
 /**
@@ -2793,9 +3095,11 @@ atomic64_cmpxchg_acquire(atomic64_t *v, s64 old, s64 new)
 static __always_inline s64
 atomic64_cmpxchg_release(atomic64_t *v, s64 old, s64 new)
 {
+	s64 ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_cmpxchg_release(v, old, new);
+	ret = raw_atomic64_cmpxchg_release(v, old, new);
+	return ret;
 }
 
 /**
@@ -2813,8 +3117,10 @@ atomic64_cmpxchg_release(atomic64_t *v, s64 old, s64 new)
 static __always_inline s64
 atomic64_cmpxchg_relaxed(atomic64_t *v, s64 old, s64 new)
 {
+	s64 ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_cmpxchg_relaxed(v, old, new);
+	ret = raw_atomic64_cmpxchg_relaxed(v, old, new);
+	return ret;
 }
 
 /**
@@ -2833,10 +3139,12 @@ atomic64_cmpxchg_relaxed(atomic64_t *v, s64 old, s64 new)
 static __always_inline bool
 atomic64_try_cmpxchg(atomic64_t *v, s64 *old, s64 new)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic64_try_cmpxchg(v, old, new);
+	ret = raw_atomic64_try_cmpxchg(v, old, new);
+	return ret;
 }
 
 /**
@@ -2855,9 +3163,11 @@ atomic64_try_cmpxchg(atomic64_t *v, s64 *old, s64 new)
 static __always_inline bool
 atomic64_try_cmpxchg_acquire(atomic64_t *v, s64 *old, s64 new)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic64_try_cmpxchg_acquire(v, old, new);
+	ret = raw_atomic64_try_cmpxchg_acquire(v, old, new);
+	return ret;
 }
 
 /**
@@ -2876,10 +3186,12 @@ atomic64_try_cmpxchg_acquire(atomic64_t *v, s64 *old, s64 new)
 static __always_inline bool
 atomic64_try_cmpxchg_release(atomic64_t *v, s64 *old, s64 new)
 {
+	bool ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic64_try_cmpxchg_release(v, old, new);
+	ret = raw_atomic64_try_cmpxchg_release(v, old, new);
+	return ret;
 }
 
 /**
@@ -2898,9 +3210,11 @@ atomic64_try_cmpxchg_release(atomic64_t *v, s64 *old, s64 new)
 static __always_inline bool
 atomic64_try_cmpxchg_relaxed(atomic64_t *v, s64 *old, s64 new)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic64_try_cmpxchg_relaxed(v, old, new);
+	ret = raw_atomic64_try_cmpxchg_relaxed(v, old, new);
+	return ret;
 }
 
 /**
@@ -2917,9 +3231,11 @@ atomic64_try_cmpxchg_relaxed(atomic64_t *v, s64 *old, s64 new)
 static __always_inline bool
 atomic64_sub_and_test(s64 i, atomic64_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_sub_and_test(i, v);
+	ret = raw_atomic64_sub_and_test(i, v);
+	return ret;
 }
 
 /**
@@ -2935,9 +3251,11 @@ atomic64_sub_and_test(s64 i, atomic64_t *v)
 static __always_inline bool
 atomic64_dec_and_test(atomic64_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_dec_and_test(v);
+	ret = raw_atomic64_dec_and_test(v);
+	return ret;
 }
 
 /**
@@ -2953,9 +3271,11 @@ atomic64_dec_and_test(atomic64_t *v)
 static __always_inline bool
 atomic64_inc_and_test(atomic64_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_inc_and_test(v);
+	ret = raw_atomic64_inc_and_test(v);
+	return ret;
 }
 
 /**
@@ -2972,9 +3292,11 @@ atomic64_inc_and_test(atomic64_t *v)
 static __always_inline bool
 atomic64_add_negative(s64 i, atomic64_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_add_negative(i, v);
+	ret = raw_atomic64_add_negative(i, v);
+	return ret;
 }
 
 /**
@@ -2991,8 +3313,10 @@ atomic64_add_negative(s64 i, atomic64_t *v)
 static __always_inline bool
 atomic64_add_negative_acquire(s64 i, atomic64_t *v)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_add_negative_acquire(i, v);
+	ret = raw_atomic64_add_negative_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -3009,9 +3333,11 @@ atomic64_add_negative_acquire(s64 i, atomic64_t *v)
 static __always_inline bool
 atomic64_add_negative_release(s64 i, atomic64_t *v)
 {
+	bool ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_add_negative_release(i, v);
+	ret = raw_atomic64_add_negative_release(i, v);
+	return ret;
 }
 
 /**
@@ -3028,8 +3354,10 @@ atomic64_add_negative_release(s64 i, atomic64_t *v)
 static __always_inline bool
 atomic64_add_negative_relaxed(s64 i, atomic64_t *v)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_add_negative_relaxed(i, v);
+	ret = raw_atomic64_add_negative_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -3047,9 +3375,11 @@ atomic64_add_negative_relaxed(s64 i, atomic64_t *v)
 static __always_inline s64
 atomic64_fetch_add_unless(atomic64_t *v, s64 a, s64 u)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_fetch_add_unless(v, a, u);
+	ret = raw_atomic64_fetch_add_unless(v, a, u);
+	return ret;
 }
 
 /**
@@ -3067,9 +3397,11 @@ atomic64_fetch_add_unless(atomic64_t *v, s64 a, s64 u)
 static __always_inline bool
 atomic64_add_unless(atomic64_t *v, s64 a, s64 u)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_add_unless(v, a, u);
+	ret = raw_atomic64_add_unless(v, a, u);
+	return ret;
 }
 
 /**
@@ -3085,9 +3417,11 @@ atomic64_add_unless(atomic64_t *v, s64 a, s64 u)
 static __always_inline bool
 atomic64_inc_not_zero(atomic64_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_inc_not_zero(v);
+	ret = raw_atomic64_inc_not_zero(v);
+	return ret;
 }
 
 /**
@@ -3103,9 +3437,11 @@ atomic64_inc_not_zero(atomic64_t *v)
 static __always_inline bool
 atomic64_inc_unless_negative(atomic64_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_inc_unless_negative(v);
+	ret = raw_atomic64_inc_unless_negative(v);
+	return ret;
 }
 
 /**
@@ -3121,9 +3457,11 @@ atomic64_inc_unless_negative(atomic64_t *v)
 static __always_inline bool
 atomic64_dec_unless_positive(atomic64_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_dec_unless_positive(v);
+	ret = raw_atomic64_dec_unless_positive(v);
+	return ret;
 }
 
 /**
@@ -3139,9 +3477,11 @@ atomic64_dec_unless_positive(atomic64_t *v)
 static __always_inline s64
 atomic64_dec_if_positive(atomic64_t *v)
 {
+	s64 ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic64_dec_if_positive(v);
+	ret = raw_atomic64_dec_if_positive(v);
+	return ret;
 }
 
 /**
@@ -3157,8 +3497,10 @@ atomic64_dec_if_positive(atomic64_t *v)
 static __always_inline long
 atomic_long_read(const atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read(v, sizeof(*v));
-	return raw_atomic_long_read(v);
+	ret = raw_atomic_long_read(v);
+	return ret;
 }
 
 /**
@@ -3174,8 +3516,10 @@ atomic_long_read(const atomic_long_t *v)
 static __always_inline long
 atomic_long_read_acquire(const atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read(v, sizeof(*v));
-	return raw_atomic_long_read_acquire(v);
+	ret = raw_atomic_long_read_acquire(v);
+	return ret;
 }
 
 /**
@@ -3192,8 +3536,10 @@ atomic_long_read_acquire(const atomic_long_t *v)
 static __always_inline void
 atomic_long_set(atomic_long_t *v, long i)
 {
+
 	instrument_atomic_write(v, sizeof(*v));
 	raw_atomic_long_set(v, i);
+
 }
 
 /**
@@ -3210,9 +3556,11 @@ atomic_long_set(atomic_long_t *v, long i)
 static __always_inline void
 atomic_long_set_release(atomic_long_t *v, long i)
 {
+
 	kcsan_release();
 	instrument_atomic_write(v, sizeof(*v));
 	raw_atomic_long_set_release(v, i);
+
 }
 
 /**
@@ -3229,8 +3577,10 @@ atomic_long_set_release(atomic_long_t *v, long i)
 static __always_inline void
 atomic_long_add(long i, atomic_long_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_long_add(i, v);
+
 }
 
 /**
@@ -3247,9 +3597,11 @@ atomic_long_add(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_add_return(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_add_return(i, v);
+	ret = raw_atomic_long_add_return(i, v);
+	return ret;
 }
 
 /**
@@ -3266,8 +3618,10 @@ atomic_long_add_return(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_add_return_acquire(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_add_return_acquire(i, v);
+	ret = raw_atomic_long_add_return_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -3284,9 +3638,11 @@ atomic_long_add_return_acquire(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_add_return_release(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_add_return_release(i, v);
+	ret = raw_atomic_long_add_return_release(i, v);
+	return ret;
 }
 
 /**
@@ -3303,8 +3659,10 @@ atomic_long_add_return_release(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_add_return_relaxed(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_add_return_relaxed(i, v);
+	ret = raw_atomic_long_add_return_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -3321,9 +3679,11 @@ atomic_long_add_return_relaxed(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_add(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_add(i, v);
+	ret = raw_atomic_long_fetch_add(i, v);
+	return ret;
 }
 
 /**
@@ -3340,8 +3700,10 @@ atomic_long_fetch_add(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_add_acquire(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_add_acquire(i, v);
+	ret = raw_atomic_long_fetch_add_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -3358,9 +3720,11 @@ atomic_long_fetch_add_acquire(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_add_release(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_add_release(i, v);
+	ret = raw_atomic_long_fetch_add_release(i, v);
+	return ret;
 }
 
 /**
@@ -3377,8 +3741,10 @@ atomic_long_fetch_add_release(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_add_relaxed(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_add_relaxed(i, v);
+	ret = raw_atomic_long_fetch_add_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -3395,8 +3761,10 @@ atomic_long_fetch_add_relaxed(long i, atomic_long_t *v)
 static __always_inline void
 atomic_long_sub(long i, atomic_long_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_long_sub(i, v);
+
 }
 
 /**
@@ -3413,9 +3781,11 @@ atomic_long_sub(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_sub_return(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_sub_return(i, v);
+	ret = raw_atomic_long_sub_return(i, v);
+	return ret;
 }
 
 /**
@@ -3432,8 +3802,10 @@ atomic_long_sub_return(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_sub_return_acquire(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_sub_return_acquire(i, v);
+	ret = raw_atomic_long_sub_return_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -3450,9 +3822,11 @@ atomic_long_sub_return_acquire(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_sub_return_release(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_sub_return_release(i, v);
+	ret = raw_atomic_long_sub_return_release(i, v);
+	return ret;
 }
 
 /**
@@ -3469,8 +3843,10 @@ atomic_long_sub_return_release(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_sub_return_relaxed(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_sub_return_relaxed(i, v);
+	ret = raw_atomic_long_sub_return_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -3487,9 +3863,11 @@ atomic_long_sub_return_relaxed(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_sub(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_sub(i, v);
+	ret = raw_atomic_long_fetch_sub(i, v);
+	return ret;
 }
 
 /**
@@ -3506,8 +3884,10 @@ atomic_long_fetch_sub(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_sub_acquire(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_sub_acquire(i, v);
+	ret = raw_atomic_long_fetch_sub_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -3524,9 +3904,11 @@ atomic_long_fetch_sub_acquire(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_sub_release(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_sub_release(i, v);
+	ret = raw_atomic_long_fetch_sub_release(i, v);
+	return ret;
 }
 
 /**
@@ -3543,8 +3925,10 @@ atomic_long_fetch_sub_release(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_sub_relaxed(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_sub_relaxed(i, v);
+	ret = raw_atomic_long_fetch_sub_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -3560,8 +3944,10 @@ atomic_long_fetch_sub_relaxed(long i, atomic_long_t *v)
 static __always_inline void
 atomic_long_inc(atomic_long_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_long_inc(v);
+
 }
 
 /**
@@ -3577,9 +3963,11 @@ atomic_long_inc(atomic_long_t *v)
 static __always_inline long
 atomic_long_inc_return(atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_inc_return(v);
+	ret = raw_atomic_long_inc_return(v);
+	return ret;
 }
 
 /**
@@ -3595,8 +3983,10 @@ atomic_long_inc_return(atomic_long_t *v)
 static __always_inline long
 atomic_long_inc_return_acquire(atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_inc_return_acquire(v);
+	ret = raw_atomic_long_inc_return_acquire(v);
+	return ret;
 }
 
 /**
@@ -3612,9 +4002,11 @@ atomic_long_inc_return_acquire(atomic_long_t *v)
 static __always_inline long
 atomic_long_inc_return_release(atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_inc_return_release(v);
+	ret = raw_atomic_long_inc_return_release(v);
+	return ret;
 }
 
 /**
@@ -3630,8 +4022,10 @@ atomic_long_inc_return_release(atomic_long_t *v)
 static __always_inline long
 atomic_long_inc_return_relaxed(atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_inc_return_relaxed(v);
+	ret = raw_atomic_long_inc_return_relaxed(v);
+	return ret;
 }
 
 /**
@@ -3647,9 +4041,11 @@ atomic_long_inc_return_relaxed(atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_inc(atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_inc(v);
+	ret = raw_atomic_long_fetch_inc(v);
+	return ret;
 }
 
 /**
@@ -3665,8 +4061,10 @@ atomic_long_fetch_inc(atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_inc_acquire(atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_inc_acquire(v);
+	ret = raw_atomic_long_fetch_inc_acquire(v);
+	return ret;
 }
 
 /**
@@ -3682,9 +4080,11 @@ atomic_long_fetch_inc_acquire(atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_inc_release(atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_inc_release(v);
+	ret = raw_atomic_long_fetch_inc_release(v);
+	return ret;
 }
 
 /**
@@ -3700,8 +4100,10 @@ atomic_long_fetch_inc_release(atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_inc_relaxed(atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_inc_relaxed(v);
+	ret = raw_atomic_long_fetch_inc_relaxed(v);
+	return ret;
 }
 
 /**
@@ -3717,8 +4119,10 @@ atomic_long_fetch_inc_relaxed(atomic_long_t *v)
 static __always_inline void
 atomic_long_dec(atomic_long_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_long_dec(v);
+
 }
 
 /**
@@ -3734,9 +4138,11 @@ atomic_long_dec(atomic_long_t *v)
 static __always_inline long
 atomic_long_dec_return(atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_dec_return(v);
+	ret = raw_atomic_long_dec_return(v);
+	return ret;
 }
 
 /**
@@ -3752,8 +4158,10 @@ atomic_long_dec_return(atomic_long_t *v)
 static __always_inline long
 atomic_long_dec_return_acquire(atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_dec_return_acquire(v);
+	ret = raw_atomic_long_dec_return_acquire(v);
+	return ret;
 }
 
 /**
@@ -3769,9 +4177,11 @@ atomic_long_dec_return_acquire(atomic_long_t *v)
 static __always_inline long
 atomic_long_dec_return_release(atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_dec_return_release(v);
+	ret = raw_atomic_long_dec_return_release(v);
+	return ret;
 }
 
 /**
@@ -3787,8 +4197,10 @@ atomic_long_dec_return_release(atomic_long_t *v)
 static __always_inline long
 atomic_long_dec_return_relaxed(atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_dec_return_relaxed(v);
+	ret = raw_atomic_long_dec_return_relaxed(v);
+	return ret;
 }
 
 /**
@@ -3804,9 +4216,11 @@ atomic_long_dec_return_relaxed(atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_dec(atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_dec(v);
+	ret = raw_atomic_long_fetch_dec(v);
+	return ret;
 }
 
 /**
@@ -3822,8 +4236,10 @@ atomic_long_fetch_dec(atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_dec_acquire(atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_dec_acquire(v);
+	ret = raw_atomic_long_fetch_dec_acquire(v);
+	return ret;
 }
 
 /**
@@ -3839,9 +4255,11 @@ atomic_long_fetch_dec_acquire(atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_dec_release(atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_dec_release(v);
+	ret = raw_atomic_long_fetch_dec_release(v);
+	return ret;
 }
 
 /**
@@ -3857,8 +4275,10 @@ atomic_long_fetch_dec_release(atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_dec_relaxed(atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_dec_relaxed(v);
+	ret = raw_atomic_long_fetch_dec_relaxed(v);
+	return ret;
 }
 
 /**
@@ -3875,8 +4295,10 @@ atomic_long_fetch_dec_relaxed(atomic_long_t *v)
 static __always_inline void
 atomic_long_and(long i, atomic_long_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_long_and(i, v);
+
 }
 
 /**
@@ -3893,9 +4315,11 @@ atomic_long_and(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_and(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_and(i, v);
+	ret = raw_atomic_long_fetch_and(i, v);
+	return ret;
 }
 
 /**
@@ -3912,8 +4336,10 @@ atomic_long_fetch_and(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_and_acquire(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_and_acquire(i, v);
+	ret = raw_atomic_long_fetch_and_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -3930,9 +4356,11 @@ atomic_long_fetch_and_acquire(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_and_release(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_and_release(i, v);
+	ret = raw_atomic_long_fetch_and_release(i, v);
+	return ret;
 }
 
 /**
@@ -3949,8 +4377,10 @@ atomic_long_fetch_and_release(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_and_relaxed(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_and_relaxed(i, v);
+	ret = raw_atomic_long_fetch_and_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -3967,8 +4397,10 @@ atomic_long_fetch_and_relaxed(long i, atomic_long_t *v)
 static __always_inline void
 atomic_long_andnot(long i, atomic_long_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_long_andnot(i, v);
+
 }
 
 /**
@@ -3985,9 +4417,11 @@ atomic_long_andnot(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_andnot(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_andnot(i, v);
+	ret = raw_atomic_long_fetch_andnot(i, v);
+	return ret;
 }
 
 /**
@@ -4004,8 +4438,10 @@ atomic_long_fetch_andnot(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_andnot_acquire(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_andnot_acquire(i, v);
+	ret = raw_atomic_long_fetch_andnot_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -4022,9 +4458,11 @@ atomic_long_fetch_andnot_acquire(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_andnot_release(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_andnot_release(i, v);
+	ret = raw_atomic_long_fetch_andnot_release(i, v);
+	return ret;
 }
 
 /**
@@ -4041,8 +4479,10 @@ atomic_long_fetch_andnot_release(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_andnot_relaxed(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_andnot_relaxed(i, v);
+	ret = raw_atomic_long_fetch_andnot_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -4059,8 +4499,10 @@ atomic_long_fetch_andnot_relaxed(long i, atomic_long_t *v)
 static __always_inline void
 atomic_long_or(long i, atomic_long_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_long_or(i, v);
+
 }
 
 /**
@@ -4077,9 +4519,11 @@ atomic_long_or(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_or(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_or(i, v);
+	ret = raw_atomic_long_fetch_or(i, v);
+	return ret;
 }
 
 /**
@@ -4096,8 +4540,10 @@ atomic_long_fetch_or(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_or_acquire(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_or_acquire(i, v);
+	ret = raw_atomic_long_fetch_or_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -4114,9 +4560,11 @@ atomic_long_fetch_or_acquire(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_or_release(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_or_release(i, v);
+	ret = raw_atomic_long_fetch_or_release(i, v);
+	return ret;
 }
 
 /**
@@ -4133,8 +4581,10 @@ atomic_long_fetch_or_release(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_or_relaxed(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_or_relaxed(i, v);
+	ret = raw_atomic_long_fetch_or_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -4151,8 +4601,10 @@ atomic_long_fetch_or_relaxed(long i, atomic_long_t *v)
 static __always_inline void
 atomic_long_xor(long i, atomic_long_t *v)
 {
+
 	instrument_atomic_read_write(v, sizeof(*v));
 	raw_atomic_long_xor(i, v);
+
 }
 
 /**
@@ -4169,9 +4621,11 @@ atomic_long_xor(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_xor(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_xor(i, v);
+	ret = raw_atomic_long_fetch_xor(i, v);
+	return ret;
 }
 
 /**
@@ -4188,8 +4642,10 @@ atomic_long_fetch_xor(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_xor_acquire(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_xor_acquire(i, v);
+	ret = raw_atomic_long_fetch_xor_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -4206,9 +4662,11 @@ atomic_long_fetch_xor_acquire(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_xor_release(long i, atomic_long_t *v)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_xor_release(i, v);
+	ret = raw_atomic_long_fetch_xor_release(i, v);
+	return ret;
 }
 
 /**
@@ -4225,8 +4683,10 @@ atomic_long_fetch_xor_release(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_xor_relaxed(long i, atomic_long_t *v)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_xor_relaxed(i, v);
+	ret = raw_atomic_long_fetch_xor_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -4243,9 +4703,11 @@ atomic_long_fetch_xor_relaxed(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_xchg(atomic_long_t *v, long new)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_xchg(v, new);
+	ret = raw_atomic_long_xchg(v, new);
+	return ret;
 }
 
 /**
@@ -4262,8 +4724,10 @@ atomic_long_xchg(atomic_long_t *v, long new)
 static __always_inline long
 atomic_long_xchg_acquire(atomic_long_t *v, long new)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_xchg_acquire(v, new);
+	ret = raw_atomic_long_xchg_acquire(v, new);
+	return ret;
 }
 
 /**
@@ -4280,9 +4744,11 @@ atomic_long_xchg_acquire(atomic_long_t *v, long new)
 static __always_inline long
 atomic_long_xchg_release(atomic_long_t *v, long new)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_xchg_release(v, new);
+	ret = raw_atomic_long_xchg_release(v, new);
+	return ret;
 }
 
 /**
@@ -4299,8 +4765,10 @@ atomic_long_xchg_release(atomic_long_t *v, long new)
 static __always_inline long
 atomic_long_xchg_relaxed(atomic_long_t *v, long new)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_xchg_relaxed(v, new);
+	ret = raw_atomic_long_xchg_relaxed(v, new);
+	return ret;
 }
 
 /**
@@ -4318,9 +4786,11 @@ atomic_long_xchg_relaxed(atomic_long_t *v, long new)
 static __always_inline long
 atomic_long_cmpxchg(atomic_long_t *v, long old, long new)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_cmpxchg(v, old, new);
+	ret = raw_atomic_long_cmpxchg(v, old, new);
+	return ret;
 }
 
 /**
@@ -4338,8 +4808,10 @@ atomic_long_cmpxchg(atomic_long_t *v, long old, long new)
 static __always_inline long
 atomic_long_cmpxchg_acquire(atomic_long_t *v, long old, long new)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_cmpxchg_acquire(v, old, new);
+	ret = raw_atomic_long_cmpxchg_acquire(v, old, new);
+	return ret;
 }
 
 /**
@@ -4357,9 +4829,11 @@ atomic_long_cmpxchg_acquire(atomic_long_t *v, long old, long new)
 static __always_inline long
 atomic_long_cmpxchg_release(atomic_long_t *v, long old, long new)
 {
+	long ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_cmpxchg_release(v, old, new);
+	ret = raw_atomic_long_cmpxchg_release(v, old, new);
+	return ret;
 }
 
 /**
@@ -4377,8 +4851,10 @@ atomic_long_cmpxchg_release(atomic_long_t *v, long old, long new)
 static __always_inline long
 atomic_long_cmpxchg_relaxed(atomic_long_t *v, long old, long new)
 {
+	long ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_cmpxchg_relaxed(v, old, new);
+	ret = raw_atomic_long_cmpxchg_relaxed(v, old, new);
+	return ret;
 }
 
 /**
@@ -4397,10 +4873,12 @@ atomic_long_cmpxchg_relaxed(atomic_long_t *v, long old, long new)
 static __always_inline bool
 atomic_long_try_cmpxchg(atomic_long_t *v, long *old, long new)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic_long_try_cmpxchg(v, old, new);
+	ret = raw_atomic_long_try_cmpxchg(v, old, new);
+	return ret;
 }
 
 /**
@@ -4419,9 +4897,11 @@ atomic_long_try_cmpxchg(atomic_long_t *v, long *old, long new)
 static __always_inline bool
 atomic_long_try_cmpxchg_acquire(atomic_long_t *v, long *old, long new)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic_long_try_cmpxchg_acquire(v, old, new);
+	ret = raw_atomic_long_try_cmpxchg_acquire(v, old, new);
+	return ret;
 }
 
 /**
@@ -4440,10 +4920,12 @@ atomic_long_try_cmpxchg_acquire(atomic_long_t *v, long *old, long new)
 static __always_inline bool
 atomic_long_try_cmpxchg_release(atomic_long_t *v, long *old, long new)
 {
+	bool ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic_long_try_cmpxchg_release(v, old, new);
+	ret = raw_atomic_long_try_cmpxchg_release(v, old, new);
+	return ret;
 }
 
 /**
@@ -4462,9 +4944,11 @@ atomic_long_try_cmpxchg_release(atomic_long_t *v, long *old, long new)
 static __always_inline bool
 atomic_long_try_cmpxchg_relaxed(atomic_long_t *v, long *old, long new)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
 	instrument_atomic_read_write(old, sizeof(*old));
-	return raw_atomic_long_try_cmpxchg_relaxed(v, old, new);
+	ret = raw_atomic_long_try_cmpxchg_relaxed(v, old, new);
+	return ret;
 }
 
 /**
@@ -4481,9 +4965,11 @@ atomic_long_try_cmpxchg_relaxed(atomic_long_t *v, long *old, long new)
 static __always_inline bool
 atomic_long_sub_and_test(long i, atomic_long_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_sub_and_test(i, v);
+	ret = raw_atomic_long_sub_and_test(i, v);
+	return ret;
 }
 
 /**
@@ -4499,9 +4985,11 @@ atomic_long_sub_and_test(long i, atomic_long_t *v)
 static __always_inline bool
 atomic_long_dec_and_test(atomic_long_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_dec_and_test(v);
+	ret = raw_atomic_long_dec_and_test(v);
+	return ret;
 }
 
 /**
@@ -4517,9 +5005,11 @@ atomic_long_dec_and_test(atomic_long_t *v)
 static __always_inline bool
 atomic_long_inc_and_test(atomic_long_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_inc_and_test(v);
+	ret = raw_atomic_long_inc_and_test(v);
+	return ret;
 }
 
 /**
@@ -4536,9 +5026,11 @@ atomic_long_inc_and_test(atomic_long_t *v)
 static __always_inline bool
 atomic_long_add_negative(long i, atomic_long_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_add_negative(i, v);
+	ret = raw_atomic_long_add_negative(i, v);
+	return ret;
 }
 
 /**
@@ -4555,8 +5047,10 @@ atomic_long_add_negative(long i, atomic_long_t *v)
 static __always_inline bool
 atomic_long_add_negative_acquire(long i, atomic_long_t *v)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_add_negative_acquire(i, v);
+	ret = raw_atomic_long_add_negative_acquire(i, v);
+	return ret;
 }
 
 /**
@@ -4573,9 +5067,11 @@ atomic_long_add_negative_acquire(long i, atomic_long_t *v)
 static __always_inline bool
 atomic_long_add_negative_release(long i, atomic_long_t *v)
 {
+	bool ret;
 	kcsan_release();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_add_negative_release(i, v);
+	ret = raw_atomic_long_add_negative_release(i, v);
+	return ret;
 }
 
 /**
@@ -4592,8 +5088,10 @@ atomic_long_add_negative_release(long i, atomic_long_t *v)
 static __always_inline bool
 atomic_long_add_negative_relaxed(long i, atomic_long_t *v)
 {
+	bool ret;
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_add_negative_relaxed(i, v);
+	ret = raw_atomic_long_add_negative_relaxed(i, v);
+	return ret;
 }
 
 /**
@@ -4611,9 +5109,11 @@ atomic_long_add_negative_relaxed(long i, atomic_long_t *v)
 static __always_inline long
 atomic_long_fetch_add_unless(atomic_long_t *v, long a, long u)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_fetch_add_unless(v, a, u);
+	ret = raw_atomic_long_fetch_add_unless(v, a, u);
+	return ret;
 }
 
 /**
@@ -4631,9 +5131,11 @@ atomic_long_fetch_add_unless(atomic_long_t *v, long a, long u)
 static __always_inline bool
 atomic_long_add_unless(atomic_long_t *v, long a, long u)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_add_unless(v, a, u);
+	ret = raw_atomic_long_add_unless(v, a, u);
+	return ret;
 }
 
 /**
@@ -4649,9 +5151,11 @@ atomic_long_add_unless(atomic_long_t *v, long a, long u)
 static __always_inline bool
 atomic_long_inc_not_zero(atomic_long_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_inc_not_zero(v);
+	ret = raw_atomic_long_inc_not_zero(v);
+	return ret;
 }
 
 /**
@@ -4667,9 +5171,11 @@ atomic_long_inc_not_zero(atomic_long_t *v)
 static __always_inline bool
 atomic_long_inc_unless_negative(atomic_long_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_inc_unless_negative(v);
+	ret = raw_atomic_long_inc_unless_negative(v);
+	return ret;
 }
 
 /**
@@ -4685,9 +5191,11 @@ atomic_long_inc_unless_negative(atomic_long_t *v)
 static __always_inline bool
 atomic_long_dec_unless_positive(atomic_long_t *v)
 {
+	bool ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_dec_unless_positive(v);
+	ret = raw_atomic_long_dec_unless_positive(v);
+	return ret;
 }
 
 /**
@@ -4703,9 +5211,11 @@ atomic_long_dec_unless_positive(atomic_long_t *v)
 static __always_inline long
 atomic_long_dec_if_positive(atomic_long_t *v)
 {
+	long ret;
 	kcsan_mb();
 	instrument_atomic_read_write(v, sizeof(*v));
-	return raw_atomic_long_dec_if_positive(v);
+	ret = raw_atomic_long_dec_if_positive(v);
+	return ret;
 }
 
 #define xchg(ptr, ...) \
@@ -5000,4 +5510,4 @@ atomic_long_dec_if_positive(atomic_long_t *v)
 
 
 #endif /* _LINUX_ATOMIC_INSTRUMENTED_H */
-// 1568f875fef72097413caab8339120c065a39aa4
+// 6acd09fa589fcc0525b204f911de6906041dd160

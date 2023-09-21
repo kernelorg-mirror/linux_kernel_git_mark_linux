@@ -66,7 +66,16 @@ gen_proto_order_variant()
 	local params="$(gen_params "${int}" "${atomic}" "$@")"
 	local checks="$(gen_params_checks "${meta}" "${order}" "$@")"
 	local args="$(gen_args "$@")"
-	local retstmt="$(gen_ret_stmt "${meta}")"
+
+	local retdef=""
+	local reteq=""
+	local ret=""
+
+	if meta_has_ret "${meta}" "${int}"; then
+		retdef=$(printf "\t$(gen_ret_type "${meta}" "${int}") ret;")
+		reteq="ret = "
+		ret=$(printf "\treturn ret;")
+	fi
 
 	gen_kerneldoc "" "${meta}" "${pfx}" "${name}" "${sfx}" "${order}" "${atomic}" "${int}" "$@"
 
@@ -74,8 +83,10 @@ cat <<EOF
 static __always_inline ${rettype}
 ${atomicname}(${params})
 {
+${retdef}
 ${checks}
-	${retstmt}raw_${atomicname}(${args});
+	${reteq}raw_${atomicname}(${args});
+${ret}
 }
 EOF
 
