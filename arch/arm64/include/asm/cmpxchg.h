@@ -19,7 +19,8 @@
  * acquire+release for the latter.
  */
 #define __XCHG_CASE(w, sfx, name, sz, mb, nop_lse, acq, acq_lse, rel, cl)	\
-static inline u##sz __xchg_case_##name##sz(u##sz x, volatile void *ptr)		\
+static __always_inline								\
+u##sz __xchg_case_##name##sz(u##sz x, volatile void *ptr)			\
 {										\
 	u##sz ret;								\
 	unsigned long tmp;							\
@@ -102,8 +103,9 @@ __XCHG_GEN(_mb)
 #define arch_xchg_release(...)	__xchg_wrapper(_rel, __VA_ARGS__)
 #define arch_xchg(...)		__xchg_wrapper( _mb, __VA_ARGS__)
 
-#define __CMPXCHG_CASE(name, sz)			\
-static inline u##sz __cmpxchg_case_##name##sz(volatile void *ptr,	\
+#define __CMPXCHG_CASE(name, sz)					\
+static __always_inline u##sz						\
+__cmpxchg_case_##name##sz(volatile void *ptr,				\
 					      u##sz old,		\
 					      u##sz new)		\
 {									\
@@ -131,7 +133,7 @@ __CMPXCHG_CASE(mb_, 64)
 #undef __CMPXCHG_CASE
 
 #define __CMPXCHG128(name)						\
-static inline u128 __cmpxchg128##name(volatile u128 *ptr,		\
+static __always_inline u128 __cmpxchg128##name(volatile u128 *ptr,	\
 				      u128 old, u128 new)		\
 {									\
 	return __lse_ll_sc_body(_cmpxchg128##name,			\
