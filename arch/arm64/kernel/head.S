@@ -251,9 +251,9 @@ SYM_FUNC_END(__primary_switched)
 	.section ".idmap.text","a"
 
 /*
- * Starting from EL2 or EL1, configure the CPU to execute at the highest
- * reachable EL supported by the kernel in a chosen default state. If dropping
- * from EL2 to EL1, configure EL2 before configuring EL1.
+ * Starting from EL2 or EL1, configure the CPU to execute at EL1.
+ * If dropping from EL2 to EL1, configure EL2 before configuring EL1.
+ * To use VHE we'll upgrade to EL2 later in finalise_el2().
  *
  * Since we cannot always rely on ERET synchronizing writes to sysregs (e.g. if
  * SCTLR_ELx.EOS is clear), we place an ISB prior to ERET.
