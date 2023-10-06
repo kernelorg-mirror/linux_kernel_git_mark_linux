@@ -311,6 +311,24 @@ static void swsusp_mte_restore_tags(void)
 	xa_destroy(&mte_pages);
 }
 
+static void swsusp_mte_free_tags(void)
+{
+	XA_STATE(xa_state, &mte_pages, 0);
+	int n = 0;
+	void *tags;
+
+	xa_lock(&mte_pages);
+	xas_for_each(&xa_state, tags, ULONG_MAX) {
+		mte_free_tag_storage(tags);
+		n++;
+	}
+	xa_unlock(&mte_pages);
+
+	pr_info("Freed %d MTE pages\n", n);
+
+	xa_destroy(&mte_pages);
+}
+
 #else	/* CONFIG_ARM64_MTE */
 
 static int swsusp_mte_save_tags(void)
@@ -319,6 +337,10 @@ static int swsusp_mte_save_tags(void)
 }
 
 static void swsusp_mte_restore_tags(void)
+{
+}
+
+static void swsusp_mte_free_tags(void)
 {
 }
 
@@ -347,6 +369,16 @@ int swsusp_arch_suspend(void)
 
 		sleep_cpu = smp_processor_id();
 		ret = swsusp_save();
+
+		/*
+		 * Hibernation may fail after this point, so we must free the
+		 * saved tags to avoid leaking memory and triggering a warning
+		 * the next time we try to hibernate.
+		 *
+		 * Where hibernation succeeds, the tag storage will be restored
+		 * from the pages saved by swsusp_save().
+		 */
+		swsusp_mte_free_tags();
 	} else {
 		/* Clean kernel core startup/idle code to PoC*/
 		dcache_clean_inval_poc((unsigned long)__mmuoff_data_start,
