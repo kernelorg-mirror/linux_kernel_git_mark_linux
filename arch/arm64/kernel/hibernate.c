@@ -381,18 +381,17 @@ int swsusp_arch_suspend(void)
 		swsusp_mte_free_tags();
 	} else {
 		/* Clean kernel core startup/idle code to PoC*/
-		dcache_clean_inval_poc((unsigned long)__mmuoff_data_start,
-				    (unsigned long)__mmuoff_data_end);
-		dcache_clean_inval_poc((unsigned long)__idmap_text_start,
-				    (unsigned long)__idmap_text_end);
+		dcache_clean_poc((unsigned long)__mmuoff_data_start,
+				 (unsigned long)__mmuoff_data_end);
+		dcache_clean_poc((unsigned long)__idmap_text_start,
+				 (unsigned long)__idmap_text_end);
 
 		/* Clean kvm setup code to PoC? */
 		if (el2_reset_needed()) {
-			dcache_clean_inval_poc(
-				(unsigned long)__hyp_idmap_text_start,
-				(unsigned long)__hyp_idmap_text_end);
-			dcache_clean_inval_poc((unsigned long)__hyp_text_start,
-					    (unsigned long)__hyp_text_end);
+			dcache_clean_poc((unsigned long)__hyp_idmap_text_start,
+					 (unsigned long)__hyp_idmap_text_end);
+			dcache_clean_poc((unsigned long)__hyp_text_start,
+					 (unsigned long)__hyp_text_end);
 		}
 
 		swsusp_mte_restore_tags();
