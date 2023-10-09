@@ -114,7 +114,7 @@ int arch_hibernation_header_save(void *addr, unsigned int max_size)
 
 	arch_hdr_invariants(&hdr->invariants);
 	hdr->ttbr1_el1		= __pa_symbol(swapper_pg_dir);
-	hdr->reenter_kernel	= _cpu_resume;
+	hdr->reenter_kernel	= __cpu_resume_switched;
 
 	/* We can't use __hyp_get_vectors() because kvm may still be loaded */
 	if (el2_reset_needed())
