@@ -29,40 +29,53 @@
  *
  * This 'safe' page is mapped via ttbr0, and executed from there. This function
  * switches to a copy of the linear map in ttbr1, performs the restore, then
- * switches ttbr1 to the original kernel's swapper_pg_dir.
+ * reenters the original kernel with the MMU off.
  *
  * All of memory gets written to, including code. We need to clean the kernel
- * text to the Point of Coherence (PoC) before secondary cores can be booted.
+ * text to the Point of Coherence (PoC) before reentering it.
  * Because the kernel modules and executable pages mapped to user space are
  * also written as data, we clean all pages we touch to the Point of
  * Unification (PoU).
  *
- * x0: physical address of temporary page tables
- * x1: physical address of swapper page tables
- * x2: address of cpu_resume
- * x3: linear map address of restore_pblist in the current kernel
- * x4: physical address of __hyp_stub_vectors, or 0
- * x5: physical address of a  zero page that remains zero after resume
+ * x0: physical address of temporary zero page
+ * x1: physical address of temporary page tables
+ * x2: linear map address of restore_pblist in the current kernel
+ * x3: linear map address of the start of the resumed kernel image
+ * x4: linear map address of the end of the resumed kernel image
+ * x5: physical address to reenter the resumed kernel
+ * x6: whether to return to el2
  */
 .pushsection    ".hibernate_exit.text", "ax"
 SYM_CODE_START(swsusp_arch_suspend_exit)
 	/*
-	 * We execute from ttbr0, change ttbr1 to our copied linear map tables
-	 * with a break-before-make via the zero page
+	 * Save the arguments so that we can clobber low numbered registers
 	 */
-	break_before_make_ttbr_switch	x5, x0, x6, x8
-
-	mov	x21, x1
-	mov	x30, x2
+	mov	x22, x2
+	mov	x23, x3
 	mov	x24, x4
 	mov	x25, x5
+	mov	x26, x6
 
-	/* walk the restore_pblist and use copy_page() to over-write memory */
-	mov	x19, x3
+	/*
+	 * This function executes from an idmap in TTBR0.
+	 * Install the temporary linear map in TTBR1, replacing the kernel page
+	 * tables.
+	 */
+	break_before_make_ttbr_switch	x0, x1, x3, x4
 
-1:	ldr	x10, [x19, #HIBERN_PBE_ORIG]
-	mov	x0, x10
-	ldr	x1, [x19, #HIBERN_PBE_ADDR]
+	/*
+	 * Walk the restore_pblist and restore each page for the kernel session
+	 * being resumed. All pages are cleaned to the PoU in case they contain
+	 * userspace or module code.
+	 *
+	 * The main kernel image is cleaned to the PoC to as it contains
+	 * portions of code and data that need to be used with the MMU disabled.
+	 */
+.L__next_pbe:
+	ldr	x0,  [x22, #HIBERN_PBE_ORIG]
+	ldr	x1,  [x22, #HIBERN_PBE_ADDR]
+
+	mov	x10, x0
 
 	copy_page	x0, x1, x2, x3, x4, x5, x6, x7, x8, x9
 
@@ -72,24 +85,35 @@ SYM_CODE_START(swsusp_arch_suspend_exit)
 	raw_dcache_line_size x2, x3
 	dcache_by_myline_op cvau, ish, x0, x1, x2, x3
 
-	ldr	x19, [x19, #HIBERN_PBE_NEXT]
-	cbnz	x19, 1b
-	dsb	ish		/* wait for PoU cleaning to finish */
+	ldr	x22, [x22, #HIBERN_PBE_NEXT]
+	cbnz	x22, .L__next_pbe
 
-	/* switch to the restored kernels page tables */
-	break_before_make_ttbr_switch	x25, x21, x6, x8
+	/* Clean the main kernel image to the PoC */
+	dcache_by_myline_op cvac, ish, x23, x24, x2, x3
+
+	/* Complete all D-cache maintenance above */
+	dsb	ish
 
 	ic	ialluis
 	dsb	ish
 	isb
 
-	cbz	x24, 3f		/* Do we need to re-initialise EL2? */
+	cbz	x26, .L__no_el2
 
-	mov	x0, #HVC_SET_VECTORS
-	mov	x1, x24
+	/* Enter the resumed kernel at EL2 with the MMU disabled. */
+	mov	x0, #HVC_SOFT_RESTART
+	mov	x1, x25
 	hvc	#0
-	cbnz	x0, .
 
-3:	ret
+	/* HVC_SOFT_RESTART should never return */
+	b	.
+
+.L__no_el2:
+	/* Enter the resumed kernel at EL1 with the MMU disabled. */
+	mov_q	x0, INIT_SCTLR_EL1_MMU_OFF
+	pre_disable_mmu_workaround
+	msr	sctlr_el1, x0
+	isb
+	br	x25
 SYM_CODE_END(swsusp_arch_suspend_exit)
 .popsection

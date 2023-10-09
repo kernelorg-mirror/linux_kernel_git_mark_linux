@@ -41,7 +41,6 @@ extern int cpu_suspend(unsigned long arg, int (*fn)(unsigned long));
 extern void cpu_resume(void);
 int __cpu_suspend_enter(struct sleep_stack_data *state);
 void __cpu_suspend_exit(void);
-void __cpu_resume_switched(void);
 
 int swsusp_arch_suspend(void);
 int swsusp_arch_resume(void);

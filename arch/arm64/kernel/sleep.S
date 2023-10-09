@@ -107,19 +107,16 @@ SYM_CODE_START(cpu_resume)
 	adrp	x1, swapper_pg_dir
 	adrp	x2, idmap_pg_dir
 	bl	__enable_mmu
-	ldr	x8, =__cpu_resume_switched_finalise_el2
+	ldr	x8, =__cpu_resume_switched
 	br	x8
 SYM_CODE_END(cpu_resume)
 	.ltorg
 	.popsection
 
-SYM_FUNC_START_LOCAL(__cpu_resume_switched_finalise_el2)
+SYM_FUNC_START_LOCAL(__cpu_resume_switched)
 	mov	x0, x19
 	bl	finalise_el2
-	b	cpu_resume_switched
-SYM_FUNC_END(__cpu_resume_switched_finalise_el2)
 
-SYM_FUNC_START(__cpu_resume_switched)
 	mrs	x1, mpidr_el1
 	adr_l	x8, mpidr_hash		// x8 = struct mpidr_hash virt address
 

@@ -69,15 +69,9 @@ struct arch_hibernate_hdr_invariants {
 static struct arch_hibernate_hdr {
 	struct arch_hibernate_hdr_invariants invariants;
 
-	/* These are needed to find the relocated kernel if built with kaslr */
-	phys_addr_t	ttbr1_el1;
-	void		(*reenter_kernel)(void);
-
-	/*
-	 * We need to know where the __hyp_stub_vectors are after restore to
-	 * re-configure el2.
-	 */
-	phys_addr_t	__hyp_stub_vectors;
+	phys_addr_t	kernel_start;
+	phys_addr_t	kernel_end;
+	phys_addr_t	reenter_kernel;
 
 	u64		sleep_cpu_mpidr;
 } resume_hdr;
@@ -113,14 +107,10 @@ int arch_hibernation_header_save(void *addr, unsigned int max_size)
 		return -EOVERFLOW;
 
 	arch_hdr_invariants(&hdr->invariants);
-	hdr->ttbr1_el1		= __pa_symbol(swapper_pg_dir);
-	hdr->reenter_kernel	= __cpu_resume_switched;
 
-	/* We can't use __hyp_get_vectors() because kvm may still be loaded */
-	if (el2_reset_needed())
-		hdr->__hyp_stub_vectors = __pa_symbol(__hyp_stub_vectors);
-	else
-		hdr->__hyp_stub_vectors = 0;
+	hdr->kernel_start	= __pa_symbol(_text);
+	hdr->kernel_end		= __pa_symbol(_end);
+	hdr->reenter_kernel	= __pa_symbol(cpu_resume);
 
 	/* Save the mpidr of the cpu we called cpu_suspend() on... */
 	if (sleep_cpu < 0) {
@@ -380,20 +370,6 @@ int swsusp_arch_suspend(void)
 		 */
 		swsusp_mte_free_tags();
 	} else {
-		/* Clean kernel core startup/idle code to PoC*/
-		dcache_clean_poc((unsigned long)__mmuoff_data_start,
-				 (unsigned long)__mmuoff_data_end);
-		dcache_clean_poc((unsigned long)__idmap_text_start,
-				 (unsigned long)__idmap_text_end);
-
-		/* Clean kvm setup code to PoC? */
-		if (el2_reset_needed()) {
-			dcache_clean_poc((unsigned long)__hyp_idmap_text_start,
-					 (unsigned long)__hyp_idmap_text_end);
-			dcache_clean_poc((unsigned long)__hyp_text_start,
-					 (unsigned long)__hyp_text_end);
-		}
-
 		swsusp_mte_restore_tags();
 
 		/* make the crash dump kernel image protected again */
@@ -421,6 +397,14 @@ int swsusp_arch_suspend(void)
 	return ret;
 }
 
+void __noreturn swsusp_arch_suspend_exit(phys_addr_t zero_page,
+					 phys_addr_t temp_pgd,
+					 void *pblist,
+					 void *kstart,
+					 void *kend,
+					 phys_addr_t cpu_resume,
+					 unsigned long el2);
+
 /*
  * Setup then Resume from the hibernate image using swsusp_arch_suspend_exit().
  *
@@ -434,8 +418,9 @@ int swsusp_arch_resume(void)
 	size_t exit_size;
 	pgd_t *tmp_pg_dir;
 	phys_addr_t el2_vectors;
-	void __noreturn (*hibernate_exit)(phys_addr_t, phys_addr_t, void *,
-					  void *, phys_addr_t, phys_addr_t);
+
+	typeof(swsusp_arch_suspend_exit) *hibernate_exit;
+
 	struct trans_pgd_info trans_info = {
 		.trans_alloc_page	= hibernate_page_alloc,
 		.trans_alloc_arg	= (__force void *)GFP_ATOMIC,
@@ -490,9 +475,13 @@ int swsusp_arch_resume(void)
 	if (el2_reset_needed())
 		__hyp_set_vectors(el2_vectors);
 
-	hibernate_exit(virt_to_phys(tmp_pg_dir), resume_hdr.ttbr1_el1,
-		       resume_hdr.reenter_kernel, restore_pblist,
-		       resume_hdr.__hyp_stub_vectors, virt_to_phys(zero_page));
+	hibernate_exit(virt_to_phys(zero_page),
+		       virt_to_phys(tmp_pg_dir),
+		       restore_pblist,
+		       phys_to_virt(resume_hdr.kernel_start),
+		       phys_to_virt(resume_hdr.kernel_end),
+		       resume_hdr.reenter_kernel,
+		       el2_reset_needed());
 
 	return 0;
 }
