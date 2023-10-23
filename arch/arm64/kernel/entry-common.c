@@ -298,11 +298,21 @@ static void noinstr __panic_unhandled(struct pt_regs *regs, const char *vector,
 	panic("Unhandled exception");
 }
 
+#define panic_unhandled_esr(el, regsize, vector, regs, esr)				\
+do {											\
+	const char *desc = #regsize "-bit " #el " " #vector;				\
+	__panic_unhandled(regs, desc, read_sysreg(esr_el1));				\
+} while (0)
+
+#define panic_unhandled_vector(el, regsize, vector, regs)				\
+do {											\
+	panic_unhandled_esr(el, regsize, vector, regs, read_sysreg(esr_el1));		\
+} while (0)
+
 #define UNHANDLED(el, regsize, vector)							\
 asmlinkage void noinstr el##_##regsize##_##vector##_handler(struct pt_regs *regs)	\
 {											\
-	const char *desc = #regsize "-bit " #el " " #vector;				\
-	__panic_unhandled(regs, desc, read_sysreg(esr_el1));				\
+	panic_unhandled_vector(el, regsize, vector, regs);				\
 }
 
 #ifdef CONFIG_ARM64_ERRATUM_1463225
@@ -384,10 +394,25 @@ static inline void fp_user_discard(void)
 	}
 }
 
-UNHANDLED(el1t, 64, sync)
-UNHANDLED(el1t, 64, irq)
-UNHANDLED(el1t, 64, fiq)
-UNHANDLED(el1t, 64, error)
+asmlinkage void noinstr el1t_64_sync_handler(struct pt_regs *regs)
+{
+	panic_unhandled_vector(el1t, 64, sync, regs);
+}
+
+asmlinkage void noinstr el1t_64_irq_handler(struct pt_regs *regs)
+{
+	panic_unhandled_vector(el1t, 64, irq, regs);
+}
+
+asmlinkage void noinstr el1t_64_fiq_handler(struct pt_regs *regs)
+{
+	panic_unhandled_vector(el1t, 64, fiq, regs);
+}
+
+asmlinkage void noinstr el1t_64_error_handler(struct pt_regs *regs)
+{
+	panic_unhandled_vector(el1t, 64, error, regs);
+}
 
 static void noinstr el1_abort(struct pt_regs *regs, unsigned long esr)
 {
@@ -481,7 +506,7 @@ asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs)
 		el1_fpac(regs, esr);
 		break;
 	default:
-		__panic_unhandled(regs, "64-bit el1h sync", esr);
+		panic_unhandled_esr(el1h, 64, sync, regs, esr);
 	}
 }
 
@@ -878,10 +903,25 @@ asmlinkage void noinstr el0t_32_error_handler(struct pt_regs *regs)
 	__el0_error_handler_common(regs);
 }
 #else /* CONFIG_COMPAT */
-UNHANDLED(el0t, 32, sync)
-UNHANDLED(el0t, 32, irq)
-UNHANDLED(el0t, 32, fiq)
-UNHANDLED(el0t, 32, error)
+asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
+{
+	panic_unhandled_vector(el0t, 32, sync, regs);
+}
+
+asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs)
+{
+	panic_unhandled_vector(el0t, 32, irq, regs);
+}
+
+asmlinkage void noinstr el0t_32_fiq_handler(struct pt_regs *regs)
+{
+	panic_unhandled_vector(el0t, 32, fiq, regs);
+}
+
+asmlinkage void noinstr el0t_32_error_handler(struct pt_regs *regs)
+{
+	panic_unhandled_vector(el0t, 32, error, regs);
+}
 #endif /* CONFIG_COMPAT */
 
 #ifdef CONFIG_VMAP_STACK
