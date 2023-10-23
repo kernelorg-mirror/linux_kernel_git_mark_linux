@@ -826,7 +826,6 @@ asmlinkage void noinstr el0t_64_error_handler(struct pt_regs *regs)
 	__el0_error_handler_common(regs);
 }
 
-#ifdef CONFIG_COMPAT
 static void noinstr el0_cp15(struct pt_regs *regs, unsigned long esr)
 {
 	enter_from_user_mode(regs);
@@ -844,7 +843,7 @@ static void noinstr el0_svc_compat(struct pt_regs *regs)
 	exit_to_user_mode(regs);
 }
 
-asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
+static __always_inline void __el0_sync_handler_compat(struct pt_regs *regs)
 {
 	unsigned long esr = read_sysreg(esr_el1);
 
@@ -888,41 +887,36 @@ asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
 	}
 }
 
+asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
+{
+	if (!IS_ENABLED(CONFIG_COMPAT))
+		panic_unhandled_vector(el0t, 32, sync, regs);
+
+	__el0_sync_handler_compat(regs);
+}
 asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs)
 {
+	if (!IS_ENABLED(CONFIG_COMPAT))
+		panic_unhandled_vector(el0t, 32, irq, regs);
+
 	__el0_irq_handler_common(regs);
 }
 
 asmlinkage void noinstr el0t_32_fiq_handler(struct pt_regs *regs)
 {
+	if (!IS_ENABLED(CONFIG_COMPAT))
+		panic_unhandled_vector(el0t, 32, fiq, regs);
+
 	__el0_fiq_handler_common(regs);
 }
 
 asmlinkage void noinstr el0t_32_error_handler(struct pt_regs *regs)
 {
+	if (!IS_ENABLED(CONFIG_COMPAT))
+		panic_unhandled_vector(el0t, 32, error, regs);
+
 	__el0_error_handler_common(regs);
 }
-#else /* CONFIG_COMPAT */
-asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
-{
-	panic_unhandled_vector(el0t, 32, sync, regs);
-}
-
-asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs)
-{
-	panic_unhandled_vector(el0t, 32, irq, regs);
-}
-
-asmlinkage void noinstr el0t_32_fiq_handler(struct pt_regs *regs)
-{
-	panic_unhandled_vector(el0t, 32, fiq, regs);
-}
-
-asmlinkage void noinstr el0t_32_error_handler(struct pt_regs *regs)
-{
-	panic_unhandled_vector(el0t, 32, error, regs);
-}
-#endif /* CONFIG_COMPAT */
 
 #ifdef CONFIG_VMAP_STACK
 asmlinkage void noinstr __noreturn handle_bad_stack(struct pt_regs *regs)
