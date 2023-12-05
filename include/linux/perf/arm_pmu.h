@@ -123,7 +123,7 @@ struct arm_pmu {
 
 u64 armpmu_event_update(struct perf_event *event);
 
-int armpmu_event_set_period(struct perf_event *event);
+void armpmu_event_overflow(struct perf_event *event);
 
 int armpmu_map_event(struct perf_event *event,
 		     const unsigned (*event_map)[PERF_COUNT_HW_MAX],

@@ -14,7 +14,6 @@
  */
 
 #include <asm/cputype.h>
-#include <asm/irq_regs.h>
 
 #include <linux/of.h>
 #include <linux/perf/arm_pmu.h>
@@ -145,9 +144,7 @@ static irqreturn_t
 xscale1pmu_handle_irq(struct arm_pmu *cpu_pmu)
 {
 	unsigned long pmnc;
-	struct perf_sample_data data;
 	struct pmu_hw_events *cpuc = this_cpu_ptr(cpu_pmu->hw_events);
-	struct pt_regs *regs;
 	int idx;
 
 	/*
@@ -168,11 +165,8 @@ xscale1pmu_handle_irq(struct arm_pmu *cpu_pmu)
 	if (!(pmnc & XSCALE1_OVERFLOWED_MASK))
 		return IRQ_NONE;
 
-	regs = get_irq_regs();
-
 	for_each_set_bit(idx, cpu_pmu->cntr_mask, XSCALE1_NUM_COUNTERS) {
 		struct perf_event *event = cpuc->events[idx];
-		struct hw_perf_event *hwc;
 
 		if (!event)
 			continue;
@@ -180,14 +174,7 @@ xscale1pmu_handle_irq(struct arm_pmu *cpu_pmu)
 		if (!xscale1_pmnc_counter_has_overflowed(pmnc, idx))
 			continue;
 
-		hwc = &event->hw;
-		armpmu_event_update(event);
-		perf_sample_data_init(&data, 0, hwc->last_period);
-		if (!armpmu_event_set_period(event))
-			continue;
-
-		if (perf_event_overflow(event, &data, regs))
-			cpu_pmu->disable(event);
+		armpmu_event_overflow(event);
 	}
 
 	irq_work_run();
@@ -484,9 +471,7 @@ static irqreturn_t
 xscale2pmu_handle_irq(struct arm_pmu *cpu_pmu)
 {
 	unsigned long pmnc, of_flags;
-	struct perf_sample_data data;
 	struct pmu_hw_events *cpuc = this_cpu_ptr(cpu_pmu->hw_events);
-	struct pt_regs *regs;
 	int idx;
 
 	/* Disable the PMU. */
@@ -501,11 +486,8 @@ xscale2pmu_handle_irq(struct arm_pmu *cpu_pmu)
 	/* Clear the overflow bits. */
 	xscale2pmu_write_overflow_flags(of_flags);
 
-	regs = get_irq_regs();
-
 	for_each_set_bit(idx, cpu_pmu->cntr_mask, XSCALE2_NUM_COUNTERS) {
 		struct perf_event *event = cpuc->events[idx];
-		struct hw_perf_event *hwc;
 
 		if (!event)
 			continue;
@@ -513,14 +495,7 @@ xscale2pmu_handle_irq(struct arm_pmu *cpu_pmu)
 		if (!xscale2_pmnc_counter_has_overflowed(of_flags, idx))
 			continue;
 
-		hwc = &event->hw;
-		armpmu_event_update(event);
-		perf_sample_data_init(&data, 0, hwc->last_period);
-		if (!armpmu_event_set_period(event))
-			continue;
-
-		if (perf_event_overflow(event, &data, regs))
-			cpu_pmu->disable(event);
+		armpmu_event_overflow(event);
 	}
 
 	irq_work_run();

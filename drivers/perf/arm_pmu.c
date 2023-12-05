@@ -197,7 +197,7 @@ armpmu_map_event(struct perf_event *event,
 	return -ENOENT;
 }
 
-int armpmu_event_set_period(struct perf_event *event)
+static int armpmu_event_set_period(struct perf_event *event)
 {
 	struct arm_pmu *armpmu = to_arm_pmu(event->pmu);
 	struct hw_perf_event *hwc = &event->hw;
@@ -260,6 +260,24 @@ again:
 	local64_sub(delta, &hwc->period_left);
 
 	return new_raw_count;
+}
+
+void armpmu_event_overflow(struct perf_event *event)
+{
+	struct arm_pmu *cpu_pmu = to_arm_pmu(event->pmu);
+	struct hw_perf_event *hwc = &event->hw;
+	struct pt_regs *regs = get_irq_regs();
+	struct perf_sample_data data;
+
+	armpmu_event_update(event);
+
+	perf_sample_data_init(&data, 0, hwc->last_period);
+
+	if (!armpmu_event_set_period(event))
+		return;
+
+	if (perf_event_overflow(event, &data, regs))
+		cpu_pmu->disable(event);
 }
 
 static void

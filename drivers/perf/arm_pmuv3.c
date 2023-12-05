@@ -8,7 +8,6 @@
  * This code is based heavily on the ARMv7 perf event code.
  */
 
-#include <asm/irq_regs.h>
 #include <asm/perf_event.h>
 #include <asm/virt.h>
 
@@ -831,9 +830,7 @@ static void armv8pmu_stop(struct arm_pmu *cpu_pmu)
 static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
 {
 	u64 pmovsr;
-	struct perf_sample_data data;
 	struct pmu_hw_events *cpuc = this_cpu_ptr(cpu_pmu->hw_events);
-	struct pt_regs *regs;
 	int idx;
 
 	/*
@@ -848,18 +845,12 @@ static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
 		return IRQ_NONE;
 
 	/*
-	 * Handle the counter(s) overflow(s)
-	 */
-	regs = get_irq_regs();
-
-	/*
 	 * Stop the PMU while processing the counter overflows
 	 * to prevent skews in group events.
 	 */
 	armv8pmu_stop(cpu_pmu);
 	for_each_set_bit(idx, cpu_pmu->cntr_mask, ARMPMU_MAX_HWEVENTS) {
 		struct perf_event *event = cpuc->events[idx];
-		struct hw_perf_event *hwc;
 
 		/* Ignore if we don't have an event. */
 		if (!event)
@@ -872,19 +863,7 @@ static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
 		if (!armv8pmu_counter_has_overflowed(pmovsr, idx))
 			continue;
 
-		hwc = &event->hw;
-		armpmu_event_update(event);
-		perf_sample_data_init(&data, 0, hwc->last_period);
-		if (!armpmu_event_set_period(event))
-			continue;
-
-		/*
-		 * Perf event overflow will queue the processing of the event as
-		 * an irq_work which will be taken care of in the handling of
-		 * IPI_IRQ_WORK.
-		 */
-		if (perf_event_overflow(event, &data, regs))
-			cpu_pmu->disable(event);
+		armpmu_event_overflow(event);
 	}
 	armv8pmu_start(cpu_pmu);
 

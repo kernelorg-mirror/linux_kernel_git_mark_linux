@@ -15,7 +15,6 @@
 #include <linux/platform_device.h>
 
 #include <asm/apple_m1_pmu.h>
-#include <asm/irq_regs.h>
 #include <asm/perf_event.h>
 
 #define M1_PMU_NR_COUNTERS		10
@@ -414,7 +413,6 @@ static void m1_pmu_disable_event(struct perf_event *event)
 static irqreturn_t m1_pmu_handle_irq(struct arm_pmu *cpu_pmu)
 {
 	struct pmu_hw_events *cpuc = this_cpu_ptr(cpu_pmu->hw_events);
-	struct pt_regs *regs;
 	u64 overflow, state;
 	int idx;
 
@@ -430,22 +428,12 @@ static irqreturn_t m1_pmu_handle_irq(struct arm_pmu *cpu_pmu)
 
 	cpu_pmu->stop(cpu_pmu);
 
-	regs = get_irq_regs();
-
 	for_each_set_bit(idx, cpu_pmu->cntr_mask, M1_PMU_NR_COUNTERS) {
 		struct perf_event *event = cpuc->events[idx];
-		struct perf_sample_data data;
-
 		if (!event)
 			continue;
 
-		armpmu_event_update(event);
-		perf_sample_data_init(&data, 0, event->hw.last_period);
-		if (!armpmu_event_set_period(event))
-			continue;
-
-		if (perf_event_overflow(event, &data, regs))
-			m1_pmu_disable_event(event);
+		armpmu_event_overflow(event);
 	}
 
 	cpu_pmu->start(cpu_pmu);

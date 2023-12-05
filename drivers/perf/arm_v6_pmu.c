@@ -238,15 +238,11 @@ static irqreturn_t
 armv6pmu_handle_irq(struct arm_pmu *cpu_pmu)
 {
 	unsigned long pmcr = armv6_pmcr_read();
-	struct perf_sample_data data;
 	struct pmu_hw_events *cpuc = this_cpu_ptr(cpu_pmu->hw_events);
-	struct pt_regs *regs;
 	int idx;
 
 	if (!armv6_pmcr_has_overflowed(pmcr))
 		return IRQ_NONE;
-
-	regs = get_irq_regs();
 
 	/*
 	 * The interrupts are cleared by writing the overflow flags back to
@@ -257,7 +253,6 @@ armv6pmu_handle_irq(struct arm_pmu *cpu_pmu)
 
 	for_each_set_bit(idx, cpu_pmu->cntr_mask, ARMV6_NUM_COUNTERS) {
 		struct perf_event *event = cpuc->events[idx];
-		struct hw_perf_event *hwc;
 
 		/* Ignore if we don't have an event. */
 		if (!event)
@@ -270,14 +265,7 @@ armv6pmu_handle_irq(struct arm_pmu *cpu_pmu)
 		if (!armv6_pmcr_counter_has_overflowed(pmcr, idx))
 			continue;
 
-		hwc = &event->hw;
-		armpmu_event_update(event);
-		perf_sample_data_init(&data, 0, hwc->last_period);
-		if (!armpmu_event_set_period(event))
-			continue;
-
-		if (perf_event_overflow(event, &data, regs))
-			cpu_pmu->disable(event);
+		armpmu_event_overflow(event);
 	}
 
 	/*

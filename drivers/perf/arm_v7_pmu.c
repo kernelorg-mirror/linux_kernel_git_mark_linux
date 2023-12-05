@@ -916,9 +916,7 @@ static void armv7pmu_disable_event(struct perf_event *event)
 static irqreturn_t armv7pmu_handle_irq(struct arm_pmu *cpu_pmu)
 {
 	u32 pmnc;
-	struct perf_sample_data data;
 	struct pmu_hw_events *cpuc = this_cpu_ptr(cpu_pmu->hw_events);
-	struct pt_regs *regs;
 	int idx;
 
 	/*
@@ -932,14 +930,8 @@ static irqreturn_t armv7pmu_handle_irq(struct arm_pmu *cpu_pmu)
 	if (!armv7_pmnc_has_overflowed(pmnc))
 		return IRQ_NONE;
 
-	/*
-	 * Handle the counter(s) overflow(s)
-	 */
-	regs = get_irq_regs();
-
 	for_each_set_bit(idx, cpu_pmu->cntr_mask, ARMPMU_MAX_HWEVENTS) {
 		struct perf_event *event = cpuc->events[idx];
-		struct hw_perf_event *hwc;
 
 		/* Ignore if we don't have an event. */
 		if (!event)
@@ -952,14 +944,7 @@ static irqreturn_t armv7pmu_handle_irq(struct arm_pmu *cpu_pmu)
 		if (!armv7_pmnc_counter_has_overflowed(pmnc, idx))
 			continue;
 
-		hwc = &event->hw;
-		armpmu_event_update(event);
-		perf_sample_data_init(&data, 0, hwc->last_period);
-		if (!armpmu_event_set_period(event))
-			continue;
-
-		if (perf_event_overflow(event, &data, regs))
-			cpu_pmu->disable(event);
+		armpmu_event_overflow(event);
 	}
 
 	/*
