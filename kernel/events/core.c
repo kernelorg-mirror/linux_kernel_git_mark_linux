@@ -5948,7 +5948,10 @@ static void __perf_event_period(struct perf_event *event,
 		event->pmu->stop(event, PERF_EF_UPDATE);
 	}
 
-	local64_set(&event->hw.period_left, 0);
+	/*
+	 * TODO: how should this work for sample_freq ?
+	 */
+	local64_set(&event->hw.period_left, value);
 
 	if (active) {
 		event->pmu->start(event, PERF_EF_RELOAD);
