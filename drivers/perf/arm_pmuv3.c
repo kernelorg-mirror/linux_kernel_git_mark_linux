@@ -708,11 +708,17 @@ static void armv8pmu_disable_event_counter(struct perf_event *event)
 static void armv8pmu_enable_intens(u64 mask)
 {
 	write_pmintenset(mask);
+	isb();
 }
 
 static void armv8pmu_enable_event_irq(struct perf_event *event)
 {
 	armv8pmu_enable_intens(BIT(event->hw.idx));
+
+	// TODO: explain why
+	// TODO: explain no ISB
+	if (local64_read(&event->hw.period_left) <= 0)
+		write_pmovsset(BIT(event->hw.idx));
 }
 
 static void armv8pmu_disable_intens(u64 mask)

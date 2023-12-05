@@ -197,46 +197,50 @@ armpmu_map_event(struct perf_event *event,
 	return -ENOENT;
 }
 
-static int armpmu_event_set_period(struct perf_event *event)
+static void armpmu_event_set_hw_period(struct perf_event *event)
 {
 	struct arm_pmu *armpmu = to_arm_pmu(event->pmu);
 	struct hw_perf_event *hwc = &event->hw;
-	s64 left = local64_read(&hwc->period_left);
-	s64 period = hwc->sample_period;
-	u64 max_period;
-	int ret = 0;
-
-	max_period = arm_pmu_event_max_period(event);
-	if (unlikely(left <= -period)) {
-		left = period;
-		local64_set(&hwc->period_left, left);
-		hwc->last_period = period;
-		ret = 1;
-	}
-
-	if (unlikely(left <= 0)) {
-		left += period;
-		local64_set(&hwc->period_left, left);
-		hwc->last_period = period;
-		ret = 1;
-	}
+	u64 max_period = arm_pmu_event_max_period(event);
+	s64 sample_left = local64_read(&hwc->period_left);
+	s64 hw_left;
 
 	/*
-	 * Limit the maximum period to prevent the counter value
-	 * from overtaking the one we are about to program. In
-	 * effect we are reducing max_period to account for
-	 * interrupt latency (and we are being very conservative).
+	 * The requested sample period can be greater than the maximum period
+	 * supported by the hardware. We only want to generate samples when the
+	 * entire sample period has elapsed (i.e. when period_left <= 0).
 	 */
-	if (left > (max_period >> 1))
-		left = (max_period >> 1);
 
-	local64_set(&hwc->prev_count, (u64)-left);
+	if (sample_left > (max_period >> 1)) {
+		/*
+		 * The remaining sample period is larger than the HW can count
+		 * in one go.
+		 */
+		hw_left = max_period >> 1;
+	} else if (sample_left > 0) {
+		/*
+		 * The sample period will end sooner than the maximum HW
+		 * period. Ensure that an overflow occurs as soon as the
+		 * remainder of the sample period has been counted.
+		 */
+		hw_left = sample_left;
+	} else {
+		/*
+		 * The sample period has already elapsed, but the overflow
+		 * hasn't been handled yet. The prior events have already been
+		 * counted, and so we don't need to asjust prev, but we need to
+		 * ensure that an overflow interrupt is asserted.
+		 */
 
-	armpmu->write_counter(event, (u64)(-left) & max_period);
+		// TODO: pend the overflow
+		hw_left = sample_left;
+	}
+
+	local64_set(&hwc->prev_count, (u64)-hw_left);
+
+	armpmu->write_counter(event, (u64)(-hw_left) & max_period);
 
 	perf_event_update_userpage(event);
-
-	return ret;
 }
 
 u64 armpmu_event_update(struct perf_event *event)
@@ -262,6 +266,25 @@ again:
 	return new_raw_count;
 }
 
+static bool __armpmu_event_overflow(struct perf_event *event)
+{
+	struct hw_perf_event *hwc = &event->hw;
+	s64 sample_left = local64_read(&hwc->period_left);
+	bool overflow = sample_left <= 0;
+
+	if (overflow) {
+		s64 sample_period = hwc->sample_period;
+		sample_left += sample_period;
+		if (sample_left < 0)
+			sample_left = sample_period;
+		local64_set(&hwc->period_left, sample_left);
+	}
+
+	armpmu_event_set_hw_period(event);
+
+	return overflow;
+}
+
 void armpmu_event_overflow(struct perf_event *event)
 {
 	struct arm_pmu *cpu_pmu = to_arm_pmu(event->pmu);
@@ -271,11 +294,10 @@ void armpmu_event_overflow(struct perf_event *event)
 
 	armpmu_event_update(event);
 
-	perf_sample_data_init(&data, 0, hwc->last_period);
-
-	if (!armpmu_event_set_period(event))
+	if (!__armpmu_event_overflow(event))
 		return;
 
+	perf_sample_data_init(&data, 0, hwc->last_period);
 	if (perf_event_overflow(event, &data, regs))
 		cpu_pmu->disable(event);
 }
@@ -323,7 +345,7 @@ static void armpmu_start(struct perf_event *event, int flags)
 	 * get an interrupt too soon or *way* too late if the overflow has
 	 * happened since disabling.
 	 */
-	armpmu_event_set_period(event);
+	armpmu_event_set_hw_period(event);
 	armpmu->enable(event);
 }
 
