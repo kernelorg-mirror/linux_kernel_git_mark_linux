@@ -111,3 +111,6 @@ obj-$(CONFIG_TRACEPOINT_BENCHMARK) += trace_benchmark.o
 obj-$(CONFIG_RV) += rv/
 
 libftrace-y := ftrace.o
+
+obj-$(CONFIG_FSTRESS) += fstress.o
+CFLAGS_fstress.o += $(CC_FLAGS_FTRACE)

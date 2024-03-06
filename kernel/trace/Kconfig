@@ -1236,6 +1236,10 @@ config HIST_TRIGGERS_DEBUG
 
           If unsure, say N.
 
+config FSTRESS
+	bool "Ftrace ops stress test"
+	depends on FUNCTION_TRACER
+
 source "kernel/trace/rv/Kconfig"
 
 endif # FTRACE
