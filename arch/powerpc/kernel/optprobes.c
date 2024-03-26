@@ -27,7 +27,7 @@
 
 static bool insn_page_in_use;
 
-void *alloc_optinsn_page(void)
+void *kprobes_alloc_optinsn_page(void)
 {
 	if (insn_page_in_use)
 		return NULL;
@@ -35,7 +35,7 @@ void *alloc_optinsn_page(void)
 	return &optinsn_slot;
 }
 
-void free_optinsn_page(void *page)
+void kprobes_free_optinsn_page(void *page)
 {
 	insn_page_in_use = false;
 }
