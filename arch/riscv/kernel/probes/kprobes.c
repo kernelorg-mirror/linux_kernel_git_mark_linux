@@ -112,6 +112,11 @@ void *kprobes_alloc_insn_page(void)
 				     VM_FLUSH_RESET_PERMS, NUMA_NO_NODE,
 				     __builtin_return_address(0));
 }
+
+void kprobes_free_insn_page(void *page)
+{
+	vfree(page);
+}
 #endif
 
 /* install breakpoint in text */

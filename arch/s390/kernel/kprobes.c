@@ -45,6 +45,11 @@ void *kprobes_alloc_insn_page(void)
 	return page;
 }
 
+void kprobes_free_insn_page(void *page)
+{
+	module_memfree(page);
+}
+
 static void *alloc_s390_insn_page(void)
 {
 	if (xchg(&insn_page_in_use, 1) == 1)

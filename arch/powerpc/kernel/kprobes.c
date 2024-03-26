@@ -146,6 +146,11 @@ error:
 	return NULL;
 }
 
+void kprobes_free_insn_page(void *page)
+{
+	module_memfree(page);
+}
+
 int arch_prepare_kprobe(struct kprobe *p)
 {
 	int ret = 0;

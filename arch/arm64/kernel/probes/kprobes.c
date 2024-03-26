@@ -136,6 +136,11 @@ void *kprobes_alloc_insn_page(void)
 			NUMA_NO_NODE, __builtin_return_address(0));
 }
 
+void kprobes_free_insn_page(void *page)
+{
+	vfree(page);
+}
+
 /* arm kprobe: install breakpoint in text */
 void __kprobes arch_arm_kprobe(struct kprobe *p)
 {

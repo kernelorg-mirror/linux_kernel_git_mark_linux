@@ -206,6 +206,9 @@ config HAVE_IOREMAP_PROT
 config HAVE_KPROBES
 	bool
 
+config HAVE_KPROBES_ALLOC
+	bool
+
 config HAVE_KRETPROBES
 	bool
 

@@ -431,6 +431,7 @@ int enable_kprobe(struct kprobe *kp);
 void dump_kprobe(struct kprobe *kp);
 
 void *kprobes_alloc_insn_page(void);
+void kprobes_free_insn_page(void *page);
 
 void *kprobes_alloc_optinsn_page(void);
 void kprobes_free_optinsn_page(void *page);
