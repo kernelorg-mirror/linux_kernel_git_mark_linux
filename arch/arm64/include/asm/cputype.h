@@ -287,7 +287,6 @@ struct midr_range {
 		.rv_max = MIDR_CPU_VAR_REV(v_max, r_max),	\
 	}
 
-#define MIDR_REV_RANGE(m, v, r_min, r_max) MIDR_RANGE(m, v, r_min, v, r_max)
 #define MIDR_REV(m, v, r) MIDR_RANGE(m, v, r, v, r)
 #define MIDR_ALL_VERSIONS(m) MIDR_RANGE(m, 0, 0, 0xf, 0xf)
 

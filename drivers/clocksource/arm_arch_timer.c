@@ -657,9 +657,10 @@ static u64 __arch_timer_check_delta(void)
 		 * Note that TVAL is signed, thus has only 31 of its
 		 * 32 bits to express magnitude.
 		 */
-		MIDR_REV_RANGE(MIDR_CPU_MODEL(ARM_CPU_IMP_APM,
-					      APM_CPU_PART_XGENE),
-			       APM_CPU_VAR_POTENZA, 0x0, 0xf),
+		MIDR_RANGE(MIDR_CPU_MODEL(ARM_CPU_IMP_APM,
+					  APM_CPU_PART_XGENE),
+			   APM_CPU_VAR_POTENZA, 0x0,
+			   APM_CPU_VAR_POTENZA, 0xf),
 		{},
 	};
 

@@ -1986,7 +1986,7 @@ static bool cpu_has_broken_dbm(void)
 		MIDR_REV(MIDR_QCOM_KRYO_4XX_SILVER, 0xd, 0xe),
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2051678
-		MIDR_REV_RANGE(MIDR_CORTEX_A510, 0, 0, 2),
+		MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2),
 #endif
 		{},
 	};
@@ -2137,9 +2137,9 @@ bool cpu_supports_bbml2_noabort(void)
 	 * TLB conflict aborts for BBML2 mapping granularity changes.
 	 */
 	static const struct midr_range supports_bbml2_noabort_list[] = {
-		MIDR_REV_RANGE(MIDR_CORTEX_X4, 0, 3, 0xf),
-		MIDR_REV_RANGE(MIDR_NEOVERSE_V3, 0, 2, 0xf),
-		MIDR_REV_RANGE(MIDR_NEOVERSE_V3AE, 0, 2, 0xf),
+		MIDR_RANGE(MIDR_CORTEX_X4, 0, 3, 0, 0xf),
+		MIDR_RANGE(MIDR_NEOVERSE_V3, 0, 2, 0, 0xf),
+		MIDR_RANGE(MIDR_NEOVERSE_V3AE, 0, 2, 0, 0xf),
 		MIDR_ALL_VERSIONS(MIDR_NVIDIA_OLYMPUS),
 		MIDR_ALL_VERSIONS(MIDR_AMPERE1),
 		MIDR_ALL_VERSIONS(MIDR_AMPERE1A),

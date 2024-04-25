@@ -194,10 +194,6 @@ cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 	.matches = is_affected_midr_range_list,			\
 	.midr_range_list = list
 
-/* Errata affecting a range of revisions of  given model variant */
-#define ERRATA_MIDR_REV_RANGE(m, var, r_min, r_max)	 \
-	ERRATA_MIDR_RANGE(m, var, r_min, var, r_max)
-
 /* Errata affecting a single variant/revision of a model */
 #define ERRATA_MIDR_REV(model, var, rev)	\
 	ERRATA_MIDR_RANGE(model, var, rev, var, rev)
@@ -349,7 +345,7 @@ static const struct midr_range cavium_erratum_30115_cpus[] = {
 	/* Cavium ThunderX, T88 pass 1.x - 2.2 */
 	MIDR_RANGE(MIDR_THUNDERX, 0, 0, 1, 2),
 	/* Cavium ThunderX, T81 pass 1.0 - 1.2 */
-	MIDR_REV_RANGE(MIDR_THUNDERX_81XX, 0, 0, 2),
+	MIDR_RANGE(MIDR_THUNDERX_81XX, 0, 0, 0, 2),
 	/* Cavium ThunderX, T83 pass 1.0 */
 	MIDR_REV(MIDR_THUNDERX_83XX, 0, 0),
 	{},
@@ -375,11 +371,11 @@ static const struct midr_range workaround_clean_cache[] = {
 	defined(CONFIG_ARM64_ERRATUM_827319) || \
 	defined(CONFIG_ARM64_ERRATUM_824069)
 	/* Cortex-A53 r0p[012]: ARM errata 826319, 827319, 824069 */
-	MIDR_REV_RANGE(MIDR_CORTEX_A53, 0, 0, 2),
+	MIDR_RANGE(MIDR_CORTEX_A53, 0, 0, 0, 2),
 #endif
 #ifdef	CONFIG_ARM64_ERRATUM_819472
 	/* Cortex-A53 r0p[01] : ARM errata 819472 */
-	MIDR_REV_RANGE(MIDR_CORTEX_A53, 0, 0, 1),
+	MIDR_RANGE(MIDR_CORTEX_A53, 0, 0, 0, 1),
 #endif
 	{},
 };
@@ -404,7 +400,7 @@ static const struct midr_range erratum_1418040_list[] = {
 #ifdef CONFIG_ARM64_ERRATUM_845719
 static const struct midr_range erratum_845719_list[] = {
 	/* Cortex-A53 r0p[01234] */
-	MIDR_REV_RANGE(MIDR_CORTEX_A53, 0, 0, 4),
+	MIDR_RANGE(MIDR_CORTEX_A53, 0, 0, 0, 4),
 	/* Brahma-B53 r0p[0] */
 	MIDR_REV(MIDR_BRAHMA_B53, 0, 0),
 	/* Kryo2XX Silver rAp4 */
@@ -418,7 +414,7 @@ static const struct arm64_cpu_capabilities erratum_843419_list[] = {
 	{
 		/* Cortex-A53 r0p[01234] */
 		.matches = is_affected_midr_range,
-		ERRATA_MIDR_REV_RANGE(MIDR_CORTEX_A53, 0, 0, 4),
+		ERRATA_MIDR_RANGE(MIDR_CORTEX_A53, 0, 0, 0, 4),
 		MIDR_FIXED(0x4, BIT(8)),
 	},
 	{
@@ -516,7 +512,7 @@ static const struct midr_range erratum_spec_unpriv_load_list[] = {
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2966298
 	/* Cortex-A520 r0p0 to r0p1 */
-	MIDR_REV_RANGE(MIDR_CORTEX_A520, 0, 0, 1),
+	MIDR_RANGE(MIDR_CORTEX_A520, 0, 0, 0, 1),
 #endif
 	{},
 };
@@ -806,7 +802,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "ARM erratum 2077057",
 		.capability = ARM64_WORKAROUND_2077057,
-		ERRATA_MIDR_REV_RANGE(MIDR_CORTEX_A510, 0, 0, 2),
+		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2064142
@@ -815,7 +811,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.capability = ARM64_WORKAROUND_2064142,
 
 		/* Cortex-A510 r0p0 - r0p2 */
-		ERRATA_MIDR_REV_RANGE(MIDR_CORTEX_A510, 0, 0, 2)
+		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2)
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2457168
@@ -834,7 +830,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.capability = ARM64_WORKAROUND_2038923,
 
 		/* Cortex-A510 r0p0 - r0p2 */
-		ERRATA_MIDR_REV_RANGE(MIDR_CORTEX_A510, 0, 0, 2)
+		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2)
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_1902691
@@ -843,7 +839,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.capability = ARM64_WORKAROUND_1902691,
 
 		/* Cortex-A510 r0p0 - r0p1 */
-		ERRATA_MIDR_REV_RANGE(MIDR_CORTEX_A510, 0, 0, 1)
+		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 1)
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_1742098
