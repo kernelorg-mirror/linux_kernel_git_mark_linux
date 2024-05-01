@@ -175,11 +175,11 @@ cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 	sysreg_clear_set(sctlr_el1, SCTLR_EL1_UCI, 0);
 }
 
-#define CAP_MIDR_RANGE(model, v_min, r_min, v_max, r_max)	\
+#define MATCH_MIDR_RANGE(model, v_min, r_min, v_max, r_max)	\
 	.matches = is_affected_midr_range,			\
 	.midr_range = MIDR_RANGE(model, v_min, r_min, v_max, r_max)
 
-#define CAP_MIDR_ALL_VERSIONS(model)					\
+#define MATCH_MIDR_ALL_VERSIONS(model)					\
 	.matches = is_affected_midr_range,				\
 	.midr_range = MIDR_ALL_VERSIONS(model)
 
@@ -188,9 +188,9 @@ cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 
 #define ERRATA_MIDR_RANGE(model, v_min, r_min, v_max, r_max)		\
 	.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,				\
-	CAP_MIDR_RANGE(model, v_min, r_min, v_max, r_max)
+	MATCH_MIDR_RANGE(model, v_min, r_min, v_max, r_max)
 
-#define CAP_MIDR_RANGE_LIST(list)				\
+#define MATCH_MIDR_RANGE_LIST(list)				\
 	.matches = is_affected_midr_range_list,			\
 	.midr_range_list = list
 
@@ -201,12 +201,12 @@ cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 /* Errata affecting all variants/revisions of a given a model */
 #define ERRATA_MIDR_ALL_VERSIONS(model)				\
 	.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,			\
-	CAP_MIDR_ALL_VERSIONS(model)
+	MATCH_MIDR_ALL_VERSIONS(model)
 
 /* Errata affecting a list of midr ranges, with same work around */
 #define ERRATA_MIDR_RANGE_LIST(midr_list)			\
 	.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,			\
-	CAP_MIDR_RANGE_LIST(midr_list)
+	MATCH_MIDR_RANGE_LIST(midr_list)
 
 static const __maybe_unused struct midr_range tx2_family_cpus[] = {
 	MIDR_ALL_VERSIONS(MIDR_BRCM_VULCAN),
@@ -773,7 +773,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.desc = "ARM erratum 2119858 or 2139208",
 		.capability = ARM64_WORKAROUND_TRBE_OVERWRITE_FILL_MODE,
 		.type = ARM64_CPUCAP_WEAK_LOCAL_CPU_FEATURE,
-		CAP_MIDR_RANGE_LIST(trbe_overwrite_fill_mode_cpus),
+		MATCH_MIDR_RANGE_LIST(trbe_overwrite_fill_mode_cpus),
 	},
 #endif
 #ifdef CONFIG_ARM64_WORKAROUND_TSB_FLUSH_FAILURE
@@ -788,7 +788,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.desc = "ARM erratum 2253138 or 2224489",
 		.capability = ARM64_WORKAROUND_TRBE_WRITE_OUT_OF_RANGE,
 		.type = ARM64_CPUCAP_WEAK_LOCAL_CPU_FEATURE,
-		CAP_MIDR_RANGE_LIST(trbe_write_out_of_range_cpus),
+		MATCH_MIDR_RANGE_LIST(trbe_write_out_of_range_cpus),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2645198
@@ -821,7 +821,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.type = ARM64_CPUCAP_WEAK_LOCAL_CPU_FEATURE,
 
 		/* Cortex-A510 r0p0-r1p1 */
-		CAP_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 1, 1)
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 1, 1)
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2038923
@@ -846,8 +846,8 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "ARM erratum 1742098",
 		.capability = ARM64_WORKAROUND_1742098,
-		CAP_MIDR_RANGE_LIST(broken_aarch32_aes),
 		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(broken_aarch32_aes),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2658417
