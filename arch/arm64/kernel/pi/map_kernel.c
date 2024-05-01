@@ -223,9 +223,9 @@ static bool __init ng_mappings_allowed(void)
 {
 	static const struct midr_range cavium_erratum_27456_cpus[] __initconst = {
 		/* Cavium ThunderX, T88 pass 1.x - 2.1 */
-		MIDR_RANGE(MIDR_THUNDERX, 0, 0, 1, 1),
+		MIDR_RANGE(CAVIUM, THUNDERX, 0, 0, 1, 1),
 		/* Cavium ThunderX, T81 pass 1.0 */
-		MIDR_RANGE_SINGLE(MIDR_THUNDERX_81XX, 0, 0),
+		MIDR_RANGE_SINGLE(CAVIUM, THUNDERX_81XX, 0, 0),
 		{},
 	};
 

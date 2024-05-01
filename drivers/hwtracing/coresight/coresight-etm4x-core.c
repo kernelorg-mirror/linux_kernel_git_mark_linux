@@ -1261,15 +1261,15 @@ static void cpu_detect_trace_filtering(struct etmv4_drvdata *drvdata)
  */
 static struct midr_range etm_wrong_ccitmin_cpus[] = {
 	/* Erratum #1490853 - Cortex-A76 */
-	MIDR_RANGE(MIDR_CORTEX_A76, 0, 0, 4, 0),
+	MIDR_RANGE(ARM, CORTEX_A76, 0, 0, 4, 0),
 	/* Erratum #1490853 - Neoverse-N1 */
-	MIDR_RANGE(MIDR_NEOVERSE_N1, 0, 0, 4, 0),
+	MIDR_RANGE(ARM, NEOVERSE_N1, 0, 0, 4, 0),
 	/* Erratum #1491015 - Cortex-A77 */
-	MIDR_RANGE(MIDR_CORTEX_A77, 0, 0, 1, 0),
+	MIDR_RANGE(ARM, CORTEX_A77, 0, 0, 1, 0),
 	/* Erratum #1502854 - Cortex-X1 */
-	MIDR_RANGE_SINGLE(MIDR_CORTEX_X1, 0, 0),
+	MIDR_RANGE_SINGLE(ARM, CORTEX_X1, 0, 0),
 	/* Erratum #1619801 - Neoverse-V1 */
-	MIDR_RANGE_SINGLE(MIDR_NEOVERSE_V1, 0, 0),
+	MIDR_RANGE_SINGLE(ARM, NEOVERSE_V1, 0, 0),
 	{},
 };
 

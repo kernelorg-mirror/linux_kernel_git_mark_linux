@@ -45,6 +45,9 @@
 	(0xf			<< MIDR_ARCHITECTURE_SHIFT) | \
 	((partnum)		<< MIDR_PARTNUM_SHIFT))
 
+#define MIDR_MODEL(imp, partnum) \
+	MIDR_CPU_MODEL(ARM_CPU_IMP_##imp, imp##_CPU_PART_##partnum)
+
 #define MIDR_CPU_VAR_REV(var, rev) \
 	(((var)	<< MIDR_VARIANT_SHIFT) | (rev))
 
@@ -280,15 +283,18 @@ struct midr_range {
 	u32 rv_max;
 };
 
-#define MIDR_RANGE(m, v_min, r_min, v_max, r_max)		\
+#define MIDR_RANGE(imp, partnum, v_min, r_min, v_max, r_max)	\
 	{							\
-		.model = m,					\
+		.model = MIDR_MODEL(imp, partnum),		\
 		.rv_min = MIDR_CPU_VAR_REV(v_min, r_min),	\
 		.rv_max = MIDR_CPU_VAR_REV(v_max, r_max),	\
 	}
 
-#define MIDR_RANGE_SINGLE(m, v, r) MIDR_RANGE(m, v, r, v, r)
-#define MIDR_RANGE_ALL(m) MIDR_RANGE(m, 0, 0, 0xf, 0xf)
+#define MIDR_RANGE_SINGLE(imp, partnum, v, r)			\
+	MIDR_RANGE(imp, partnum, v, r, v, r)
+
+#define MIDR_RANGE_ALL(imp, partnum) 				\
+	MIDR_RANGE(imp, partnum, 0, 0, 0xf, 0xf)
 
 static inline bool midr_is_cpu_model_range(u32 midr, u32 model, u32 rv_min,
 					   u32 rv_max)
