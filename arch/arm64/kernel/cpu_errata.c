@@ -175,17 +175,17 @@ cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 	sysreg_clear_set(sctlr_el1, SCTLR_EL1_UCI, 0);
 }
 
-#define MATCH_MIDR_RANGE(model, v_min, r_min, v_max, r_max)	\
+#define MATCH_MIDR_RANGE(args...)				\
 	.matches = is_affected_midr_range,			\
-	.midr_range = MIDR_RANGE(model, v_min, r_min, v_max, r_max)
+	.midr_range = MIDR_RANGE(args)
 
-#define MATCH_MIDR_RANGE_SINGLE(model, var, rev)				\
+#define MATCH_MIDR_RANGE_SINGLE(args...)			\
 	.matches = is_affected_midr_range,			\
-	.midr_range = MIDR_RANGE_SINGLE(model, var, rev)
+	.midr_range = MIDR_RANGE_SINGLE(args)
 
-#define MATCH_MIDR_RANGE_ALL(model)					\
-	.matches = is_affected_midr_range,				\
-	.midr_range = MIDR_RANGE_ALL(model)
+#define MATCH_MIDR_RANGE_ALL(args...)				\
+	.matches = is_affected_midr_range,			\
+	.midr_range = MIDR_RANGE_ALL(args)
 
 #define MATCH_MIDR_RANGE_LIST(list)				\
 	.matches = is_affected_midr_range_list,			\
