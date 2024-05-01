@@ -179,13 +179,13 @@ cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 	.matches = is_affected_midr_range,			\
 	.midr_range = MIDR_RANGE(model, v_min, r_min, v_max, r_max)
 
-#define MATCH_MIDR_REV(model, var, rev)				\
+#define MATCH_MIDR_RANGE_SINGLE(model, var, rev)				\
 	.matches = is_affected_midr_range,			\
-	.midr_range = MIDR_REV(model, var, rev)
+	.midr_range = MIDR_RANGE_SINGLE(model, var, rev)
 
-#define MATCH_MIDR_ALL_VERSIONS(model)					\
+#define MATCH_MIDR_RANGE_ALL(model)					\
 	.matches = is_affected_midr_range,				\
-	.midr_range = MIDR_ALL_VERSIONS(model)
+	.midr_range = MIDR_RANGE_ALL(model)
 
 #define MATCH_MIDR_RANGE_LIST(list)				\
 	.matches = is_affected_midr_range_list,			\
@@ -195,8 +195,8 @@ cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 	.fixed_revs = (struct arm64_midr_revidr[]){{ (rev), (revidr_mask) }, {}}
 
 static const __maybe_unused struct midr_range tx2_family_cpus[] = {
-	MIDR_ALL_VERSIONS(MIDR_BRCM_VULCAN),
-	MIDR_ALL_VERSIONS(MIDR_CAVIUM_THUNDERX2),
+	MIDR_RANGE_ALL(MIDR_BRCM_VULCAN),
+	MIDR_RANGE_ALL(MIDR_CAVIUM_THUNDERX2),
 	{},
 };
 
@@ -223,25 +223,25 @@ has_neoverse_n1_erratum_1542419(const struct arm64_cpu_capabilities *entry,
 				int scope)
 {
 	bool has_dic = read_cpuid_cachetype() & BIT(CTR_EL0_DIC_SHIFT);
-	const struct midr_range range = MIDR_ALL_VERSIONS(MIDR_NEOVERSE_N1);
+	const struct midr_range range = MIDR_RANGE_ALL(MIDR_NEOVERSE_N1);
 
 	WARN_ON(scope != SCOPE_LOCAL_CPU || preemptible());
 	return is_midr_in_range(&range) && has_dic;
 }
 
 static const struct midr_range impdef_pmuv3_cpus[] = {
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M1_ICESTORM),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M1_FIRESTORM),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M1_ICESTORM_PRO),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M1_FIRESTORM_PRO),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M1_ICESTORM_MAX),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M1_FIRESTORM_MAX),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M2_BLIZZARD),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M2_AVALANCHE),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M2_BLIZZARD_PRO),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M2_AVALANCHE_PRO),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M2_BLIZZARD_MAX),
-	MIDR_ALL_VERSIONS(MIDR_APPLE_M2_AVALANCHE_MAX),
+	MIDR_RANGE_ALL(MIDR_APPLE_M1_ICESTORM),
+	MIDR_RANGE_ALL(MIDR_APPLE_M1_FIRESTORM),
+	MIDR_RANGE_ALL(MIDR_APPLE_M1_ICESTORM_PRO),
+	MIDR_RANGE_ALL(MIDR_APPLE_M1_FIRESTORM_PRO),
+	MIDR_RANGE_ALL(MIDR_APPLE_M1_ICESTORM_MAX),
+	MIDR_RANGE_ALL(MIDR_APPLE_M1_FIRESTORM_MAX),
+	MIDR_RANGE_ALL(MIDR_APPLE_M2_BLIZZARD),
+	MIDR_RANGE_ALL(MIDR_APPLE_M2_AVALANCHE),
+	MIDR_RANGE_ALL(MIDR_APPLE_M2_BLIZZARD_PRO),
+	MIDR_RANGE_ALL(MIDR_APPLE_M2_AVALANCHE_PRO),
+	MIDR_RANGE_ALL(MIDR_APPLE_M2_BLIZZARD_MAX),
+	MIDR_RANGE_ALL(MIDR_APPLE_M2_AVALANCHE_MAX),
 	{},
 };
 
@@ -270,7 +270,7 @@ static void cpu_enable_impdef_pmuv3_traps(const struct arm64_cpu_capabilities *_
 static const struct arm64_cpu_capabilities arm64_repeat_tlbi_list[] = {
 #ifdef CONFIG_QCOM_FALKOR_ERRATUM_1009
 	{
-		MATCH_MIDR_REV(MIDR_QCOM_FALKOR_V1, 0, 0)
+		MATCH_MIDR_RANGE_SINGLE(MIDR_QCOM_FALKOR_V1, 0, 0)
 	},
 	{
 		.midr_range.model = MIDR_QCOM_KRYO,
@@ -288,7 +288,7 @@ static const struct arm64_cpu_capabilities arm64_repeat_tlbi_list[] = {
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2441007
 	{
-		MATCH_MIDR_ALL_VERSIONS(MIDR_CORTEX_A55),
+		MATCH_MIDR_RANGE_ALL(MIDR_CORTEX_A55),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2441009
@@ -303,15 +303,15 @@ static const struct arm64_cpu_capabilities arm64_repeat_tlbi_list[] = {
 
 #ifdef CONFIG_CAVIUM_ERRATUM_23154
 static const struct midr_range cavium_erratum_23154_cpus[] = {
-	MIDR_ALL_VERSIONS(MIDR_THUNDERX),
-	MIDR_ALL_VERSIONS(MIDR_THUNDERX_81XX),
-	MIDR_ALL_VERSIONS(MIDR_THUNDERX_83XX),
-	MIDR_ALL_VERSIONS(MIDR_OCTX2_98XX),
-	MIDR_ALL_VERSIONS(MIDR_OCTX2_96XX),
-	MIDR_ALL_VERSIONS(MIDR_OCTX2_95XX),
-	MIDR_ALL_VERSIONS(MIDR_OCTX2_95XXN),
-	MIDR_ALL_VERSIONS(MIDR_OCTX2_95XXMM),
-	MIDR_ALL_VERSIONS(MIDR_OCTX2_95XXO),
+	MIDR_RANGE_ALL(MIDR_THUNDERX),
+	MIDR_RANGE_ALL(MIDR_THUNDERX_81XX),
+	MIDR_RANGE_ALL(MIDR_THUNDERX_83XX),
+	MIDR_RANGE_ALL(MIDR_OCTX2_98XX),
+	MIDR_RANGE_ALL(MIDR_OCTX2_96XX),
+	MIDR_RANGE_ALL(MIDR_OCTX2_95XX),
+	MIDR_RANGE_ALL(MIDR_OCTX2_95XXN),
+	MIDR_RANGE_ALL(MIDR_OCTX2_95XXMM),
+	MIDR_RANGE_ALL(MIDR_OCTX2_95XXO),
 	{},
 };
 #endif
@@ -321,7 +321,7 @@ static const struct midr_range cavium_erratum_27456_cpus[] = {
 	/* Cavium ThunderX, T88 pass 1.x - 2.1 */
 	MIDR_RANGE(MIDR_THUNDERX, 0, 0, 1, 1),
 	/* Cavium ThunderX, T81 pass 1.0 */
-	MIDR_REV(MIDR_THUNDERX_81XX, 0, 0),
+	MIDR_RANGE_SINGLE(MIDR_THUNDERX_81XX, 0, 0),
 	{},
 };
 #endif
@@ -333,7 +333,7 @@ static const struct midr_range cavium_erratum_30115_cpus[] = {
 	/* Cavium ThunderX, T81 pass 1.0 - 1.2 */
 	MIDR_RANGE(MIDR_THUNDERX_81XX, 0, 0, 0, 2),
 	/* Cavium ThunderX, T83 pass 1.0 */
-	MIDR_REV(MIDR_THUNDERX_83XX, 0, 0),
+	MIDR_RANGE_SINGLE(MIDR_THUNDERX_83XX, 0, 0),
 	{},
 };
 #endif
@@ -341,7 +341,7 @@ static const struct midr_range cavium_erratum_30115_cpus[] = {
 #ifdef CONFIG_QCOM_FALKOR_ERRATUM_1003
 static const struct arm64_cpu_capabilities qcom_erratum_1003_list[] = {
 	{
-		MATCH_MIDR_REV(MIDR_QCOM_FALKOR_V1, 0, 0),
+		MATCH_MIDR_RANGE_SINGLE(MIDR_QCOM_FALKOR_V1, 0, 0),
 	},
 	{
 		.midr_range.model = MIDR_QCOM_KRYO,
@@ -388,9 +388,9 @@ static const struct midr_range erratum_845719_list[] = {
 	/* Cortex-A53 r0p[01234] */
 	MIDR_RANGE(MIDR_CORTEX_A53, 0, 0, 0, 4),
 	/* Brahma-B53 r0p[0] */
-	MIDR_REV(MIDR_BRAHMA_B53, 0, 0),
+	MIDR_RANGE_SINGLE(MIDR_BRAHMA_B53, 0, 0),
 	/* Kryo2XX Silver rAp4 */
-	MIDR_REV(MIDR_QCOM_KRYO_2XX_SILVER, 0xa, 0x4),
+	MIDR_RANGE_SINGLE(MIDR_QCOM_KRYO_2XX_SILVER, 0xa, 0x4),
 	{},
 };
 #endif
@@ -404,7 +404,7 @@ static const struct arm64_cpu_capabilities erratum_843419_list[] = {
 	},
 	{
 		/* Brahma-B53 r0p[0] */
-		MATCH_MIDR_REV(MIDR_BRAHMA_B53, 0, 0),
+		MATCH_MIDR_RANGE_SINGLE(MIDR_BRAHMA_B53, 0, 0),
 	},
 	{},
 };
@@ -417,14 +417,14 @@ static const struct midr_range erratum_speculative_at_list[] = {
 	MIDR_RANGE(MIDR_CORTEX_A76, 0, 0, 2, 0),
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_1319367
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A57),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A72),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A57),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A72),
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_1530923
 	/* Cortex A55 r0p0 to r2p0 */
 	MIDR_RANGE(MIDR_CORTEX_A55, 0, 0, 2, 0),
 	/* Kryo4xx Silver (rdpe => r1p0) */
-	MIDR_REV(MIDR_QCOM_KRYO_4XX_SILVER, 0xd, 0xe),
+	MIDR_RANGE_SINGLE(MIDR_QCOM_KRYO_4XX_SILVER, 0xd, 0xe),
 #endif
 	{},
 };
@@ -443,11 +443,11 @@ static const struct midr_range erratum_1463225[] = {
 #ifdef CONFIG_ARM64_WORKAROUND_TRBE_OVERWRITE_FILL_MODE
 static const struct midr_range trbe_overwrite_fill_mode_cpus[] = {
 #ifdef CONFIG_ARM64_ERRATUM_2139208
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_N2),
-	MIDR_ALL_VERSIONS(MIDR_MICROSOFT_AZURE_COBALT_100),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_N2),
+	MIDR_RANGE_ALL(MIDR_MICROSOFT_AZURE_COBALT_100),
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2119858
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A710),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A710),
 	MIDR_RANGE(MIDR_CORTEX_X2, 0, 0, 2, 0),
 #endif
 	{},
@@ -457,11 +457,11 @@ static const struct midr_range trbe_overwrite_fill_mode_cpus[] = {
 #ifdef CONFIG_ARM64_WORKAROUND_TSB_FLUSH_FAILURE
 static const struct midr_range tsb_flush_fail_cpus[] = {
 #ifdef CONFIG_ARM64_ERRATUM_2067961
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_N2),
-	MIDR_ALL_VERSIONS(MIDR_MICROSOFT_AZURE_COBALT_100),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_N2),
+	MIDR_RANGE_ALL(MIDR_MICROSOFT_AZURE_COBALT_100),
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2054223
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A710),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A710),
 #endif
 	{},
 };
@@ -470,11 +470,11 @@ static const struct midr_range tsb_flush_fail_cpus[] = {
 #ifdef CONFIG_ARM64_WORKAROUND_TRBE_WRITE_OUT_OF_RANGE
 static struct midr_range trbe_write_out_of_range_cpus[] = {
 #ifdef CONFIG_ARM64_ERRATUM_2253138
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_N2),
-	MIDR_ALL_VERSIONS(MIDR_MICROSOFT_AZURE_COBALT_100),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_N2),
+	MIDR_RANGE_ALL(MIDR_MICROSOFT_AZURE_COBALT_100),
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2224489
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A710),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A710),
 	MIDR_RANGE(MIDR_CORTEX_X2, 0, 0, 2, 0),
 #endif
 	{},
@@ -484,7 +484,7 @@ static struct midr_range trbe_write_out_of_range_cpus[] = {
 #ifdef CONFIG_ARM64_ERRATUM_1742098
 static struct midr_range broken_aarch32_aes[] = {
 	MIDR_RANGE(MIDR_CORTEX_A57, 0, 1, 0xf, 0xf),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A72),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A72),
 	{},
 };
 #endif /* CONFIG_ARM64_WORKAROUND_TRBE_WRITE_OUT_OF_RANGE */
@@ -492,7 +492,7 @@ static struct midr_range broken_aarch32_aes[] = {
 #ifdef CONFIG_ARM64_WORKAROUND_SPECULATIVE_UNPRIV_LOAD
 static const struct midr_range erratum_spec_unpriv_load_list[] = {
 #ifdef CONFIG_ARM64_ERRATUM_3117295
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A510),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A510),
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2966298
 	/* Cortex-A520 r0p0 to r0p1 */
@@ -504,44 +504,44 @@ static const struct midr_range erratum_spec_unpriv_load_list[] = {
 
 #ifdef CONFIG_ARM64_ERRATUM_3194386
 static const struct midr_range erratum_spec_ssbs_list[] = {
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A76),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A77),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A78),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A78C),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A710),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A715),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A720),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A720AE),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A725),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_X1),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_X1C),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_X2),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_X3),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_X4),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_X925),
-	MIDR_ALL_VERSIONS(MIDR_MICROSOFT_AZURE_COBALT_100),
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_N1),
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_N2),
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_N3),
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_V1),
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_V2),
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_V3),
-	MIDR_ALL_VERSIONS(MIDR_NEOVERSE_V3AE),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A76),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A77),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A78),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A78C),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A710),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A715),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A720),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A720AE),
+	MIDR_RANGE_ALL(MIDR_CORTEX_A725),
+	MIDR_RANGE_ALL(MIDR_CORTEX_X1),
+	MIDR_RANGE_ALL(MIDR_CORTEX_X1C),
+	MIDR_RANGE_ALL(MIDR_CORTEX_X2),
+	MIDR_RANGE_ALL(MIDR_CORTEX_X3),
+	MIDR_RANGE_ALL(MIDR_CORTEX_X4),
+	MIDR_RANGE_ALL(MIDR_CORTEX_X925),
+	MIDR_RANGE_ALL(MIDR_MICROSOFT_AZURE_COBALT_100),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_N1),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_N2),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_N3),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_V1),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_V2),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_V3),
+	MIDR_RANGE_ALL(MIDR_NEOVERSE_V3AE),
 	{}
 };
 #endif
 
 #ifdef CONFIG_AMPERE_ERRATUM_AC03_CPU_38
 static const struct midr_range erratum_ac03_cpu_38_list[] = {
-	MIDR_ALL_VERSIONS(MIDR_AMPERE1),
-	MIDR_ALL_VERSIONS(MIDR_AMPERE1A),
+	MIDR_RANGE_ALL(MIDR_AMPERE1),
+	MIDR_RANGE_ALL(MIDR_AMPERE1A),
 	{},
 };
 #endif
 
 #ifdef CONFIG_AMPERE_ERRATUM_AC04_CPU_23
 static const struct midr_range erratum_ac04_cpu_23_list[] = {
-	MIDR_ALL_VERSIONS(MIDR_AMPERE1A),
+	MIDR_RANGE_ALL(MIDR_AMPERE1A),
 	{},
 };
 #endif
@@ -646,7 +646,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.desc = "ARM erratum 858921",
 		.capability = ARM64_WORKAROUND_858921,
 		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
-		MATCH_MIDR_ALL_VERSIONS(MIDR_CORTEX_A73),
+		MATCH_MIDR_RANGE_ALL(MIDR_CORTEX_A73),
 	},
 #endif
 	{
@@ -750,7 +750,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.desc = "NVIDIA Carmel CNP erratum",
 		.capability = ARM64_WORKAROUND_NVIDIA_CARMEL_CNP,
 		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
-		MATCH_MIDR_ALL_VERSIONS(MIDR_NVIDIA_CARMEL),
+		MATCH_MIDR_RANGE_ALL(MIDR_NVIDIA_CARMEL),
 	},
 #endif
 #ifdef CONFIG_ARM64_WORKAROUND_TRBE_OVERWRITE_FILL_MODE
@@ -787,7 +787,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.desc = "ARM erratum 2645198",
 		.capability = ARM64_WORKAROUND_2645198,
 		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
-		MATCH_MIDR_ALL_VERSIONS(MIDR_CORTEX_A715)
+		MATCH_MIDR_RANGE_ALL(MIDR_CORTEX_A715)
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2077057
@@ -896,7 +896,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.capability = ARM64_WORKAROUND_QCOM_ORYON_CNTVOFF,
 		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
 		MATCH_MIDR_RANGE_LIST(((const struct midr_range[]) {
-					MIDR_ALL_VERSIONS(MIDR_QCOM_ORYON_X1),
+					MIDR_RANGE_ALL(MIDR_QCOM_ORYON_X1),
 					{}
 				})),
 	},

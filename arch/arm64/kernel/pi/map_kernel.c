@@ -225,7 +225,7 @@ static bool __init ng_mappings_allowed(void)
 		/* Cavium ThunderX, T88 pass 1.x - 2.1 */
 		MIDR_RANGE(MIDR_THUNDERX, 0, 0, 1, 1),
 		/* Cavium ThunderX, T81 pass 1.0 */
-		MIDR_REV(MIDR_THUNDERX_81XX, 0, 0),
+		MIDR_RANGE_SINGLE(MIDR_THUNDERX_81XX, 0, 0),
 		{},
 	};
 

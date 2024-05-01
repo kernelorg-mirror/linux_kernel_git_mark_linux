@@ -1267,9 +1267,9 @@ static struct midr_range etm_wrong_ccitmin_cpus[] = {
 	/* Erratum #1491015 - Cortex-A77 */
 	MIDR_RANGE(MIDR_CORTEX_A77, 0, 0, 1, 0),
 	/* Erratum #1502854 - Cortex-X1 */
-	MIDR_REV(MIDR_CORTEX_X1, 0, 0),
+	MIDR_RANGE_SINGLE(MIDR_CORTEX_X1, 0, 0),
 	/* Erratum #1619801 - Neoverse-V1 */
-	MIDR_REV(MIDR_NEOVERSE_V1, 0, 0),
+	MIDR_RANGE_SINGLE(MIDR_NEOVERSE_V1, 0, 0),
 	{},
 };
 
