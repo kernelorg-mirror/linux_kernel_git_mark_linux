@@ -179,34 +179,20 @@ cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 	.matches = is_affected_midr_range,			\
 	.midr_range = MIDR_RANGE(model, v_min, r_min, v_max, r_max)
 
+#define MATCH_MIDR_REV(model, var, rev)				\
+	.matches = is_affected_midr_range,			\
+	.midr_range = MIDR_REV(model, var, rev)
+
 #define MATCH_MIDR_ALL_VERSIONS(model)					\
 	.matches = is_affected_midr_range,				\
 	.midr_range = MIDR_ALL_VERSIONS(model)
-
-#define MIDR_FIXED(rev, revidr_mask) \
-	.fixed_revs = (struct arm64_midr_revidr[]){{ (rev), (revidr_mask) }, {}}
-
-#define ERRATA_MIDR_RANGE(model, v_min, r_min, v_max, r_max)		\
-	.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,				\
-	MATCH_MIDR_RANGE(model, v_min, r_min, v_max, r_max)
 
 #define MATCH_MIDR_RANGE_LIST(list)				\
 	.matches = is_affected_midr_range_list,			\
 	.midr_range_list = list
 
-/* Errata affecting a single variant/revision of a model */
-#define ERRATA_MIDR_REV(model, var, rev)	\
-	ERRATA_MIDR_RANGE(model, var, rev, var, rev)
-
-/* Errata affecting all variants/revisions of a given a model */
-#define ERRATA_MIDR_ALL_VERSIONS(model)				\
-	.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,			\
-	MATCH_MIDR_ALL_VERSIONS(model)
-
-/* Errata affecting a list of midr ranges, with same work around */
-#define ERRATA_MIDR_RANGE_LIST(midr_list)			\
-	.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,			\
-	MATCH_MIDR_RANGE_LIST(midr_list)
+#define MIDR_FIXED(rev, revidr_mask) \
+	.fixed_revs = (struct arm64_midr_revidr[]){{ (rev), (revidr_mask) }, {}}
 
 static const __maybe_unused struct midr_range tx2_family_cpus[] = {
 	MIDR_ALL_VERSIONS(MIDR_BRCM_VULCAN),
@@ -284,7 +270,7 @@ static void cpu_enable_impdef_pmuv3_traps(const struct arm64_cpu_capabilities *_
 static const struct arm64_cpu_capabilities arm64_repeat_tlbi_list[] = {
 #ifdef CONFIG_QCOM_FALKOR_ERRATUM_1009
 	{
-		ERRATA_MIDR_REV(MIDR_QCOM_FALKOR_V1, 0, 0)
+		MATCH_MIDR_REV(MIDR_QCOM_FALKOR_V1, 0, 0)
 	},
 	{
 		.midr_range.model = MIDR_QCOM_KRYO,
@@ -293,22 +279,22 @@ static const struct arm64_cpu_capabilities arm64_repeat_tlbi_list[] = {
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_1286807
 	{
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A76, 0, 0, 3, 0),
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A76, 0, 0, 3, 0),
 	},
 	{
 		/* Kryo4xx Gold (rcpe to rfpe) => (r0p0 to r3p0) */
-		ERRATA_MIDR_RANGE(MIDR_QCOM_KRYO_4XX_GOLD, 0xc, 0xe, 0xf, 0xe),
+		MATCH_MIDR_RANGE(MIDR_QCOM_KRYO_4XX_GOLD, 0xc, 0xe, 0xf, 0xe),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2441007
 	{
-		ERRATA_MIDR_ALL_VERSIONS(MIDR_CORTEX_A55),
+		MATCH_MIDR_ALL_VERSIONS(MIDR_CORTEX_A55),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2441009
 	{
 		/* Cortex-A510 r0p0 -> r1p1. Fixed in r1p2 */
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 1, 1),
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 1, 1),
 	},
 #endif
 	{},
@@ -355,7 +341,7 @@ static const struct midr_range cavium_erratum_30115_cpus[] = {
 #ifdef CONFIG_QCOM_FALKOR_ERRATUM_1003
 static const struct arm64_cpu_capabilities qcom_erratum_1003_list[] = {
 	{
-		ERRATA_MIDR_REV(MIDR_QCOM_FALKOR_V1, 0, 0),
+		MATCH_MIDR_REV(MIDR_QCOM_FALKOR_V1, 0, 0),
 	},
 	{
 		.midr_range.model = MIDR_QCOM_KRYO,
@@ -413,14 +399,12 @@ static const struct midr_range erratum_845719_list[] = {
 static const struct arm64_cpu_capabilities erratum_843419_list[] = {
 	{
 		/* Cortex-A53 r0p[01234] */
-		.matches = is_affected_midr_range,
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A53, 0, 0, 0, 4),
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A53, 0, 0, 0, 4),
 		MIDR_FIXED(0x4, BIT(8)),
 	},
 	{
 		/* Brahma-B53 r0p[0] */
-		.matches = is_affected_midr_range,
-		ERRATA_MIDR_REV(MIDR_BRAHMA_B53, 0, 0),
+		MATCH_MIDR_REV(MIDR_BRAHMA_B53, 0, 0),
 	},
 	{},
 };
@@ -567,28 +551,27 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "ARM errata 826319, 827319, 824069, or 819472",
 		.capability = ARM64_WORKAROUND_CLEAN_CACHE,
-		ERRATA_MIDR_RANGE_LIST(workaround_clean_cache),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(workaround_clean_cache),
 		.cpu_enable = cpu_enable_cache_maint_trap,
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_832075
 	{
-	/* Cortex-A57 r0p0 - r1p2 */
+		/* Cortex-A57 r0p0 - r1p2 */
 		.desc = "ARM erratum 832075",
 		.capability = ARM64_WORKAROUND_DEVICE_LOAD_ACQUIRE,
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A57,
-				  0, 0,
-				  1, 2),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A57, 0, 0, 1, 2),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_834220
 	{
-	/* Cortex-A57 r0p0 - r1p2 */
+		/* Cortex-A57 r0p0 - r1p2 */
 		.desc = "ARM erratum 834220",
 		.capability = ARM64_WORKAROUND_834220,
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A57,
-				  0, 0,
-				  1, 2),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A57, 0, 0, 1, 2),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_843419
@@ -604,7 +587,8 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "ARM erratum 845719",
 		.capability = ARM64_WORKAROUND_845719,
-		ERRATA_MIDR_RANGE_LIST(erratum_845719_list),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(erratum_845719_list),
 	},
 #endif
 #ifdef CONFIG_CAVIUM_ERRATUM_23154
@@ -612,21 +596,23 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.desc = "Cavium errata 23154 and 38545",
 		.capability = ARM64_WORKAROUND_CAVIUM_23154,
 		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
-		ERRATA_MIDR_RANGE_LIST(cavium_erratum_23154_cpus),
+		MATCH_MIDR_RANGE_LIST(cavium_erratum_23154_cpus),
 	},
 #endif
 #ifdef CONFIG_CAVIUM_ERRATUM_27456
 	{
 		.desc = "Cavium erratum 27456",
 		.capability = ARM64_WORKAROUND_CAVIUM_27456,
-		ERRATA_MIDR_RANGE_LIST(cavium_erratum_27456_cpus),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(cavium_erratum_27456_cpus),
 	},
 #endif
 #ifdef CONFIG_CAVIUM_ERRATUM_30115
 	{
 		.desc = "Cavium erratum 30115",
 		.capability = ARM64_WORKAROUND_CAVIUM_30115,
-		ERRATA_MIDR_RANGE_LIST(cavium_erratum_30115_cpus),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(cavium_erratum_30115_cpus),
 	},
 #endif
 	{
@@ -656,10 +642,11 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_858921
 	{
-	/* Cortex-A73 all versions */
+		/* Cortex-A73 all versions */
 		.desc = "ARM erratum 858921",
 		.capability = ARM64_WORKAROUND_858921,
-		ERRATA_MIDR_ALL_VERSIONS(MIDR_CORTEX_A73),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_ALL_VERSIONS(MIDR_CORTEX_A73),
 	},
 #endif
 	{
@@ -697,20 +684,21 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "ARM erratum 1418040",
 		.capability = ARM64_WORKAROUND_1418040,
-		ERRATA_MIDR_RANGE_LIST(erratum_1418040_list),
 		/*
 		 * We need to allow affected CPUs to come in late, but
 		 * also need the non-affected CPUs to be able to come
 		 * in at any point in time. Wonderful.
 		 */
 		.type = ARM64_CPUCAP_WEAK_LOCAL_CPU_FEATURE,
+		MATCH_MIDR_RANGE_LIST(erratum_1418040_list),
 	},
 #endif
 #ifdef CONFIG_ARM64_WORKAROUND_SPECULATIVE_AT
 	{
 		.desc = "ARM errata 1165522, 1319367, or 1530923",
 		.capability = ARM64_WORKAROUND_SPECULATIVE_AT,
-		ERRATA_MIDR_RANGE_LIST(erratum_speculative_at_list),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(erratum_speculative_at_list),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_1463225
@@ -726,13 +714,15 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "Cavium ThunderX2 erratum 219 (KVM guest sysreg trapping)",
 		.capability = ARM64_WORKAROUND_CAVIUM_TX2_219_TVM,
-		ERRATA_MIDR_RANGE_LIST(tx2_family_cpus),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
 		.matches = needs_tx2_tvm_workaround,
+		.midr_range_list = tx2_family_cpus,
 	},
 	{
 		.desc = "Cavium ThunderX2 erratum 219 (PRFM removal)",
 		.capability = ARM64_WORKAROUND_CAVIUM_TX2_219_PRFM,
-		ERRATA_MIDR_RANGE_LIST(tx2_family_cpus),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(tx2_family_cpus),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_1542419
@@ -750,9 +740,8 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		/* we depend on the firmware portion for correctness */
 		.desc = "ARM erratum 1508412 (kernel portion)",
 		.capability = ARM64_WORKAROUND_1508412,
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A77,
-				  0, 0,
-				  1, 0),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A77, 0, 0, 1, 0),
 	},
 #endif
 #ifdef CONFIG_NVIDIA_CARMEL_CNP_ERRATUM
@@ -760,18 +749,19 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		/* NVIDIA Carmel */
 		.desc = "NVIDIA Carmel CNP erratum",
 		.capability = ARM64_WORKAROUND_NVIDIA_CARMEL_CNP,
-		ERRATA_MIDR_ALL_VERSIONS(MIDR_NVIDIA_CARMEL),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_ALL_VERSIONS(MIDR_NVIDIA_CARMEL),
 	},
 #endif
 #ifdef CONFIG_ARM64_WORKAROUND_TRBE_OVERWRITE_FILL_MODE
 	{
+		.desc = "ARM erratum 2119858 or 2139208",
+		.capability = ARM64_WORKAROUND_TRBE_OVERWRITE_FILL_MODE,
 		/*
 		 * The erratum work around is handled within the TRBE
 		 * driver and can be applied per-cpu. So, we can allow
 		 * a late CPU to come online with this erratum.
 		 */
-		.desc = "ARM erratum 2119858 or 2139208",
-		.capability = ARM64_WORKAROUND_TRBE_OVERWRITE_FILL_MODE,
 		.type = ARM64_CPUCAP_WEAK_LOCAL_CPU_FEATURE,
 		MATCH_MIDR_RANGE_LIST(trbe_overwrite_fill_mode_cpus),
 	},
@@ -780,7 +770,8 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "ARM erratum 2067961 or 2054223",
 		.capability = ARM64_WORKAROUND_TSB_FLUSH_FAILURE,
-		ERRATA_MIDR_RANGE_LIST(tsb_flush_fail_cpus),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(tsb_flush_fail_cpus),
 	},
 #endif
 #ifdef CONFIG_ARM64_WORKAROUND_TRBE_WRITE_OUT_OF_RANGE
@@ -795,23 +786,26 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "ARM erratum 2645198",
 		.capability = ARM64_WORKAROUND_2645198,
-		ERRATA_MIDR_ALL_VERSIONS(MIDR_CORTEX_A715)
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_ALL_VERSIONS(MIDR_CORTEX_A715)
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2077057
 	{
 		.desc = "ARM erratum 2077057",
 		.capability = ARM64_WORKAROUND_2077057,
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2),
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2064142
 	{
 		.desc = "ARM erratum 2064142",
 		.capability = ARM64_WORKAROUND_2064142,
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
 
 		/* Cortex-A510 r0p0 - r0p2 */
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2)
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2)
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_2457168
@@ -828,18 +822,20 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "ARM erratum 2038923",
 		.capability = ARM64_WORKAROUND_2038923,
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
 
 		/* Cortex-A510 r0p0 - r0p2 */
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2)
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 2)
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_1902691
 	{
 		.desc = "ARM erratum 1902691",
 		.capability = ARM64_WORKAROUND_1902691,
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
 
 		/* Cortex-A510 r0p0 - r0p1 */
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 1)
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 0, 1)
 	},
 #endif
 #ifdef CONFIG_ARM64_ERRATUM_1742098
@@ -854,8 +850,10 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "ARM erratum 2658417",
 		.capability = ARM64_WORKAROUND_2658417,
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+
 		/* Cortex-A510 r0p0 - r1p1 */
-		ERRATA_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 1, 1),
+		MATCH_MIDR_RANGE(MIDR_CORTEX_A510, 0, 0, 1, 1),
 		MIDR_FIXED(MIDR_CPU_VAR_REV(1,1), BIT(25)),
 	},
 #endif
@@ -863,35 +861,41 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 	{
 		.desc = "SSBS not fully self-synchronizing",
 		.capability = ARM64_WORKAROUND_SPECULATIVE_SSBS,
-		ERRATA_MIDR_RANGE_LIST(erratum_spec_ssbs_list),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(erratum_spec_ssbs_list),
 	},
 #endif
 #ifdef CONFIG_ARM64_WORKAROUND_SPECULATIVE_UNPRIV_LOAD
 	{
 		.desc = "ARM errata 2966298, 3117295",
 		.capability = ARM64_WORKAROUND_SPECULATIVE_UNPRIV_LOAD,
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+
 		/* Cortex-A520 r0p0 - r0p1 */
-		ERRATA_MIDR_RANGE_LIST(erratum_spec_unpriv_load_list),
+		MATCH_MIDR_RANGE_LIST(erratum_spec_unpriv_load_list),
 	},
 #endif
 #ifdef CONFIG_AMPERE_ERRATUM_AC03_CPU_38
 	{
 		.desc = "AmpereOne erratum AC03_CPU_38",
 		.capability = ARM64_WORKAROUND_AMPERE_AC03_CPU_38,
-		ERRATA_MIDR_RANGE_LIST(erratum_ac03_cpu_38_list),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(erratum_ac03_cpu_38_list),
 	},
 #endif
 #ifdef CONFIG_AMPERE_ERRATUM_AC04_CPU_23
 	{
 		.desc = "AmpereOne erratum AC04_CPU_23",
 		.capability = ARM64_WORKAROUND_AMPERE_AC04_CPU_23,
-		ERRATA_MIDR_RANGE_LIST(erratum_ac04_cpu_23_list),
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(erratum_ac04_cpu_23_list),
 	},
 #endif
 	{
 		.desc = "Broken CNTVOFF_EL2",
 		.capability = ARM64_WORKAROUND_QCOM_ORYON_CNTVOFF,
-		ERRATA_MIDR_RANGE_LIST(((const struct midr_range[]) {
+		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
+		MATCH_MIDR_RANGE_LIST(((const struct midr_range[]) {
 					MIDR_ALL_VERSIONS(MIDR_QCOM_ORYON_X1),
 					{}
 				})),
