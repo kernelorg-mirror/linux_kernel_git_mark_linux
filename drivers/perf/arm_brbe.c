@@ -89,23 +89,6 @@ struct brbe_regset {
 struct arm64_perf_task_context {
 	struct brbe_regset store[BRBE_MAX_ENTRIES];
 	int nr_brbe_records;
-
-	/*
-	 * Branch Filter Mask
-	 *
-	 * This mask represents all branch record types i.e PERF_BR_XXX
-	 * (as defined in core perf ABI) that can be generated with the
-	 * event's branch_sample_type request. The mask layout could be
-	 * found here. Although the bit 15 i.e PERF_BR_EXTEND_ABI never
-	 * gets set in the mask.
-	 *
-	 * 23 (PERF_BR_MAX + PERF_BR_NEW_MAX)                      0
-	 * |                                                       |
-	 * ---------------------------------------------------------
-	 * | Extended ABI section  | X |    ABI section            |
-	 * ---------------------------------------------------------
-	 */
-	DECLARE_BITMAP(br_type_mask, PERF_BR_ARM64_MAX);
 };
 
 static void branch_mask_set_all(unsigned long *event_type_mask)
@@ -376,11 +359,6 @@ void armv8pmu_branch_stack_reset(void)
 
 void armv8pmu_branch_stack_add(struct perf_event *event, struct pmu_hw_events *hw_events)
 {
-	struct arm64_perf_task_context *task_ctx = event->pmu_ctx->task_ctx_data;
-
-	if (event->ctx->task)
-		prepare_event_branch_type_mask(event, task_ctx->br_type_mask);
-
 	/*
 	 * Reset branch records buffer if a new CPU bound event
 	 * gets scheduled on a PMU. Otherwise existing branch
@@ -1147,7 +1125,6 @@ static bool filter_branch_record(struct pmu_hw_events *cpuc,
 				 struct perf_event *event,
 				 struct perf_branch_entry *entry)
 {
-	struct arm64_perf_task_context *task_ctx = event->pmu_ctx->task_ctx_data;
 	u64 branch_sample = event->attr.branch_sample_type;
 	DECLARE_BITMAP(entry_type_mask, PERF_BR_ARM64_MAX);
 	DECLARE_BITMAP(event_type_mask, PERF_BR_ARM64_MAX);
@@ -1171,8 +1148,6 @@ static bool filter_branch_record(struct pmu_hw_events *cpuc,
 		return true;
 
 	branch_entry_mask(entry, entry_type_mask);
-	if (task_ctx)
-		return bitmap_subset(entry_type_mask, task_ctx->br_type_mask, PERF_BR_ARM64_MAX);
 
 	prepare_event_branch_type_mask(event, event_type_mask);
 	return bitmap_subset(entry_type_mask, event_type_mask, PERF_BR_ARM64_MAX);
