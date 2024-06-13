@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Branch Record Buffer Extension Helpers.
+ *
+ * Copyright (C) 2022-2023 ARM Limited
+ *
+ * Author: Anshuman Khandual <anshuman.khandual@arm.com>
+ */
+#include <linux/perf/arm_pmu.h>
+
+#ifdef CONFIG_ARM64_BRBE
+void brbe_probe(struct arm_pmu *arm_pmu);
+void brbe_invalidate(void);
+
+void brbe_enable(struct arm_pmu *arm_pmu);
+void brbe_disable(struct arm_pmu *arm_pmu);
+
+bool brbe_branch_attr_valid(struct perf_event *event);
+void brbe_read_filtered_entries(struct perf_branch_stack *branch_stack,
+				struct perf_event *event);
+#else
+static inline void brbe_probe(struct arm_pmu *arm_pmu) { }
+static inline void brbe_invalidate(void) { }
+
+static inline void brbe_enable(struct arm_pmu *arm_pmu) { };
+static inline void brbe_disable(struct arm_pmu *arm_pmu) { };
+
+static inline bool brbe_branch_attr_valid(struct perf_event *event)
+{
+	WARN_ON_ONCE(!has_branch_stack(event));
+	return false;
+}
+
+static void brbe_read_filtered_entries(struct perf_branch_stack *branch_stack,
+				       struct perf_event *event)
+{
+}
+#endif

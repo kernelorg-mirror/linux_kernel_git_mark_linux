@@ -25,6 +25,8 @@
 #include <linux/smp.h>
 #include <linux/nmi.h>
 
+#include "arm_brbe.h"
+
 /* ARMv8 Cortex-A53 specific event types. */
 #define ARMV8_A53_PERFCTR_PREF_LINEFILL				0xC2
 
@@ -800,6 +802,7 @@ static void armv8pmu_disable_event(struct perf_event *event)
 static void armv8pmu_start(struct arm_pmu *cpu_pmu)
 {
 	struct perf_event_context *ctx;
+	struct pmu_hw_events *hw_events = this_cpu_ptr(cpu_pmu->hw_events);
 	int nr_user = 0;
 
 	ctx = perf_cpu_task_ctx();
@@ -811,6 +814,9 @@ static void armv8pmu_start(struct arm_pmu *cpu_pmu)
 	else
 		armv8pmu_disable_user_access();
 
+	if (hw_events->branch_users)
+		brbe_enable(cpu_pmu);
+
 	/* Enable all counters */
 	armv8pmu_pmcr_write(armv8pmu_pmcr_read() | ARMV8_PMU_PMCR_E);
 
@@ -819,8 +825,23 @@ static void armv8pmu_start(struct arm_pmu *cpu_pmu)
 
 static void armv8pmu_stop(struct arm_pmu *cpu_pmu)
 {
+	struct pmu_hw_events *hw_events = this_cpu_ptr(cpu_pmu->hw_events);
+
+	if (hw_events->branch_users)
+		brbe_disable(cpu_pmu);
+
 	/* Disable all counters */
 	armv8pmu_pmcr_write(armv8pmu_pmcr_read() & ~ARMV8_PMU_PMCR_E);
+}
+
+static void read_branch_records(struct pmu_hw_events *cpuc,
+				struct perf_event *event,
+				struct perf_sample_data *data)
+{
+	struct perf_branch_stack *branch_stack = cpuc->branch_stack;
+
+	brbe_read_filtered_entries(branch_stack, event);
+	perf_sample_save_brstack(data, event, branch_stack, NULL);
 }
 
 static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
@@ -872,6 +893,13 @@ static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
 		perf_sample_data_init(&data, 0, hwc->last_period);
 		if (!armpmu_event_set_period(event))
 			continue;
+
+		/*
+		 * PMU IRQ should remain asserted until all branch records
+		 * are captured and processed into struct perf_sample_data.
+		 */
+		if (has_branch_stack(event))
+			read_branch_records(cpuc, event, &data);
 
 		/*
 		 * Perf event overflow will queue the processing of the event as
@@ -979,6 +1007,26 @@ static int armv8pmu_user_event_idx(struct perf_event *event)
 	return event->hw.idx + 1;
 }
 
+static bool armv8pmu_branch_stack_init(struct perf_event *event)
+{
+	if (!brbe_branch_attr_valid(event))
+		return false;
+
+	event->attach_state |= PERF_ATTACH_SCHED_CB;
+	return true;
+}
+
+static void armv8pmu_sched_task(struct perf_event_pmu_context *pmu_ctx, bool sched_in)
+{
+	struct arm_pmu *armpmu = to_arm_pmu(pmu_ctx->pmu);
+
+	if (armpmu->num_branch_records == 0)
+		return;
+
+	if (sched_in)
+		brbe_invalidate();
+}
+
 /*
  * Add an event filter to a given event.
  */
@@ -1073,6 +1121,9 @@ static void armv8pmu_reset(void *info)
 		pmcr |= ARMV8_PMU_PMCR_LP;
 
 	armv8pmu_pmcr_write(pmcr);
+
+	if (cpu_pmu->num_branch_records > 0)
+		brbe_invalidate();
 }
 
 static int __armv8_pmuv3_map_event_id(struct arm_pmu *armpmu,
@@ -1230,6 +1281,33 @@ static void __armv8pmu_probe_pmu(void *info)
 		cpu_pmu->reg_pmmir = read_pmmir();
 	else
 		cpu_pmu->reg_pmmir = 0;
+
+	brbe_probe(cpu_pmu);
+}
+
+static int branch_records_alloc(struct arm_pmu *armpmu)
+{
+	/*
+	 * TODO: fix the sizing
+	 */
+	struct perf_branch_stack *branch_stack;
+	size_t size = struct_size(branch_stack, entries, armpmu->num_branch_records);
+	int cpu;
+
+	branch_stack = __alloc_percpu_gfp(size, __alignof__(*branch_stack),
+					  GFP_KERNEL);
+	if (!branch_stack)
+		return -ENOMEM;
+
+	for_each_possible_cpu(cpu) {
+		struct pmu_hw_events *events_cpu;
+		struct perf_branch_stack *branch_stack_cpu;
+
+		events_cpu = per_cpu_ptr(armpmu->hw_events, cpu);
+		branch_stack_cpu = per_cpu_ptr(branch_stack, cpu);
+		events_cpu->branch_stack = branch_stack_cpu;
+	}
+	return 0;
 }
 
 static int armv8pmu_probe_pmu(struct arm_pmu *cpu_pmu)
@@ -1246,7 +1324,15 @@ static int armv8pmu_probe_pmu(struct arm_pmu *cpu_pmu)
 	if (ret)
 		return ret;
 
-	return probe.present ? 0 : -ENODEV;
+	if (!probe.present)
+		return -ENODEV;
+
+	if (cpu_pmu->num_branch_records > 0) {
+		ret = branch_records_alloc(cpu_pmu);
+		if (ret)
+			return ret;
+	}
+	return 0;
 }
 
 static void armv8pmu_disable_user_access_ipi(void *unused)
@@ -1305,6 +1391,8 @@ static int armv8_pmu_init(struct arm_pmu *cpu_pmu, char *name,
 	cpu_pmu->set_event_filter	= armv8pmu_set_event_filter;
 
 	cpu_pmu->pmu.event_idx		= armv8pmu_user_event_idx;
+	cpu_pmu->sched_task		= armv8pmu_sched_task;
+	cpu_pmu->branch_stack_init	= armv8pmu_branch_stack_init;
 
 	cpu_pmu->name			= name;
 	cpu_pmu->map_event		= map_event;
