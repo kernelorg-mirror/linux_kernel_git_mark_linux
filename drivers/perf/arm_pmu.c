@@ -289,23 +289,6 @@ static void armpmu_start(struct perf_event *event, int flags)
 {
 	struct arm_pmu *armpmu = to_arm_pmu(event->pmu);
 	struct hw_perf_event *hwc = &event->hw;
-	struct pmu_hw_events *cpuc = this_cpu_ptr(armpmu->hw_events);
-	int idx;
-
-	/*
-	 * Merge all branch filter requests from different perf
-	 * events being added into this PMU. This includes both
-	 * privilege and branch type filters.
-	 */
-	if (armpmu->has_branch_stack) {
-		cpuc->branch_sample_type = 0;
-		for (idx = 0; idx < ARMPMU_MAX_HWEVENTS; idx++) {
-			struct perf_event *event_idx = cpuc->events[idx];
-
-			if (event_idx && has_branch_stack(event_idx))
-				cpuc->branch_sample_type |= event_idx->attr.branch_sample_type;
-		}
-	}
 
 	/*
 	 * ARM pmu always has to reprogram the period, so ignore

@@ -393,7 +393,6 @@ void armv8pmu_branch_stack_del(struct perf_event *event, struct pmu_hw_events *h
 	hw_events->branch_users--;
 	if (!hw_events->branch_users) {
 		hw_events->branch_context = NULL;
-		hw_events->branch_sample_type = 0;
 	}
 }
 

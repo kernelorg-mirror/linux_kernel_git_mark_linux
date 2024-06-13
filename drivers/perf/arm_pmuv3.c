@@ -815,6 +815,7 @@ static void armv8pmu_disable_event(struct perf_event *event)
 static void armv8pmu_start(struct arm_pmu *cpu_pmu)
 {
 	struct perf_event_context *ctx;
+	struct pmu_hw_events *hw_events = this_cpu_ptr(cpu_pmu->hw_events);
 	int nr_user = 0;
 
 	ctx = perf_cpu_task_ctx();
@@ -826,17 +827,30 @@ static void armv8pmu_start(struct arm_pmu *cpu_pmu)
 	else
 		armv8pmu_disable_user_access();
 
+	/*
+	 * Merge the permitted branch filters of all events.
+	 */
+	if (hw_events->branch_users) {
+		hw_events->branch_sample_type = 0;
+		for (int idx = 0; idx < ARMPMU_MAX_HWEVENTS; idx++) {
+			struct perf_event *event = hw_events->events[idx];
+			if (event && has_branch_stack(event))
+				hw_events->branch_sample_type |= event->attr.branch_sample_type;
+		}
+		armv8pmu_branch_enable(cpu_pmu);
+	}
+
 	/* Enable all counters */
 	armv8pmu_pmcr_write(armv8pmu_pmcr_read() | ARMV8_PMU_PMCR_E);
 
 	kvm_vcpu_pmu_resync_el0();
-	if (cpu_pmu->has_branch_stack)
-		armv8pmu_branch_enable(cpu_pmu);
 }
 
 static void armv8pmu_stop(struct arm_pmu *cpu_pmu)
 {
-	if (cpu_pmu->has_branch_stack)
+	struct pmu_hw_events *hw_events = this_cpu_ptr(cpu_pmu->hw_events);
+
+	if (hw_events->branch_users)
 		armv8pmu_branch_disable();
 
 	/* Disable all counters */
