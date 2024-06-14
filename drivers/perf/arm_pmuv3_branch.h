@@ -21,9 +21,6 @@ void armv8pmu_branch_read(struct pmu_hw_events *cpuc,
 void arm64_filter_branch_records(struct pmu_hw_events *cpuc,
 				 struct perf_event *event,
 				 struct branch_records *event_records);
-void armv8pmu_branch_save(struct arm_pmu *arm_pmu, void *ctx);
-int armv8pmu_task_ctx_cache_alloc(struct arm_pmu *arm_pmu);
-void armv8pmu_task_ctx_cache_free(struct arm_pmu *arm_pmu);
 #else
 static inline void armv8pmu_branch_stack_add(struct perf_event *event, struct pmu_hw_events *cpuc)
 {
@@ -66,18 +63,5 @@ static inline void arm64_filter_branch_records(struct pmu_hw_events *cpuc,
 					       struct branch_records *event_records)
 {
 
-}
-
-static inline void armv8pmu_branch_save(struct arm_pmu *arm_pmu, void *ctx)
-{
-}
-
-static inline int armv8pmu_task_ctx_cache_alloc(struct arm_pmu *arm_pmu)
-{
-	return 0;
-}
-
-static inline void armv8pmu_task_ctx_cache_free(struct arm_pmu *arm_pmu)
-{
 }
 #endif

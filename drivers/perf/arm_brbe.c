@@ -86,11 +86,6 @@ struct brbe_regset {
 
 #define PERF_BR_ARM64_MAX (PERF_BR_MAX + PERF_BR_NEW_MAX)
 
-struct arm64_perf_task_context {
-	struct brbe_regset store[BRBE_MAX_ENTRIES];
-	int nr_brbe_records;
-};
-
 static void branch_mask_set_all(unsigned long *event_type_mask)
 {
 	int idx;
@@ -471,119 +466,6 @@ static int capture_brbe_regset(struct brbe_regset *buf, int nr_hw_entries)
 }
 
 /*
- * This function concatenates branch records from stored and live buffer
- * up to maximum nr_max records and the stored buffer holds the resultant
- * buffer. The concatenated buffer contains all the branch records from
- * the live buffer but might contain some from stored buffer considering
- * the maximum combined length does not exceed 'nr_max'.
- *
- *	Stored records	Live records
- *	------------------------------------------------^
- *	|	S0	|	L0	|	Newest	|
- *	---------------------------------		|
- *	|	S1	|	L1	|		|
- *	---------------------------------		|
- *	|	S2	|	L2	|		|
- *	---------------------------------		|
- *	|	S3	|	L3	|		|
- *	---------------------------------		|
- *	|	S4	|	L4	|		nr_max
- *	---------------------------------		|
- *	|		|	L5	|		|
- *	---------------------------------		|
- *	|		|	L6	|		|
- *	---------------------------------		|
- *	|		|	L7	|		|
- *	---------------------------------		|
- *	|		|		|		|
- *	---------------------------------		|
- *	|		|		|	Oldest	|
- *	------------------------------------------------V
- *
- *
- * S0 is the newest in the stored records, where as L7 is the oldest in
- * the live records. Unless the live buffer is detected as being full
- * thus potentially dropping off some older records, L7 and S0 records
- * are contiguous in time for a user task context. The stitched buffer
- * here represents maximum possible branch records, contiguous in time.
- *
- *	Stored records  Live records
- *	------------------------------------------------^
- *	|	L0	|	L0	|	Newest	|
- *	---------------------------------		|
- *	|	L1	|	L1	|		|
- *	---------------------------------		|
- *	|	L2	|	L2	|		|
- *	---------------------------------		|
- *	|	L3	|	L3	|		|
- *	---------------------------------		|
- *	|	L4	|	L4	|	      nr_max
- *	---------------------------------		|
- *	|	L5	|	L5	|		|
- *	---------------------------------		|
- *	|	L6	|	L6	|		|
- *	---------------------------------		|
- *	|	L7	|	L7	|		|
- *	---------------------------------		|
- *	|	S0	|		|		|
- *	---------------------------------		|
- *	|	S1	|		|    Oldest	|
- *	------------------------------------------------V
- *	|	S2	| <----|
- *	-----------------      |
- *	|	S3	| <----| Dropped off after nr_max
- *	-----------------      |
- *	|	S4	| <----|
- *	-----------------
- */
-static int stitch_stored_live_entries(struct brbe_regset *stored,
-				      struct brbe_regset *live,
-				      int nr_stored, int nr_live,
-				      int nr_max)
-{
-	int nr_move = min(nr_stored, nr_max - nr_live);
-
-	/* Move the tail of the buffer to make room for the new entries */
-	memmove(&stored[nr_live], &stored[0], nr_move * sizeof(*stored));
-
-	/* Copy the new entries into the head of the buffer */
-	memcpy(&stored[0], &live[0], nr_live * sizeof(*stored));
-
-	/* Return the number of entries in the stitched buffer */
-	return min(nr_live + nr_stored, nr_max);
-}
-
-static int brbe_branch_save(struct brbe_regset *live, int nr_hw_entries)
-{
-	u64 brbfcr = read_sysreg_s(SYS_BRBFCR_EL1);
-	int nr_live;
-
-	write_sysreg_s(brbfcr | BRBFCR_EL1_PAUSED, SYS_BRBFCR_EL1);
-	isb();
-
-	nr_live = capture_brbe_regset(live, nr_hw_entries);
-
-	write_sysreg_s(brbfcr & ~BRBFCR_EL1_PAUSED, SYS_BRBFCR_EL1);
-	isb();
-
-	return nr_live;
-}
-
-void armv8pmu_branch_save(struct arm_pmu *arm_pmu, void *ctx)
-{
-	struct arm64_perf_task_context *task_ctx = ctx;
-	struct brbe_regset live[BRBE_MAX_ENTRIES];
-	int nr_live, nr_store, nr_hw_entries;
-
-	nr_hw_entries = brbe_get_numrec(arm_pmu->reg_brbidr);
-	nr_live = brbe_branch_save(live, nr_hw_entries);
-	nr_store = task_ctx->nr_brbe_records;
-	nr_store = stitch_stored_live_entries(task_ctx->store, live, nr_store,
-					      nr_live, nr_hw_entries);
-	task_ctx->nr_brbe_records = nr_store;
-}
-
-/*
  * Generic perf branch filters supported on BRBE
  *
  * New branch filters need to be evaluated whether they could be supported on
@@ -647,21 +529,6 @@ bool armv8pmu_branch_attr_valid(struct perf_event *event)
 		pr_debug_once("hypervisor privilege filter not supported 0x%llx\n", branch_type);
 
 	return true;
-}
-
-int armv8pmu_task_ctx_cache_alloc(struct arm_pmu *arm_pmu)
-{
-	size_t size = sizeof(struct arm64_perf_task_context);
-
-	arm_pmu->pmu.task_ctx_cache = kmem_cache_create("arm64_brbe_task_ctx", size, 0, 0, NULL);
-	if (!arm_pmu->pmu.task_ctx_cache)
-		return -ENOMEM;
-	return 0;
-}
-
-void armv8pmu_task_ctx_cache_free(struct arm_pmu *arm_pmu)
-{
-	kmem_cache_destroy(arm_pmu->pmu.task_ctx_cache);
 }
 
 static int brbe_attributes_probe(struct arm_pmu *armpmu, u32 brbe)
@@ -1044,21 +911,12 @@ static void process_branch_entries(struct pmu_hw_events *cpuc, struct perf_event
 
 void armv8pmu_branch_read(struct pmu_hw_events *cpuc, struct perf_event *event)
 {
-	struct arm64_perf_task_context *task_ctx = event->pmu_ctx->task_ctx_data;
 	struct brbe_regset live[BRBE_MAX_ENTRIES];
-	int nr_live, nr_store, nr_hw_entries;
+	int nr_live, nr_hw_entries;
 
 	nr_hw_entries = brbe_get_numrec(cpuc->percpu_pmu->reg_brbidr);
 	nr_live = capture_brbe_regset(live, nr_hw_entries);
-	if (event->ctx->task) {
-		nr_store = task_ctx->nr_brbe_records;
-		nr_store = stitch_stored_live_entries(task_ctx->store, live, nr_store,
-						      nr_live, nr_hw_entries);
-		process_branch_entries(cpuc, event, task_ctx->store, nr_store);
-		task_ctx->nr_brbe_records = 0;
-	} else {
-		process_branch_entries(cpuc, event, live, nr_live);
-	}
+	process_branch_entries(cpuc, event, live, nr_live);
 }
 
 static bool filter_branch_privilege(struct perf_branch_entry *entry, u64 branch_sample_type)

@@ -1069,14 +1069,7 @@ static int armv8pmu_user_event_idx(struct perf_event *event)
 static bool armv8pmu_branch_stack_init(struct perf_event *event)
 {
 	if (armv8pmu_branch_attr_valid(event)) {
-		/*
-		 * If a task gets scheduled out, the current branch records
-		 * get saved in the task's context data, which can be later
-		 * used to fill in the records upon an event overflow. Let's
-		 * enable PERF_ATTACH_TASK_DATA in 'event->attach_state' for
-		 * all branch stack sampling perf events.
-		 */
-		event->attach_state |= PERF_ATTACH_TASK_DATA;
+		event->attach_state |= PERF_ATTACH_SCHED_CB;
 		return true;
 	}
 	return false;
@@ -1085,16 +1078,8 @@ static bool armv8pmu_branch_stack_init(struct perf_event *event)
 static void armv8pmu_sched_task(struct perf_event_pmu_context *pmu_ctx, bool sched_in)
 {
 	struct arm_pmu *armpmu = to_arm_pmu(pmu_ctx->pmu);
-	void *task_ctx = pmu_ctx->task_ctx_data;
 
 	if (armpmu->has_branch_stack) {
-		/* Save branch records in task_ctx on sched out */
-		if (task_ctx && !sched_in) {
-			armv8pmu_branch_save(armpmu, task_ctx);
-			return;
-		}
-
-		/* Reset branch records on sched in */
 		if (sched_in)
 			armv8pmu_branch_stack_reset();
 	}
@@ -1402,15 +1387,9 @@ static int armv8pmu_probe_pmu(struct arm_pmu *cpu_pmu)
 		return -ENODEV;
 
 	if (cpu_pmu->has_branch_stack) {
-		ret = armv8pmu_task_ctx_cache_alloc(cpu_pmu);
+		ret = branch_records_alloc(cpu_pmu);
 		if (ret)
 			return ret;
-
-		ret = branch_records_alloc(cpu_pmu);
-		if (ret) {
-			armv8pmu_task_ctx_cache_free(cpu_pmu);
-			return ret;
-		}
 	}
 	return 0;
 }
