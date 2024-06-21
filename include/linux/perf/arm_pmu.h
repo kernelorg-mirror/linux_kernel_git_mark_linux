@@ -123,7 +123,6 @@ struct arm_pmu {
 	bool		(*branch_stack_init)(struct perf_event *event);
 	void		(*branch_stack_add)(struct perf_event *event, struct pmu_hw_events *cpuc);
 	void		(*branch_stack_del)(struct perf_event *event, struct pmu_hw_events *cpuc);
-	void		(*branch_stack_reset)(void);
 	int		num_events;
 	unsigned int	secure_access	: 1, /* 32-bit ARM only */
 			has_branch_stack: 1, /* 64-bit ARM only */

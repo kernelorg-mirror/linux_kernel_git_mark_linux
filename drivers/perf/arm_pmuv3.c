@@ -1461,7 +1461,6 @@ static int armv8_pmu_init(struct arm_pmu *cpu_pmu, char *name,
 	cpu_pmu->branch_stack_init	= armv8pmu_branch_stack_init;
 	cpu_pmu->branch_stack_add	= armv8pmu_branch_stack_add;
 	cpu_pmu->branch_stack_del	= armv8pmu_branch_stack_del;
-	cpu_pmu->branch_stack_reset	= armv8pmu_branch_stack_reset;
 
 	cpu_pmu->name			= name;
 	cpu_pmu->map_event		= map_event;
