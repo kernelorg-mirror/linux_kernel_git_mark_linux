@@ -881,13 +881,13 @@ static void read_branch_records(struct pmu_hw_events *cpuc,
 	 * on this PMU simultaneously. Hence these branch records need to
 	 * be filtered first so that each individual event get samples they
 	 * had requested originally.
+	 *
+	 * TODO: This is UTTERLY broken, because perf_sample_save_brstack()
+	 * saves a pointer to the branch stack which is sampled later, and
+	 * event_records goes out-of-scope at the end of this function.
 	 */
-	if (cpuc->branch_sample_type != event->attr.branch_sample_type) {
-		arm64_filter_branch_records(cpuc, event, &event_records);
-		perf_sample_save_brstack(data, event, &event_records.branch_stack, NULL);
-		return;
-	}
-	perf_sample_save_brstack(data, event, &cpuc->branches->branch_stack, NULL);
+	arm64_filter_branch_records(cpuc, event, &event_records);
+	perf_sample_save_brstack(data, event, &event_records.branch_stack, NULL);
 }
 
 static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
