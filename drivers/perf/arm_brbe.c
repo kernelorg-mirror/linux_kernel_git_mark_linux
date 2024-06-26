@@ -354,31 +354,6 @@ void armv8pmu_branch_stack_reset(void)
 
 void armv8pmu_branch_stack_add(struct perf_event *event, struct pmu_hw_events *hw_events)
 {
-	/*
-	 * Reset branch records buffer if a new CPU bound event
-	 * gets scheduled on a PMU. Otherwise existing branch
-	 * records present in the buffer might just leak into
-	 * such events.
-	 *
-	 * Also reset current 'hw_events->branch_context' because
-	 * any previous task bound event now would have lost an
-	 * opportunity for continuous branch records.
-	 */
-	if (!event->ctx->task) {
-		hw_events->branch_context = NULL;
-		armv8pmu_branch_stack_reset();
-	}
-
-	/*
-	 * Reset branch records buffer if a new task event gets
-	 * scheduled on a PMU which might have existing records.
-	 * Otherwise older branch records present in the buffer
-	 * might leak into the new task event.
-	 */
-	if (event->ctx->task && hw_events->branch_context != event->ctx) {
-		hw_events->branch_context = event->ctx;
-		armv8pmu_branch_stack_reset();
-	}
 	hw_events->branch_users++;
 }
 
@@ -386,9 +361,6 @@ void armv8pmu_branch_stack_del(struct perf_event *event, struct pmu_hw_events *h
 {
 	WARN_ON_ONCE(!hw_events->branch_users);
 	hw_events->branch_users--;
-	if (!hw_events->branch_users) {
-		hw_events->branch_context = NULL;
-	}
 }
 
 static bool valid_brbe_nr(int brbe_nr)

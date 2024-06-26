@@ -837,6 +837,7 @@ static void armv8pmu_start(struct arm_pmu *cpu_pmu)
 			if (event && has_branch_stack(event))
 				hw_events->branch_sample_type |= event->attr.branch_sample_type;
 		}
+		armv8pmu_branch_stack_reset();
 		armv8pmu_branch_enable(cpu_pmu);
 	}
 
@@ -869,15 +870,6 @@ static void read_branch_records(struct pmu_hw_events *cpuc,
 	 * for the hardware records to be captured and processed further.
 	 */
 	if (WARN_ON(!cpuc->branches))
-		return;
-
-	/*
-	 * When the current task context does not match with the PMU overflown
-	 * event, the captured branch records here cannot be co-related to the
-	 * overflowed event. Report to the user - as if no branch records have
-	 * been captured, and flush branch records.
-	 */
-	if (event->ctx->task && (cpuc->branch_context != event->ctx))
 		return;
 
 	/*
@@ -975,8 +967,6 @@ static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
 			cpu_pmu->disable(event);
 	}
 	armv8pmu_start(cpu_pmu);
-	if (cpu_pmu->has_branch_stack)
-		armv8pmu_branch_stack_reset();
 
 	return IRQ_HANDLED;
 }

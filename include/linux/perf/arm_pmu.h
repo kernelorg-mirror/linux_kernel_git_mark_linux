@@ -81,9 +81,6 @@ struct pmu_hw_events {
 
 	struct branch_records	*branches;
 
-	/* Active context for task events */
-	void			*branch_context;
-
 	/* Active events requesting branch records */
 	unsigned int		branch_users;
 
