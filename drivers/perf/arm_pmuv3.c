@@ -860,8 +860,7 @@ static void armv8pmu_stop(struct arm_pmu *cpu_pmu)
 
 static void read_branch_records(struct pmu_hw_events *cpuc,
 				struct perf_event *event,
-				struct perf_sample_data *data,
-				bool *branch_captured)
+				struct perf_sample_data *data)
 {
 	struct branch_records event_records;
 
@@ -872,16 +871,7 @@ static void read_branch_records(struct pmu_hw_events *cpuc,
 	if (WARN_ON(!cpuc->branches))
 		return;
 
-	/*
-	 * Read the branch records from the hardware once after the PMU IRQ
-	 * has been triggered but subsequently same records can be used for
-	 * other events that might have been overflowed simultaneously thus
-	 * saving much CPU cycles.
-	 */
-	if (!*branch_captured) {
-		armv8pmu_branch_read(cpuc, event);
-		*branch_captured = true;
-	}
+	armv8pmu_branch_read(cpuc, event);
 
 	/*
 	 * Filter captured branch records
@@ -907,7 +897,6 @@ static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
 	struct pmu_hw_events *cpuc = this_cpu_ptr(cpu_pmu->hw_events);
 	struct pt_regs *regs;
 	int idx;
-	bool branch_captured = false;
 
 	/*
 	 * Get and reset the IRQ flags
@@ -956,7 +945,7 @@ static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
 		 * are captured and processed into struct perf_sample_data.
 		 */
 		if (has_branch_stack(event) && cpu_pmu->has_branch_stack)
-			read_branch_records(cpuc, event, &data, &branch_captured);
+			read_branch_records(cpuc, event, &data);
 
 		/*
 		 * Perf event overflow will queue the processing of the event as
