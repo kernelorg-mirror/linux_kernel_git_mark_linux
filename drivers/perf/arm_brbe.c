@@ -412,32 +412,6 @@ static bool __read_brbe_regset(struct brbe_regset *entry, int idx)
 }
 
 /*
- * Read all BRBE entries in HW until the first invalid entry.
- *
- * The caller must ensure that the BRBE is not concurrently modifying these
- * branch entries.
- */
-static int capture_brbe_regset(struct brbe_regset *buf, int nr_hw_entries)
-{
-	int idx = 0;
-
-	select_brbe_bank(0);
-	while (idx < nr_hw_entries && idx <= BRBE_BANK0_IDX_MAX) {
-		if (!__read_brbe_regset(&buf[idx], idx))
-			return idx;
-		idx++;
-	}
-
-	select_brbe_bank(1);
-	while (idx < nr_hw_entries && idx <= BRBE_BANK1_IDX_MAX) {
-		if (!__read_brbe_regset(&buf[idx], idx))
-			return idx;
-		idx++;
-	}
-	return idx;
-}
-
-/*
  * Generic perf branch filters supported on BRBE
  *
  * New branch filters need to be evaluated whether they could be supported on
@@ -867,28 +841,6 @@ static void perf_entry_from_brbe_regset(struct perf_branch_entry *entry,
 	capture_brbe_flags(entry, event, regset->brbinf);
 }
 
-static void process_branch_entries(struct pmu_hw_events *cpuc, struct perf_event *event,
-				   struct brbe_regset *regset, int nr_regset)
-{
-	struct perf_branch_entry *entries = cpuc->branches->branch_entries;
-
-	for (int idx = 0; idx < nr_regset; idx++)
-		perf_entry_from_brbe_regset(&entries[idx], &regset[idx], event);
-
-	cpuc->branches->branch_stack.nr = nr_regset;
-	cpuc->branches->branch_stack.hw_idx = -1ULL;
-}
-
-void armv8pmu_branch_read(struct pmu_hw_events *cpuc, struct perf_event *event)
-{
-	struct brbe_regset live[BRBE_MAX_ENTRIES];
-	int nr_live, nr_hw_entries;
-
-	nr_hw_entries = brbe_get_numrec(cpuc->percpu_pmu->reg_brbidr);
-	nr_live = capture_brbe_regset(live, nr_hw_entries);
-	process_branch_entries(cpuc, event, live, nr_live);
-}
-
 static bool filter_branch_privilege(struct perf_branch_entry *entry, u64 branch_sample_type)
 {
 	/*
@@ -970,21 +922,40 @@ static bool filter_branch_record(struct perf_event *event,
 	return bitmap_subset(entry_type_mask, event_type_mask, PERF_BR_ARM64_MAX);
 }
 
-void arm64_filter_branch_records(struct pmu_hw_events *cpuc,
-				 struct perf_event *event,
-				 struct branch_records *event_records)
+void brbe_read_filtered_entries(struct perf_branch_stack *branch_stack, struct perf_event *event)
 {
-	struct perf_branch_entry *entry;
-	int idx, count = 0;
+	struct arm_pmu *cpu_pmu = to_arm_pmu(event->pmu);
+	int nr_hw = brbe_get_numrec(cpu_pmu->reg_brbidr);
+	struct perf_branch_entry pbe;
+	struct brbe_regset bregs;
+	int nr_filtered = 0;
 
-	memset(event_records, 0, sizeof(*event_records));
-	for (idx = 0; idx < cpuc->branches->branch_stack.nr; idx++) {
-		entry = &cpuc->branches->branch_entries[idx];
-		if (!filter_branch_record(event, entry))
+	select_brbe_bank(0);
+	for (int i = 0; i < nr_hw && i <= BRBE_BANK0_IDX_MAX; i++) {
+		if (!__read_brbe_regset(&bregs, i))
+			goto done;
+
+		perf_entry_from_brbe_regset(&pbe, &bregs, event);
+		if (!filter_branch_record(event, &pbe))
 			continue;
 
-		memcpy(&event_records->branch_entries[count], entry, sizeof(*entry));
-		count++;
+		branch_stack->entries[nr_filtered] = pbe;
+		nr_filtered++;
 	}
-	event_records->branch_stack.nr = count;
+
+	select_brbe_bank(1);
+	for (int i = BRBE_BANK1_IDX_MIN; i < nr_hw && i <= BRBE_BANK1_IDX_MAX; i++) {
+		if (!__read_brbe_regset(&bregs, i))
+			goto done;
+
+		perf_entry_from_brbe_regset(&pbe, &bregs, event);
+		if (!filter_branch_record(event, &pbe))
+			continue;
+
+		branch_stack->entries[nr_filtered] = pbe;
+		nr_filtered++;
+	}
+
+done:
+	branch_stack->nr = nr_filtered;
 }

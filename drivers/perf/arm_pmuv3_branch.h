@@ -16,11 +16,7 @@ void armv8pmu_branch_probe(struct arm_pmu *arm_pmu);
 bool armv8pmu_branch_attr_valid(struct perf_event *event);
 void armv8pmu_branch_enable(struct arm_pmu *arm_pmu);
 void armv8pmu_branch_disable(void);
-void armv8pmu_branch_read(struct pmu_hw_events *cpuc,
-			  struct perf_event *event);
-void arm64_filter_branch_records(struct pmu_hw_events *cpuc,
-				 struct perf_event *event,
-				 struct branch_records *event_records);
+void brbe_read_filtered_entries(struct perf_branch_stack *branch_stack, struct perf_event *event);
 #else
 static inline void armv8pmu_branch_stack_add(struct perf_event *event, struct pmu_hw_events *cpuc)
 {
@@ -52,16 +48,8 @@ static inline void armv8pmu_branch_disable(void)
 {
 }
 
-static inline void armv8pmu_branch_read(struct pmu_hw_events *cpuc,
-					struct perf_event *event)
+static void brbe_read_filtered_entries(struct perf_branch_stack *branch_stack,
+				       struct perf_event *event)
 {
-	WARN_ON_ONCE(!has_branch_stack(event));
-}
-
-static inline void arm64_filter_branch_records(struct pmu_hw_events *cpuc,
-					       struct perf_event *event,
-					       struct branch_records *event_records)
-{
-
 }
 #endif
