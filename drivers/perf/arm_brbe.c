@@ -849,33 +849,31 @@ static void capture_brbe_flags(struct perf_branch_entry *entry, struct perf_even
 		entry->priv = brbe_get_perf_priv(brbinf);
 }
 
-static void brbe_regset_branch_entries(struct pmu_hw_events *cpuc, struct perf_event *event,
-				       struct brbe_regset *regset, int idx)
+static void perf_entry_from_brbe_regset(struct perf_branch_entry *entry,
+					struct brbe_regset *regset,
+					struct perf_event *event)
 {
-	struct perf_branch_entry *entry = &cpuc->branches->branch_entries[idx];
-	u64 brbinf = regset[idx].brbinf;
-
 	perf_clear_branch_entry_bitfields(entry);
-	if (brbe_record_is_complete(brbinf)) {
-		entry->from = regset[idx].brbsrc;
-		entry->to = regset[idx].brbtgt;
-	} else if (brbe_record_is_source_only(brbinf)) {
-		entry->from = regset[idx].brbsrc;
+	if (brbe_record_is_complete(regset->brbinf)) {
+		entry->from = regset->brbsrc;
+		entry->to = regset->brbtgt;
+	} else if (brbe_record_is_source_only(regset->brbinf)) {
+		entry->from = regset->brbsrc;
 		entry->to = 0;
-	} else if (brbe_record_is_target_only(brbinf)) {
+	} else if (brbe_record_is_target_only(regset->brbinf)) {
 		entry->from = 0;
-		entry->to = regset[idx].brbtgt;
+		entry->to = regset->brbtgt;
 	}
-	capture_brbe_flags(entry, event, brbinf);
+	capture_brbe_flags(entry, event, regset->brbinf);
 }
 
 static void process_branch_entries(struct pmu_hw_events *cpuc, struct perf_event *event,
 				   struct brbe_regset *regset, int nr_regset)
 {
-	int idx;
+	struct perf_branch_entry *entries = cpuc->branches->branch_entries;
 
-	for (idx = 0; idx < nr_regset; idx++)
-		brbe_regset_branch_entries(cpuc, event, regset, idx);
+	for (int idx = 0; idx < nr_regset; idx++)
+		perf_entry_from_brbe_regset(&entries[idx], &regset[idx], event);
 
 	cpuc->branches->branch_stack.nr = nr_regset;
 	cpuc->branches->branch_stack.hw_idx = -1ULL;
