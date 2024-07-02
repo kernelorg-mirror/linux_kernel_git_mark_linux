@@ -926,34 +926,29 @@ void brbe_read_filtered_entries(struct perf_branch_stack *branch_stack, struct p
 {
 	struct arm_pmu *cpu_pmu = to_arm_pmu(event->pmu);
 	int nr_hw = brbe_get_numrec(cpu_pmu->reg_brbidr);
-	struct perf_branch_entry pbe;
-	struct brbe_regset bregs;
+	int nr_banks = nr_hw / BRBE_BANK_MAX_ENTRIES;
 	int nr_filtered = 0;
 
-	select_brbe_bank(0);
-	for (int i = 0; i < nr_hw && i <= BRBE_BANK0_IDX_MAX; i++) {
-		if (!__read_brbe_regset(&bregs, i))
-			goto done;
+	for (int bank = 0; bank < nr_banks; bank++) {
+		int nr_remaining = nr_hw - (bank * BRBE_BANK_MAX_ENTRIES);
+		int nr_this_bank = min(nr_remaining, BRBE_BANK_MAX_ENTRIES);
 
-		perf_entry_from_brbe_regset(&pbe, &bregs, event);
-		if (!filter_branch_record(event, &pbe))
-			continue;
+		select_brbe_bank(bank);
 
-		branch_stack->entries[nr_filtered] = pbe;
-		nr_filtered++;
-	}
+		for (int i = 0; i < nr_this_bank; i++) {
+			struct perf_branch_entry pbe;
+			struct brbe_regset bregs;
 
-	select_brbe_bank(1);
-	for (int i = BRBE_BANK1_IDX_MIN; i < nr_hw && i <= BRBE_BANK1_IDX_MAX; i++) {
-		if (!__read_brbe_regset(&bregs, i))
-			goto done;
+			if (!__read_brbe_regset(&bregs, i))
+				goto done;
 
-		perf_entry_from_brbe_regset(&pbe, &bregs, event);
-		if (!filter_branch_record(event, &pbe))
-			continue;
+			perf_entry_from_brbe_regset(&pbe, &bregs, event);
+			if (!filter_branch_record(event, &pbe))
+				continue;
 
-		branch_stack->entries[nr_filtered] = pbe;
-		nr_filtered++;
+			branch_stack->entries[nr_filtered] = pbe;
+			nr_filtered++;
+		}
 	}
 
 done:
