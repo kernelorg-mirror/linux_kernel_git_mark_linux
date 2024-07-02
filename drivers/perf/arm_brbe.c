@@ -948,8 +948,7 @@ static bool filter_branch_privilege(struct perf_branch_entry *entry, u64 branch_
 	return true;
 }
 
-static bool filter_branch_record(struct pmu_hw_events *cpuc,
-				 struct perf_event *event,
+static bool filter_branch_record(struct perf_event *event,
 				 struct perf_branch_entry *entry)
 {
 	u64 branch_sample = event->attr.branch_sample_type;
@@ -963,15 +962,6 @@ static bool filter_branch_record(struct pmu_hw_events *cpuc,
 		return true;
 
 	if (branch_sample & PERF_SAMPLE_BRANCH_ANY)
-		return true;
-
-	/*
-	 * Both PMU and event branch filters match here except the privilege
-	 * filters - which have already been tested earlier. Skip functional
-	 * branch type test and just return success.
-	 */
-	if ((cpuc->branch_sample_type & ~PERF_SAMPLE_BRANCH_PLM_ALL) ==
-	    event->attr.branch_sample_type)
 		return true;
 
 	branch_entry_mask(entry, entry_type_mask);
@@ -990,7 +980,7 @@ void arm64_filter_branch_records(struct pmu_hw_events *cpuc,
 	memset(event_records, 0, sizeof(*event_records));
 	for (idx = 0; idx < cpuc->branches->branch_stack.nr; idx++) {
 		entry = &cpuc->branches->branch_entries[idx];
-		if (!filter_branch_record(cpuc, event, entry))
+		if (!filter_branch_record(event, entry))
 			continue;
 
 		memcpy(&event_records->branch_entries[count], entry, sizeof(*entry));
