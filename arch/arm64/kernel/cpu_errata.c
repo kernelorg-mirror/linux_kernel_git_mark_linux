@@ -106,7 +106,7 @@ is_kryo_midr(const struct arm64_cpu_capabilities *entry, int scope)
 	model &= MIDR_IMPLEMENTOR_MASK | (0xf00 << MIDR_PARTNUM_SHIFT) |
 		 MIDR_ARCHITECTURE_MASK;
 
-	return model == entry->midr_range.model;
+	return model == MIDR_MODEL(QCOM, KRYO);
 }
 
 static bool
@@ -273,7 +273,6 @@ static const struct arm64_cpu_capabilities arm64_repeat_tlbi_list[] = {
 		MATCH_MIDR_RANGE_SINGLE(QCOM, FALKOR_V1, 0, 0)
 	},
 	{
-		.midr_range.model = MIDR_MODEL(QCOM, KRYO),
 		.matches = is_kryo_midr,
 	},
 #endif
@@ -344,7 +343,6 @@ static const struct arm64_cpu_capabilities qcom_erratum_1003_list[] = {
 		MATCH_MIDR_RANGE_SINGLE(QCOM, FALKOR_V1, 0, 0),
 	},
 	{
-		.midr_range.model = MIDR_MODEL(QCOM, KRYO),
 		.matches = is_kryo_midr,
 	},
 	{},
