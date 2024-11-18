@@ -484,6 +484,27 @@ static int __kvm_vcpu_run_vhe(struct kvm_vcpu *vcpu)
 	sysreg_restore_guest_state_vhe(guest_ctxt);
 	__debug_switch_to_guest(vcpu);
 
+	pr_info_once("HARK: %s():\n"
+		     "      HCR_EL2 is 0x%016llx\n"
+		     "     HCRX_EL2 is 0x%016llx\n"
+		     "     CPTR_EL2 is 0x%016llx\n"
+		     "     MDCR_EL2 is 0x%016llx\n"
+		     "   HFGRTR_EL2 is 0x%016llx\n"
+		     "   HFGWTR_EL2 is 0x%016llx\n"
+		     "   HFGITR_EL2 is 0x%016llx\n"
+		     "  HDFGRTR_EL2 is 0x%016llx\n"
+		     "  HDFGWTR_EL2 is 0x%016llx\n",
+		     __func__,
+		     read_sysreg_s(SYS_HCR_EL2),
+		     read_sysreg_s(SYS_HCRX_EL2),
+		     read_sysreg_s(SYS_CPTR_EL2),
+		     read_sysreg_s(SYS_MDCR_EL2),
+		     read_sysreg_s(SYS_HFGRTR_EL2),
+		     read_sysreg_s(SYS_HFGWTR_EL2),
+		     read_sysreg_s(SYS_HFGITR_EL2),
+		     read_sysreg_s(SYS_HDFGRTR_EL2),
+		     read_sysreg_s(SYS_HDFGWTR_EL2));
+
 	do {
 		/* Jump in the fire! */
 		exit_code = __guest_enter(vcpu);
