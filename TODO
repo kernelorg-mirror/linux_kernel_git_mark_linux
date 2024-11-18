@@ -1,0 +1,20 @@
+ANALYSIS:
+* How are the BRBE sysregs trapped?
+* How are HFGITR_EL2.nGCS* clear?
+* How are HDFG{R,W}TR_EL2.nBRB* clear?
+* Are there any other trap/disable bits that should be set?
+* Are there any other enable bits that should be clear?
+* Does CPTR_EL2.TAM get set when AMU is present?
+
+BUGS:
+* HDFG{R,W}TR_EL2.nPMSNEVFR_EL1 are set unexpectedly
+  - Does MDCR_EL2.TPMS save us?
+    - Yes, it is set
+    - Do we handle the trap as UNDEF?
+      - We do already -- PMSNEVFR_EL1 UNDEFs are handled by the coarse-grained trap config in sys_regs.c
+* HFGITR_EL2.{nBRBINJ,nBRBIALL} are set unexpectedly
+
+FUTURE:
+* When new bits are removed from RES0 and turned into enables, how do we
+  prevent accidentally exposing the feature to VMs by default?
+  - Probably need a KVM-specific "was RES0" definition.
