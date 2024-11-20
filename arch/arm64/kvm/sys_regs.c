@@ -4730,10 +4730,13 @@ void kvm_calculate_traps(struct kvm_vcpu *vcpu)
 		goto out;
 
 	kvm->arch.fgu[HFGxTR_GROUP] = (HFGxTR_EL2_nAMAIR2_EL1		|
+				       HFGxTR_EL2_nGCS_EL0		|
+				       HFGxTR_EL2_nGCS_EL1		|
 				       HFGxTR_EL2_nMAIR2_EL1		|
-				       HFGxTR_EL2_nS2POR_EL1		|
+				       HFGxTR_EL2_nRCWMASK_EL1		|
 				       HFGxTR_EL2_nACCDATA_EL1		|
 				       HFGxTR_EL2_nSMPRI_EL1_MASK	|
+				       HFGxTR_EL2_nS2POR_EL1		|
 				       HFGxTR_EL2_nTPIDR2_EL0_MASK);
 
 	if (!kvm_has_feat(kvm, ID_AA64ISAR0_EL1, TLB, OS))

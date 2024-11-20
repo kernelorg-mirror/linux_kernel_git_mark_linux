@@ -341,15 +341,56 @@
 				 GENMASK(16, 15))
 
 /*
- * FGT register definitions
+ * The set of FGT bits which KVM is aware of and has all necessary handling
+ * elsewhere (e.g. explicit FGU definitions, trap handling):
  *
- * RES0 and polarity masks as of DDI0487J.a, to be updated as needed.
- * We're not using the generated masks as they are usually ahead of
- * the published ARM ARM, which we use as a reference.
+ * - __KVM_<register>_pMASK contains positive bits, where a trap is taken when
+ *   a given bit is set.
  *
- * Once we get to a point where the two describe the same thing, we'll
- * merge the definitions. One day.
+ * - __KVM_<register>_nMASK contains negative bits, where a trap is taken when
+ *   a given bits is clear.
+ *
+ * - __KVM_<register>_RES0 contains all bits which are either architecturally
+ *   RES0, or which KVM is not yet aware of (and a trap is taken when a given
+ *   bit is clear).
  */
+
+/*
+ * TODO: which pMASK bits are actually handled?
+ * TODO: which nMASK bits are actually handled?
+ * TODO: are ID regs suitably sanitized?
+ * TODO: HFGRTR_EL2.* vs HFGWTR_EL2.*
+ *
+ * TODO: what about:
+ *   [63]	nAMAIR2_EL1	-> FGU (always)
+ *   [62]	nMAIR2_EL1	-> FGU (always)
+ *   [61]	nS2POR_EL1	-> FGU (always)
+ *   [60]	nPOR_EL1	-> FGU (ID_AA64MMFR3_EL1.S1POE >= IMP)
+ *   [59]	nPOR_EL0	-> FGU (ID_AA64MMFR3_EL1.S1POE >= IMP)
+ *   [58]	nPIR_EL1	-> FGU (ID_AA64MMFR3_EL1.S1PIE >= IMP)
+ *   [57]	nPIRE0_EL1	-> FGU (ID_AA64MMFR3_EL1.S1PIE >= IMP)
+ *   [56]	nRCWMASK_EL1	-> EXPOSED+UNHANDLED
+ *   [55]	nTPIDR2_EL0	-> FGU (always)
+ *   [54]	nSMPRI_EL1	-> FGU (always)
+ *   [53]	nGCS_EL1	-> EXPOSED+UNHANDLED
+ *   [52]	nGCS_EL0	-> EXPOSED+UNHANDLED
+ *   [51]	RES0		-> RES0
+ *   [50]	nACCDATA	-> FGU (always)
+ */
+#define __KVM_HFGxTR_EL2_pMASK	GENMASK(49, 0)
+#define __KVM_HFGxTR_EL2_nMASK	(GENMASK(63, 57) | GENMASK(55, 54) | BIT(50))
+#define __KVM_HFGRTR_ONLY_MASK	(BIT(46) | BIT(42) | BIT(40) | BIT(28) | \
+				 GENMASK(26, 25) | BIT(21) | BIT(18) | \
+				 GENMASK(15, 14) | GENMASK(10, 9) | BIT(2))
+
+#define __KVM_HFGRTR_EL2_pMASK	__KVM_HFGxTR_EL2_pMASK
+#define __KVM_HFGRTR_EL2_nMASK	__KVM_HFGxTR_EL2_nMASK
+#define __KVM_HFGRTR_EL2_RES0	~(__KVM_HFGRTR_EL2_pMASK | __KVM_HFGRTR_EL2_nMASK)
+
+#define __KVM_HFGWTR_EL2_pMASK	(__KVM_HFGxTR_EL2_pMASK & ~__KVM_HFGRTR_ONLY_MASK)
+#define __KVM_HFGWTR_EL2_nMASK	(__KVM_HFGxTR_EL2_nMASK & ~__KVM_HFGRTR_ONLY_MASK)
+#define __KVM_HFGWTR_EL2_RES0	~(__KVM_HFGWTR_EL2_pMASK | __KVM_HFGWTR_EL2_nMASK)
+
 #define __HFGRTR_EL2_RES0	HFGxTR_EL2_RES0
 #define __HFGRTR_EL2_MASK	GENMASK(49, 0)
 #define __HFGRTR_EL2_nMASK	~(__HFGRTR_EL2_RES0 | __HFGRTR_EL2_MASK)
@@ -365,9 +406,59 @@
 #define __HFGWTR_EL2_MASK	(__HFGRTR_EL2_MASK & ~__HFGRTR_ONLY_MASK)
 #define __HFGWTR_EL2_nMASK	~(__HFGWTR_EL2_RES0 | __HFGWTR_EL2_MASK)
 
+/*
+ * TODO: which pMASK bits are actually handled?
+ * TODO: which nMASK bits are actually handled?
+ * TODO: are ID regs suitably sanitized?
+ *
+ * TODO: what about:
+ *   [63]	RES0		-> ???
+ *   [61]	RES0		-> ???
+ *   [59]	nGCSEPP		-> EXPOSED+UNHANDLED
+ *   [58]	nGCSSTR_EL1	-> EXPOSED+UNHANDLED
+ *   [57]	nGCSPUSHM_EL1	-> EXPOSED+UNHANDLED
+ *   [56]	nBRBIALL	-> EXPOSED+UNHANDLED
+ *   [55]	nBRBINJ		-> EXPOSED+UNHANDLED
+ */
+#define __KVM_HFGITR_EL2_pMASK	(BIT(62) | BIT(60) | GENMASK(54, 0))
+#define __KVM_HFGITR_EL2_nMASK	(UL(0))
+#define __KVM_HFGITR_EL2_RES0	~(__KVM_HFGITR_EL2_pMASK | __KVM_HFGITR_EL2_nMASK)
+
 #define __HFGITR_EL2_RES0	HFGITR_EL2_RES0
 #define __HFGITR_EL2_MASK	(BIT(62) | BIT(60) | GENMASK(54, 0))
 #define __HFGITR_EL2_nMASK	~(__HFGITR_EL2_RES0 | __HFGITR_EL2_MASK)
+
+/*
+ * TODO: which pMASK bits are actually handled?
+ * TODO: which nMASK bits are actually handled?
+ * TODO: are ID regs suitably sanitized?
+ * TODO: HDFGRTR_EL2 vs HDFGWTR_EL2
+ *
+ * TODO: what about:
+ *   [62]	nPMSNEVFR_EL1	-> ???
+ *   [61]	nBRBDATA	-> EXPOSED+UNHANDLED
+ *   [60]	nBRBCTL		-> EXPOSED+UNHANDLED
+ *   [59]	nBRBIDR		-> EXPOSED+UNHANDLED
+ *   [49]	RES0		-> ???
+ *   [42]	RES0		-> ???
+ *   [39]	RES0		-> ???
+ *   [38]	RES0		-> ???
+ *   [21]	RES0		-> ???
+ *   [20]	RES0		-> ???
+ *   [8]	RES0		-> ???
+ */
+#define __KVM_HDFGxTR_EL2_pMASK (BIT(63) | GENMASK(58, 50) | GENMASK(48, 43) | \
+				 GENMASK(41, 40) | GENMASK(37, 22) | \
+				 GENMASK(19, 9) | GENMASK(7, 0))
+#define __KVM_HDFGxTR_EL2_nMASK	(UL(0))
+
+#define __KVM_HDFGRTR_EL2_pMASK	__KVM_HDFGxTR_EL2_pMASK
+#define __KVM_HDFGRTR_EL2_nMASK	__KVM_HDFGxTR_EL2_nMASK
+#define __KVM_HDFGRTR_EL2_RES0	~(__KVM_HDFGRTR_EL2_pMASK | __KVM_HDFGRTR_EL2_nMASK)
+
+#define __KVM_HDFGWTR_EL2_pMASK	__KVM_HDFGxTR_EL2_pMASK
+#define __KVM_HDFGWTR_EL2_nMASK	__KVM_HDFGxTR_EL2_nMASK
+#define __KVM_HDFGWTR_EL2_RES0	~(__KVM_HDFGWTR_EL2_pMASK | __KVM_HDFGWTR_EL2_nMASK)
 
 #define __HDFGRTR_EL2_RES0	HDFGRTR_EL2_RES0
 #define __HDFGRTR_EL2_MASK	(BIT(63) | GENMASK(58, 50) | GENMASK(48, 43) | \
@@ -383,11 +474,61 @@
 				 GENMASK(8, 7) | GENMASK(5, 0))
 #define __HDFGWTR_EL2_nMASK	~(__HDFGWTR_EL2_RES0 | __HDFGWTR_EL2_MASK)
 
+
+/*
+ * TODO: which pMASK bits are actually handled?
+ * TODO: which nMASK bits are actually handled?
+ * TODO: are ID regs suitably sanitized?
+ *
+ * TODO: what about:
+ *   [63:50]	RES0		-> ???
+ *   [16:5]	RES0		-> ???
+ */
+#define __KVM_HAFGRTR_EL2_pMASK (GENMASK(49, 17) | GENMASK(4, 0))
+#define __KVM_HAFGRTR_EL2_nMASK (UL(0))
+#define __KVM_HAFGRTR_EL2_RES0	~(__KVM_HAFGRTR_EL2_pMASK | __KVM_HAFGRTR_EL2_nMASK)
+
 #define __HAFGRTR_EL2_RES0	HAFGRTR_EL2_RES0
 #define __HAFGRTR_EL2_MASK	(GENMASK(49, 17) | GENMASK(4, 0))
 #define __HAFGRTR_EL2_nMASK	~(__HAFGRTR_EL2_RES0 | __HAFGRTR_EL2_MASK)
 
+/*
+ * TODO: which pMASK bits are actually handled?
+ * TODO: which nMASK bits are actually handled?
+ * TODO: are ID regs suitably sanitized?
+ *
+ * TODO: what about:
+ *   [63:23]	RES0		-> ???
+ *   [22]	GCSEn		-> ???
+ *   [21]	EnIDCP128	-> ???
+ *   [20]	EnSDERR		-> ???
+ *   [19]	TMEA		-> ???
+ *   [18]	EnSNERR		-> ???
+ *   [17]	D128En		-> ???
+ *   [16]	PTTWI		-> ???
+ *   [15]	SCTLR2En	-> ???
+ *   [14]	TCR2En		-> ???
+ *   [13]	RES0		-> ???
+ *   [12]	RES0		-> ???
+ *   [11]	MSCEn		-> ???
+ *   [10]	MCE2		-> ???
+ *   [9]	CMOW		-> ???
+ *   [8]	VFNMI		-> ???
+ *   [7]	VINMI		-> ???
+ *   [6]	TALLINT		-> ???
+ *   [5]	SMPME		-> ???
+ *   [4]	FGTnXS		-> ???
+ *   [3]	FnXS		-> ???
+ *   [2]	EnASR		-> ???
+ *   [1]	EnALS		-> ???
+ *   [0]	EnAS0		-> ???
+ */
+
 /* Similar definitions for HCRX_EL2 */
+#define __KVM_HCRX_EL2_pMASK	(BIT(6))
+#define __KVM_HCRX_EL2_nMASK	(UL(0)) // TODO
+#define __KVM_HCRX_EL2_RES0	~(__KVM_HCRX_EL2_pMASK | __KVM_HCRX_EL2_nMASK)
+
 #define __HCRX_EL2_RES0         HCRX_EL2_RES0
 #define __HCRX_EL2_MASK		(BIT(6))
 #define __HCRX_EL2_nMASK	~(__HCRX_EL2_RES0 | __HCRX_EL2_MASK)
