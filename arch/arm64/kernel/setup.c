@@ -275,6 +275,24 @@ u64 cpu_logical_map(unsigned int cpu)
 	return __cpu_logical_map[cpu];
 }
 
+#define __dump_fgt_defs(reg)						\
+do {									\
+	pr_info("HARK: FGT: %s:\n", #reg);				\
+	pr_info("   MASK => 0x%016llx\n", (u64)__##reg##_MASK);		\
+	pr_info("  nMASK => 0x%016llx\n", (u64)__##reg##_nMASK);	\
+	pr_info("   RES0 => 0x%016llx\n", (u64)__##reg##_RES0);		\
+} while (0)
+
+static void dump_fgt_defs(void)
+{
+	__dump_fgt_defs(HFGRTR_EL2);
+	__dump_fgt_defs(HFGWTR_EL2);
+	__dump_fgt_defs(HFGITR_EL2);
+	__dump_fgt_defs(HDFGRTR_EL2);
+	__dump_fgt_defs(HDFGWTR_EL2);
+	__dump_fgt_defs(HCRX_EL2);
+}
+
 void __init __no_sanitize_address setup_arch(char **cmdline_p)
 {
 	setup_initial_init_mm(_stext, _etext, _edata, _end);
@@ -325,6 +343,8 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 		WARN_TAINT(mmu_enabled_at_boot, TAINT_FIRMWARE_WORKAROUND,
 			   FW_BUG "Booted with MMU enabled!");
 	}
+
+	dump_fgt_defs();
 
 	arm64_memblock_init();
 
