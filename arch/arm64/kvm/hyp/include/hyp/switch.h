@@ -119,6 +119,9 @@ static inline void __activate_traps_fpsimd32(struct kvm_vcpu *vcpu)
 		val = __ ## reg ## _nMASK;				\
 		val |= s;						\
 		val &= ~c;						\
+		if (is_vhe_hyp_code()) {				\
+			pr_info_once("HARK: writing %s = 0x%016llx\n", #reg, val); \
+		}							\
 		write_sysreg_s(val, SYS_ ## reg);			\
 	} while(0)
 
