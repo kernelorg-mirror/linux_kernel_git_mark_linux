@@ -283,8 +283,16 @@ do {									\
 	pr_info("   RES0 => 0x%016llx\n", (u64)__##reg##_RES0);		\
 } while (0)
 
+#define __dump_id_reg(reg)						\
+do {									\
+	pr_info("HARK: %-20s => 0x%016llx\n", #reg,			\
+		read_sysreg_s(SYS_##reg));				\
+} while (0)
+
 static void dump_fgt_defs(void)
 {
+	__dump_id_reg(ID_AA64PFR1_EL1);
+
 	__dump_fgt_defs(HFGRTR_EL2);
 	__dump_fgt_defs(HFGWTR_EL2);
 	__dump_fgt_defs(HFGITR_EL2);
