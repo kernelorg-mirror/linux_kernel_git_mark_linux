@@ -275,15 +275,16 @@ u64 cpu_logical_map(unsigned int cpu)
 	return __cpu_logical_map[cpu];
 }
 
+#define __dump(name, old, new)							\
+	pr_info("  %6s => old:0x%016llx, new:0x%016llx, diff:0x%016llx\n",	\
+		name, old, new, old ^ new)
+
 #define __dump_fgt_defs(reg)							\
 do {										\
 	pr_info("HARK: FGT: %s:\n", #reg);					\
-	pr_info("  old  MASK => 0x%016llx\n", (u64)__##reg##_MASK);		\
-	pr_info("  new pMASK => 0x%016llx\n", (u64)__KVM_##reg##_pMASK);	\
-	pr_info("  old nMASK => 0x%016llx\n", (u64)__##reg##_nMASK);		\
-	pr_info("  new nMASK => 0x%016llx\n", (u64)__KVM_##reg##_nMASK);	\
-	pr_info("  old  RES0 => 0x%016llx\n", (u64)__##reg##_RES0);		\
-	pr_info("  new  RES0 => 0x%016llx\n", (u64)__KVM_##reg##_RES0);		\
+	__dump("pMASK",	(u64)__##reg##_MASK,	(u64)__KVM_##reg##_pMASK);	\
+	__dump("nMASK",	(u64)__##reg##_nMASK,	(u64)__KVM_##reg##_nMASK);	\
+	__dump("RES0",	(u64)__##reg##_RES0,	(u64)__KVM_##reg##_RES0);	\
 } while (0)
 
 #define __dump_id_reg(reg)						\
