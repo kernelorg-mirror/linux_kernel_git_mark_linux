@@ -324,20 +324,22 @@
  * We CANNOT use the generated masks as they are updated separately from KVM,
  * and may describe bits which KVM has no handling for elsewhere.
  */
-#define __HFGRTR_EL2_RES0	HFGxTR_EL2_RES0
-#define __HFGRTR_EL2_MASK	GENMASK(49, 0)
-#define __HFGRTR_EL2_nMASK	~(__HFGRTR_EL2_RES0 | __HFGRTR_EL2_MASK)
 
 /*
  * The HFGWTR bits are a subset of HFGRTR bits. To ensure we don't miss any
- * future additions, define __HFGWTR* macros relative to __HFGRTR* ones.
+ * future additions, use common definitions.
  */
-#define __HFGRTR_ONLY_MASK	(BIT(46) | BIT(42) | BIT(40) | BIT(28) | \
+#define __HFGxTR_EL2_MASK	GENMASK(49, 0)
+#define __HFGxTR_EL2_nMASK	(GENMASK(63, 57) | GENMASK(55, 54) | BIT(50))
+#define __HFGRTR_EL2_ONLY	(BIT(46) | BIT(42) | BIT(40) | BIT(28) | \
 				 GENMASK(26, 25) | BIT(21) | BIT(18) | \
 				 GENMASK(15, 14) | GENMASK(10, 9) | BIT(2))
-#define __HFGWTR_EL2_RES0	(__HFGRTR_EL2_RES0 | __HFGRTR_ONLY_MASK)
-#define __HFGWTR_EL2_MASK	(__HFGRTR_EL2_MASK & ~__HFGRTR_ONLY_MASK)
-#define __HFGWTR_EL2_nMASK	~(__HFGWTR_EL2_RES0 | __HFGWTR_EL2_MASK)
+#define __HFGRTR_EL2_MASK	__HFGxTR_EL2_MASK
+#define __HFGRTR_EL2_nMASK	__HFGxTR_EL2_nMASK
+#define __HFGRTR_EL2_RES0	~(__HFGRTR_EL2_MASK | __HFGRTR_EL2_nMASK)
+#define __HFGWTR_EL2_MASK	(__HFGxTR_EL2_MASK & ~__HFGRTR_EL2_ONLY)
+#define __HFGWTR_EL2_nMASK	(__HFGxTR_EL2_nMASK & ~__HFGRTR_EL2_ONLY)
+#define __HFGWTR_EL2_RES0	~(__HFGWTR_EL2_MASK | __HFGWTR_EL2_nMASK)
 
 #define __HFGITR_EL2_RES0	HFGITR_EL2_RES0
 #define __HFGITR_EL2_MASK	(BIT(62) | BIT(60) | GENMASK(54, 0))
