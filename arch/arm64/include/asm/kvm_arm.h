@@ -364,9 +364,9 @@
 #define __HAFGRTR_EL2_RES0	~(__HAFGRTR_EL2_MASK | __HAFGRTR_EL2_nMASK)
 
 /* Similar definitions for HCRX_EL2 */
-#define __HCRX_EL2_RES0         HCRX_EL2_RES0
 #define __HCRX_EL2_MASK		(BIT(6))
-#define __HCRX_EL2_nMASK	~(__HCRX_EL2_RES0 | __HCRX_EL2_MASK)
+#define __HCRX_EL2_nMASK	(UL(0))
+#define __HCRX_EL2_RES0		~(__HCRX_EL2_MASK | __HCRX_EL2_nMASK)
 
 /* Hyp Prefetch Fault Address Register (HPFAR/HDFAR) */
 #define HPFAR_MASK	(~UL(0xf))
