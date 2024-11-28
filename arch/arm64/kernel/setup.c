@@ -280,6 +280,18 @@ u64 cpu_logical_map(unsigned int cpu)
 	return __cpu_logical_map[cpu];
 }
 
+#define __hack_dump_fgt_bits(reg)					\
+do {									\
+	pr_info("FGT bits for %s:\n"					\
+		"   MASK: 0x%016lx\n"					\
+		"  nMASK: 0x%016lx\n"					\
+		"   RES0: 0x%016lx\n",					\
+		#reg,							\
+		__##reg##_MASK,						\
+		__##reg##_nMASK,					\
+		__##reg##_RES0);					\
+} while (0)
+
 void __init __no_sanitize_address setup_arch(char **cmdline_p)
 {
 	setup_initial_init_mm(_stext, _etext, _edata, _end);
@@ -377,6 +389,9 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 			"This indicates a broken bootloader or old kernel\n",
 			boot_args[1], boot_args[2], boot_args[3]);
 	}
+
+	__hack_dump_fgt_bits(HFGRTR_EL2);
+	__hack_dump_fgt_bits(HFGWTR_EL2);
 }
 
 static inline bool cpu_can_disable(unsigned int cpu)
