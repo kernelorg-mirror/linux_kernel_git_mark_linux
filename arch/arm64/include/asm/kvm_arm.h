@@ -315,12 +315,14 @@
 /*
  * FGT register definitions
  *
- * RES0 and polarity masks as of DDI0487J.a, to be updated as needed.
- * We're not using the generated masks as they are usually ahead of
- * the published ARM ARM, which we use as a reference.
+ * The polarity masks describe all bits which KVM is aware of and has explicit
+ * handling for (e.g. FGU definitions). All other bits are treated as RES0,
+ * which should be safe going forward as any new bit should have the polarity
+ * of an enable, where 0 prevents the guest from using the feature, and 1
+ * permits the guest to use the feature.
  *
- * Once we get to a point where the two describe the same thing, we'll
- * merge the definitions. One day.
+ * We CANNOT use the generated masks as they are updated separately from KVM,
+ * and may describe bits which KVM has no handling for elsewhere.
  */
 #define __HFGRTR_EL2_RES0	HFGxTR_EL2_RES0
 #define __HFGRTR_EL2_MASK	GENMASK(49, 0)
