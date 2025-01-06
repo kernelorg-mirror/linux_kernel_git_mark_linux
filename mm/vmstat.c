@@ -2122,9 +2122,13 @@ static void __init start_shepherd_timer(void)
 {
 	int cpu;
 
-	for_each_possible_cpu(cpu)
+	for_each_possible_cpu(cpu) {
 		INIT_DEFERRABLE_WORK(per_cpu_ptr(&vmstat_work, cpu),
 			vmstat_update);
+
+		/* will be enabled on vmstat_cpu_online */
+		disable_delayed_work_sync(&per_cpu(vmstat_work, cpu));
+	}
 
 	schedule_delayed_work(&shepherd,
 		round_jiffies_relative(sysctl_stat_interval));
