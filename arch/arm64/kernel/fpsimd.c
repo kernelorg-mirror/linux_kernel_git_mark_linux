@@ -484,7 +484,12 @@ static void fpsimd_save_user_state(void)
 
 	if (IS_ENABLED(CONFIG_ARM64_SVE) && save_sve_regs) {
 		/* Get the configured VL from RDVL, will account for SM */
-		if (WARN_ON(sve_get_vl() != vl)) {
+		unsigned int active_vl = sve_get_vl();
+
+		if (active_vl != vl) {
+			WARN(1, "Active VL (%u) != expected VL (%u)\n",
+			     active_vl, vl);
+
 			/*
 			 * Can't save the user regs, so current would
 			 * re-enter user with corrupt state.
