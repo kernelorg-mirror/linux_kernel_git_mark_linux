@@ -100,6 +100,15 @@ void kvm_arch_vcpu_ctxsync_fp(struct kvm_vcpu *vcpu)
 	WARN_ON_ONCE(!irqs_disabled());
 
 	if (guest_owns_fp_regs()) {
+		if (system_supports_sve()) {
+			unsigned int active_vl = sve_get_vl();
+			unsigned int guest_max_vl = vcpu->arch.sve_max_vl;
+
+			WARN_ONCE(active_vl != guest_max_vl,
+				  "Active VL (%u) is not guest max VL (%u)\n",
+				  active_vl, guest_max_vl);
+		}
+
 		/*
 		 * Currently we do not support SME guests so SVCR is
 		 * always 0 and we just need a variable to point to.
