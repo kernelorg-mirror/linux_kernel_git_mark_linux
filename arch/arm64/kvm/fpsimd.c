@@ -130,6 +130,27 @@ void kvm_arch_vcpu_ctxsync_fp(struct kvm_vcpu *vcpu)
 
 		clear_thread_flag(TIF_FOREIGN_FPSTATE);
 	}
+
+	/*
+	 * HACK: test that the hsot can use its maximum VL, regardless of the
+	 * guest configuration.
+	 *
+	 * This relies on NOT being in streaming mode.
+	 */
+	if (system_supports_sve()) {
+		unsigned int old_vl, new_vl, max_vl;
+
+		old_vl = sve_get_vl();
+
+		max_vl = sve_max_vl();
+		sve_cond_update_zcr_vq(sve_vq_from_vl(max_vl) - 1, SYS_ZCR_EL1);
+		new_vl = sve_get_vl();
+
+		WARN_ONCE(new_vl != max_vl, "Unable to set max VL (%u), got %u\n",
+			  max_vl, new_vl);
+
+		sve_cond_update_zcr_vq(sve_vq_from_vl(old_vl) - 1, SYS_ZCR_EL1);
+	}
 }
 
 /*
