@@ -128,6 +128,23 @@ void kvm_arch_vcpu_ctxsync_fp(struct kvm_vcpu *vcpu)
 
 		clear_thread_flag(TIF_FOREIGN_FPSTATE);
 	}
+
+	/*
+	 * HACK: test that we can save away the guest FPSIMD/SVE/SME state and
+	 * use the maximum VL.
+	 */
+	if (system_supports_sve()) {
+		unsigned int vl, max_vl;
+
+		fpsimd_save_and_flush_cpu_state();
+
+		max_vl = sve_max_vl();
+		sve_cond_update_zcr_vq(sve_vq_from_vl(max_vl) - 1, SYS_ZCR_EL1);
+		vl = sve_get_vl();
+
+		WARN_ONCE(vl != max_vl, "Unable to set max VL (%u), got %u\n",
+			  max_vl, vl);
+	}
 }
 
 /*
