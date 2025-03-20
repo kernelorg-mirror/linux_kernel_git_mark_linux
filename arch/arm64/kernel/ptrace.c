@@ -969,8 +969,6 @@ static int sve_set_common(struct task_struct *target,
 	sve_alloc(target, true);
 	if (!target->thread.sve_state) {
 		ret = -ENOMEM;
-		clear_tsk_thread_flag(target, TIF_SVE);
-		target->thread.fp_type = FP_STATE_FPSIMD;
 		goto out;
 	}
 
