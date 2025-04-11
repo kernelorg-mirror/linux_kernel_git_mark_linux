@@ -815,10 +815,70 @@ void fpsimd_sync_to_effective_state_zeropad(struct task_struct *task)
 	__fpsimd_to_sve(sst, fst, vq);
 }
 
+static int change_live_vector_length(struct task_struct *task,
+				     enum vec_type type,
+				     unsigned long vl)
+{
+	unsigned int sve_vl = task_get_sve_vl(task);
+	unsigned int sme_vl = task_get_sme_vl(task);
+	void *sve_state;
+
+	if (type == ARM64_VEC_SME)
+		sme_vl = vl;
+	else
+		sve_vl = vl;
+
+	/*
+	 * Changes to the SVE vector length must not discard live ZA state, as
+	 * code which is unaware of the AAPCS64 ZA lazy saving scheme may
+	 * attempt to change the SVE vector length.
+	 *
+	 * Allocate the new sve_state before freeing the old sve_state so that
+	 * we can handle an allocation failure without needing to clear TIF_SME
+	 * and PSTATE.ZA.
+	 */
+	sve_state = kzalloc(__sve_state_size(sve_vl, sme_vl), GFP_KERNEL);
+	if (!sve_state)
+		return -ENOMEM;
+
+	if (task == current)
+		fpsimd_save_and_flush_current_state();
+	else
+		fpsimd_flush_task_state(task);
+
+	/*
+	 * Always exit streaming mode, and preserve the non-streaming FPSIMD
+	 * state.
+	 */
+	task_smstop_sm(task);
+	fpsimd_sync_from_effective_state(task);
+	task->thread.fp_type = FP_STATE_FPSIMD;
+	clear_tsk_thread_flag(task, TIF_SVE);
+
+	task_set_vl(task, type, vl);
+
+	/* Move to the new sve_state */
+	sve_free(task);
+	task->thread.sve_state = sve_state;
+
+	/*
+	 * Discard the old sme_state IFF changing the SME vector length, and
+	 * defer allocation until the next use of SME.
+	 */
+	if (type == ARM64_VEC_SME) {
+		task->thread.svcr &= ~SVCR_ZA_MASK;
+		clear_tsk_thread_flag(task, TIF_SME);
+		sme_free(task);
+	}
+
+	return 0;
+}
+
 int vec_set_vector_length(struct task_struct *task, enum vec_type type,
 			  unsigned long vl, unsigned long flags)
 {
-	bool free_sme = false;
+	bool onexec = flags & PR_SVE_SET_VL_ONEXEC;
+	bool inherit = flags & PR_SVE_VL_INHERIT;
 
 	if (flags & ~(unsigned long)(PR_SVE_VL_INHERIT |
 				     PR_SVE_SET_VL_ONEXEC))
@@ -838,62 +898,17 @@ int vec_set_vector_length(struct task_struct *task, enum vec_type type,
 
 	vl = find_supported_vector_length(type, vl);
 
-	if (flags & (PR_SVE_VL_INHERIT |
-		     PR_SVE_SET_VL_ONEXEC))
+	if (!onexec && vl != task_get_vl(task, type)) {
+		if (change_live_vector_length(task, type, vl))
+			return -ENOMEM;
+	}
+
+	if (onexec || inherit)
 		task_set_vl_onexec(task, type, vl);
 	else
 		/* Reset VL to system default on next exec: */
 		task_set_vl_onexec(task, type, 0);
 
-	/* Only actually set the VL if not deferred: */
-	if (flags & PR_SVE_SET_VL_ONEXEC)
-		goto out;
-
-	if (vl == task_get_vl(task, type))
-		goto out;
-
-	/*
-	 * To ensure the FPSIMD bits of the SVE vector registers are preserved,
-	 * write any live register state back to task_struct, and convert to a
-	 * regular FPSIMD thread.
-	 */
-	if (task == current) {
-		get_cpu_fpsimd_context();
-
-		fpsimd_save_user_state();
-	}
-
-	fpsimd_flush_task_state(task);
-	if (test_and_clear_tsk_thread_flag(task, TIF_SVE) ||
-	    thread_sm_enabled(&task->thread)) {
-		sve_to_fpsimd(task);
-		task->thread.fp_type = FP_STATE_FPSIMD;
-	}
-
-	if (system_supports_sme() && type == ARM64_VEC_SME) {
-		task->thread.svcr &= ~(SVCR_SM_MASK | SVCR_ZA_MASK);
-		clear_tsk_thread_flag(task, TIF_SME);
-		free_sme = true;
-	}
-
-	if (task == current)
-		put_cpu_fpsimd_context();
-
-	task_set_vl(task, type, vl);
-
-	/*
-	 * Free the changed states if they are not in use, SME will be
-	 * reallocated to the correct size on next use and we just
-	 * allocate SVE now in case it is needed for use in streaming
-	 * mode.
-	 */
-	sve_free(task);
-	sve_alloc(task, true);
-
-	if (free_sme)
-		sme_free(task);
-
-out:
 	update_tsk_thread_flag(task, vec_vl_inherit_flag(type),
 			       flags & PR_SVE_VL_INHERIT);
 
