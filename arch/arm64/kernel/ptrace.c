@@ -975,13 +975,9 @@ static int sve_set_common(struct task_struct *target,
 	}
 
 	/*
-	 * Ensure target->thread.sve_state is up to date with target's
-	 * FPSIMD regs, so that a short copyin leaves trailing
-	 * registers unmodified.  Only enable SVE if we are
-	 * configuring normal SVE, a system with streaming SVE may not
-	 * have normal SVE.
+	 * Only enable SVE if we are configuring normal SVE, a system with
+	 * streaming SVE may not have normal SVE.
 	 */
-	fpsimd_sync_to_sve(target);
 	if (type == ARM64_VEC_SVE)
 		set_tsk_thread_flag(target, TIF_SVE);
 	target->thread.fp_type = FP_STATE_SVE;
