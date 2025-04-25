@@ -789,6 +789,9 @@ static void sve_init_header_from_task(struct user_sve_header *header,
 		return;
 	}
 
+	/*
+	 * TODO: clean this up, along with documentation.
+	 */
 	if (active) {
 		if (target->thread.fp_type == FP_STATE_FPSIMD) {
 			header->flags |= SVE_PT_REGS_FPSIMD;
@@ -819,6 +822,11 @@ static int sve_get_common(struct task_struct *target,
 	struct user_sve_header header;
 	unsigned int vq;
 	unsigned long start, end;
+
+	/*
+	 * TODO: fix handling of SSVE state, where we should *NOT* present an
+	 * FPSIMD register payload.
+	 */
 
 	/* Header */
 	sve_init_header_from_task(&header, target, type);
@@ -922,6 +930,8 @@ static int sve_set_common(struct task_struct *target,
 			/*
 			 * Disable traps and ensure there is SME storage but
 			 * preserve any currently set values in ZA/ZT.
+			 *
+			 * TODO: thie allocation must be checked.
 			 */
 			sme_alloc(target, false);
 			set_tsk_thread_flag(target, TIF_SME);
@@ -935,6 +945,8 @@ static int sve_set_common(struct task_struct *target,
 		/*
 		 * If we switched then invalidate any existing SVE
 		 * state and ensure there's storage.
+		 *
+		 * TODO: thie allocation must be checked.
 		 */
 		if (target->thread.svcr != old_svcr)
 			sve_alloc(target, true);
@@ -942,6 +954,12 @@ static int sve_set_common(struct task_struct *target,
 
 	/* Registers: FPSIMD-only case */
 
+	/*
+	 * TODO: forbid FPSIMD-only in SSVE state, which can place the task
+	 * into an invalid state with PSTATE.SM==1 and fp_type=FP_STATE_FPSIMD.
+	 *
+	 * TODO: ensure error paths don't leave the task in an invalid state.
+	 */
 	BUILD_BUG_ON(SVE_PT_FPSIMD_OFFSET != sizeof(header));
 	if ((header.flags & SVE_PT_REGS_MASK) == SVE_PT_REGS_FPSIMD) {
 		ret = __fpr_set(target, regset, pos, count, kbuf, ubuf,
