@@ -343,6 +343,27 @@ void task_set_vl_onexec(struct task_struct *task, enum vec_type type,
  *    not vector length dependent.
  */
 
+static void sanity_check_task_fpsimd_state(struct task_struct *task)
+{
+	WARN_ONCE(test_tsk_thread_flag(task, TIF_SVE) && !task->thread.sve_state,
+		  "Task %p has TIF_SVE but no sve_state\n", task);
+
+	WARN_ONCE(test_tsk_thread_flag(task, TIF_SME) && !task->thread.sve_state,
+		  "Task %p has TIF_SME but no sve_state\n", task);
+
+	WARN_ONCE(test_tsk_thread_flag(task, TIF_SME) && !task->thread.sme_state,
+		  "Task %p has TIF_SME but no sme_state\n", task);
+
+	WARN_ONCE(thread_sm_enabled(&task->thread) && task->thread.fp_type == FP_STATE_FPSIMD,
+	          "Task %p has PSTATE.SM set in FPSIMD format\n", task);
+
+	WARN_ONCE(thread_sm_enabled(&task->thread) && !test_tsk_thread_flag(task, TIF_SME),
+	          "Task %p has PSTATE.SM set without TIF_SME\n", task);
+
+	WARN_ONCE(thread_za_enabled(&task->thread) && !test_tsk_thread_flag(task, TIF_SME),
+		  "Task %p has PSTATE.ZA set without TIF_SME\n", task);
+}
+
 /*
  * Update current's FPSIMD/SVE registers from thread_struct.
  *
@@ -358,6 +379,8 @@ static void task_fpsimd_load(void)
 	WARN_ON(!system_supports_fpsimd());
 	WARN_ON(preemptible());
 	WARN_ON(test_thread_flag(TIF_KERNEL_FPSTATE));
+
+	sanity_check_task_fpsimd_state(current);
 
 	if (system_supports_sve() || system_supports_sme()) {
 		switch (current->thread.fp_type) {
