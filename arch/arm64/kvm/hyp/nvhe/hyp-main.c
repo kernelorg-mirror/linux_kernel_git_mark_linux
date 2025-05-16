@@ -69,7 +69,13 @@ static void fpsimd_sve_sync(struct kvm_vcpu *vcpu)
 	if (!guest_owns_fp_regs())
 		return;
 
-	cpacr_clear_set(0, CPACR_EL1_FPEN | CPACR_EL1_ZEN);
+	/*
+	 * TODO: explain
+	 *
+	 * At this point, traps should have been disabled via
+	 * __deactivate_cptr_traps(), but ther may not have been a context
+	 * synchronization event yet.
+	 */
 	isb();
 
 	if (vcpu_has_sve(vcpu))
