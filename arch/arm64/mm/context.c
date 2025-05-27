@@ -350,6 +350,7 @@ void cpu_do_switch_mm(phys_addr_t pgd_phys, struct mm_struct *mm)
 {
 	unsigned long ttbr1 = read_sysreg(ttbr1_el1);
 	unsigned long asid = ASID(mm);
+	unsigned long asid_after;
 	unsigned long ttbr0 = phys_to_ttbr(pgd_phys);
 
 	/* Skip CNP for the reserved ASID */
@@ -369,6 +370,10 @@ void cpu_do_switch_mm(phys_addr_t pgd_phys, struct mm_struct *mm)
 	write_sysreg(ttbr0, ttbr0_el1);
 	isb();
 	post_ttbr_update_workaround();
+
+	asid_after = ASID(mm);
+
+	WARN_ONCE(asid != asid_after, "ASID changed 0x%04lx -> 0x%04lx", asid, asid_after); 
 }
 
 static int asids_update_limit(void)
