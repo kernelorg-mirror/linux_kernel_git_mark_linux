@@ -251,7 +251,7 @@ struct user_ctxs {
 static int preserve_fpsimd_context(struct fpsimd_context __user *ctx)
 {
 	struct user_fpsimd_state const *fpsimd =
-		&current->thread.uw.fpsimd_state;
+		&current->thread.fpsimd_state;
 	int err;
 
 	fpsimd_sync_from_effective_state(current);
@@ -310,7 +310,7 @@ static int preserve_fpmr_context(struct fpmr_context __user *ctx)
 
 	__put_user_error(FPMR_MAGIC, &ctx->head.magic, err);
 	__put_user_error(sizeof(*ctx), &ctx->head.size, err);
-	__put_user_error(current->thread.uw.fpmr, &ctx->fpmr, err);
+	__put_user_error(current->thread.fpmr, &ctx->fpmr, err);
 
 	return err;
 }
@@ -325,7 +325,7 @@ static int restore_fpmr_context(struct user_ctxs *user)
 
 	__get_user_error(fpmr, &user->fpmr->fpmr, err);
 	if (!err)
-		current->thread.uw.fpmr = fpmr;
+		current->thread.fpmr = fpmr;
 
 	return err;
 }

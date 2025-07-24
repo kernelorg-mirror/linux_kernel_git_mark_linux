@@ -149,18 +149,10 @@ struct cpu_context {
 struct thread_struct {
 	struct cpu_context	cpu_context;	/* cpu context */
 
-	/*
-	 * Whitelisted fields for hardened usercopy:
-	 * Maintainers must ensure manually that this contains no
-	 * implicit padding.
-	 */
-	struct {
-		unsigned long	tp_value;	/* TLS register */
-		unsigned long	tp2_value;
-		u64		fpmr;
-		unsigned long	pad;
-		struct user_fpsimd_state fpsimd_state;
-	} uw;
+	unsigned long		tp_value;	/* TLS register */
+	unsigned long		tp2_value;
+	u64			fpmr;
+	struct user_fpsimd_state fpsimd_state;
 
 	enum fp_type		fp_type;	/* registers FPSIMD or SVE? */
 	unsigned int		fpsimd_cpu;
@@ -266,16 +258,8 @@ static inline void task_set_sve_vl_onexec(struct task_struct *task,
 static inline void arch_thread_struct_whitelist(unsigned long *offset,
 						unsigned long *size)
 {
-	/* Verify that there is no padding among the whitelisted fields: */
-	BUILD_BUG_ON(sizeof_field(struct thread_struct, uw) !=
-		     sizeof_field(struct thread_struct, uw.tp_value) +
-		     sizeof_field(struct thread_struct, uw.tp2_value) +
-		     sizeof_field(struct thread_struct, uw.fpmr) +
-		     sizeof_field(struct thread_struct, uw.pad) +
-		     sizeof_field(struct thread_struct, uw.fpsimd_state));
-
-	*offset = offsetof(struct thread_struct, uw);
-	*size = sizeof_field(struct thread_struct, uw);
+	*offset = 0;
+	*size = 0;
 }
 
 #ifdef CONFIG_COMPAT
@@ -283,13 +267,13 @@ static inline void arch_thread_struct_whitelist(unsigned long *offset,
 ({									\
 	unsigned long *__tls;						\
 	if (is_compat_thread(task_thread_info(t)))			\
-		__tls = &(t)->thread.uw.tp2_value;			\
+		__tls = &(t)->thread.tp2_value;				\
 	else								\
-		__tls = &(t)->thread.uw.tp_value;			\
+		__tls = &(t)->thread.tp_value;				\
 	__tls;								\
  })
 #else
-#define task_user_tls(t)	(&(t)->thread.uw.tp_value)
+#define task_user_tls(t)	(&(t)->thread.tp_value)
 #endif
 
 /* Sync TPIDR_EL0 back to thread_struct for current */

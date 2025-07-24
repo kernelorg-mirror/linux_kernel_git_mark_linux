@@ -255,7 +255,7 @@ static void tls_thread_flush(void)
 		write_sysreg_s(0, SYS_TPIDR2_EL0);
 
 	if (is_compat_task()) {
-		current->thread.uw.tp_value = 0;
+		current->thread.tp_value = 0;
 
 		/*
 		 * We need to ensure ordering between the shadow state and the
@@ -481,7 +481,7 @@ int copy_thread(struct task_struct *p, const struct kernel_clone_args *args)
 		 * thread.
 		 */
 		if (clone_flags & CLONE_SETTLS)
-			p->thread.uw.tp_value = tls;
+			p->thread.tp_value = tls;
 
 		ret = copy_thread_gcs(p, args);
 		if (ret != 0)
@@ -529,7 +529,7 @@ static void tls_thread_switch(struct task_struct *next)
 	tls_preserve_current_state();
 
 	if (is_compat_thread(task_thread_info(next)))
-		write_sysreg(next->thread.uw.tp_value, tpidrro_el0);
+		write_sysreg(next->thread.tp_value, tpidrro_el0);
 	else
 		write_sysreg(0, tpidrro_el0);
 
