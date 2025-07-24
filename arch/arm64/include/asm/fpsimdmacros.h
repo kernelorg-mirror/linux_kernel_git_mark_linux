@@ -24,14 +24,13 @@
 	stp	q24, q25, [\state, #16 * 24]
 	stp	q26, q27, [\state, #16 * 26]
 	stp	q28, q29, [\state, #16 * 28]
-	stp	q30, q31, [\state, #16 * 30]!
+	stp	q30, q31, [\state, #16 * 30]
 	mrs	\tmp, fpsr
-	str	w\tmp, [\state, #16 * 2]
+	str	w\tmp, [\state, #16 * 32]
 	mrs	\tmp, fpcr
-	str	w\tmp, [\state, #16 * 2 + 4]
+	str	w\tmp, [\state, #16 * 32 + 4]
 .endm
 
-/* Clobbers \state */
 .macro fpsimd_restore state, tmp
 	ldp	q0, q1, [\state, #16 * 0]
 	ldp	q2, q3, [\state, #16 * 2]
@@ -48,10 +47,10 @@
 	ldp	q24, q25, [\state, #16 * 24]
 	ldp	q26, q27, [\state, #16 * 26]
 	ldp	q28, q29, [\state, #16 * 28]
-	ldp	q30, q31, [\state, #16 * 30]!
-	ldr	w\tmp, [\state, #16 * 2]
+	ldp	q30, q31, [\state, #16 * 30]
+	ldr	w\tmp, [\state, #16 * 32]
 	msr	fpsr, \tmp
-	ldr	w\tmp, [\state, #16 * 2 + 4]
+	ldr	w\tmp, [\state, #16 * 32 + 4]
 	msr	fpcr, \tmp
 .endm
 
