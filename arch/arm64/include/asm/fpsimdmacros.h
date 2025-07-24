@@ -31,18 +31,6 @@
 	str	w\tmp, [\state, #16 * 2 + 4]
 .endm
 
-.macro fpsimd_restore_fpcr state, tmp
-	/*
-	 * Writes to fpcr may be self-synchronising, so avoid restoring
-	 * the register if it hasn't changed.
-	 */
-	mrs	\tmp, fpcr
-	cmp	\tmp, \state
-	b.eq	9999f
-	msr	fpcr, \state
-9999:
-.endm
-
 /* Clobbers \state */
 .macro fpsimd_restore state, tmp
 	ldp	q0, q1, [\state, #16 * 0]
@@ -64,7 +52,7 @@
 	ldr	w\tmp, [\state, #16 * 2]
 	msr	fpsr, \tmp
 	ldr	w\tmp, [\state, #16 * 2 + 4]
-	fpsimd_restore_fpcr \tmp, \state
+	msr	fpcr, \tmp
 .endm
 
 /* Sanity-check macros to help avoid encoding garbage instructions */
