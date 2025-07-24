@@ -8,7 +8,7 @@
 
 #include <asm/assembler.h>
 
-.macro fpsimd_save state, tmpnr
+.macro fpsimd_save state, tmp
 	stp	q0, q1, [\state, #16 * 0]
 	stp	q2, q3, [\state, #16 * 2]
 	stp	q4, q5, [\state, #16 * 4]
@@ -25,10 +25,10 @@
 	stp	q26, q27, [\state, #16 * 26]
 	stp	q28, q29, [\state, #16 * 28]
 	stp	q30, q31, [\state, #16 * 30]!
-	mrs	x\tmpnr, fpsr
-	str	w\tmpnr, [\state, #16 * 2]
-	mrs	x\tmpnr, fpcr
-	str	w\tmpnr, [\state, #16 * 2 + 4]
+	mrs	\tmp, fpsr
+	str	w\tmp, [\state, #16 * 2]
+	mrs	\tmp, fpcr
+	str	w\tmp, [\state, #16 * 2 + 4]
 .endm
 
 .macro fpsimd_restore_fpcr state, tmp
@@ -44,7 +44,7 @@
 .endm
 
 /* Clobbers \state */
-.macro fpsimd_restore state, tmpnr
+.macro fpsimd_restore state, tmp
 	ldp	q0, q1, [\state, #16 * 0]
 	ldp	q2, q3, [\state, #16 * 2]
 	ldp	q4, q5, [\state, #16 * 4]
@@ -61,10 +61,10 @@
 	ldp	q26, q27, [\state, #16 * 26]
 	ldp	q28, q29, [\state, #16 * 28]
 	ldp	q30, q31, [\state, #16 * 30]!
-	ldr	w\tmpnr, [\state, #16 * 2]
-	msr	fpsr, x\tmpnr
-	ldr	w\tmpnr, [\state, #16 * 2 + 4]
-	fpsimd_restore_fpcr x\tmpnr, \state
+	ldr	w\tmp, [\state, #16 * 2]
+	msr	fpsr, \tmp
+	ldr	w\tmp, [\state, #16 * 2 + 4]
+	fpsimd_restore_fpcr \tmp, \state
 .endm
 
 /* Sanity-check macros to help avoid encoding garbage instructions */
