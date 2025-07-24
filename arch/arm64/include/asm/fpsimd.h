@@ -146,8 +146,17 @@ extern void sve_load_state(void const *state, u32 const *pfpsr,
 			   int restore_ffr);
 extern void sve_flush_live(bool flush_ffr, unsigned long vq_minus_1);
 extern unsigned int sve_get_vl(void);
-extern void sve_set_vq(unsigned long vq_minus_1);
-extern void sme_set_vq(unsigned long vq_minus_1);
+
+static inline void sve_set_vq(unsigned long vq_minus_1)
+{
+	sysreg_clear_set_s(SYS_ZCR_EL1, ZCR_ELx_LEN_MASK, vq_minus_1);
+}
+
+static inline void sme_set_vq(unsigned long vq_minus_1)
+{
+	sysreg_clear_set_s(SYS_SMCR_EL1, SMCR_ELx_LEN_MASK, vq_minus_1);
+}
+
 extern void sme_save_state(void *state, int zt);
 extern void sme_load_state(void const *state, int zt);
 
