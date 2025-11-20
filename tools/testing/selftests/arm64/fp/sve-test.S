@@ -566,8 +566,8 @@ function vl_barf
 	mov	x0, x10
 	bl	putdecn
 
+	mov	x0, #1
 	mov	x8, #__NR_exit
-	mov	x1, #1
 	svc	#0
 endfunction
 
@@ -578,7 +578,7 @@ function svcr_barf
 	mov	x0, x10
 	bl	putdecn
 
+	mov	x0, #1
 	mov	x8, #__NR_exit
-	mov	x1, #1
 	svc	#0
 endfunction

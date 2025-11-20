@@ -326,7 +326,7 @@ function barf
 	bl	dumphex
 	puts	"]\n"
 
+	mov	x0, #1
 	mov	x8, #__NR_exit
-	mov	x1, #1
 	svc	#0
 endfunction
