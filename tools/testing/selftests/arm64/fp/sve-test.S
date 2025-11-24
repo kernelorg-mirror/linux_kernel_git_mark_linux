@@ -504,11 +504,6 @@ function _start
 endfunction
 
 function barf
-// fpsimd.c acitivty log dump hack
-//	ldr	w0, =0xdeadc0de
-//	mov	w8, #__NR_exit
-//	svc	#0
-// end hack
 	mov	x10, x0	// expected data
 	mov	x11, x1	// actual data
 	mov	x12, x2	// data size
@@ -544,17 +539,9 @@ function barf
 
 	mov	x8, #__NR_getpid
 	svc	#0
-// fpsimd.c acitivty log dump hack
-//	ldr	w0, =0xdeadc0de
-//	mov	w8, #__NR_exit
-//	svc	#0
-// ^ end of hack
 	mov	x1, #SIGABRT
 	mov	x8, #__NR_kill
 	svc	#0
-//	mov	x8, #__NR_exit
-//	mov	x1, #1
-//	svc	#0
 endfunction
 
 function vl_barf
