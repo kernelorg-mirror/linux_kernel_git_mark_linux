@@ -467,9 +467,9 @@ function _start
 	cmp	x21, #NZR + NPR
 	b.lo	0b
 
-// Can't do this when SVE state is volatile across SVC:
-//	mov	x8, #__NR_sched_yield	// Encourage preemption
-//	svc	#0
+	// Ideally the test would do something to encourage preemption here.
+	// We cannot use the sched_yield syscall as the syscall entry ABI
+	// discards some SVE/SSVE register state.
 
 #ifdef SSVE
 	mrs	x0, S3_3_C4_C2_2	// SVCR should have ZA=0,SM=1
