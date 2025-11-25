@@ -34,6 +34,7 @@
 #include <linux/sched/prio.h>
 #include <linux/sched/types.h>
 #include <linux/signal_types.h>
+#include <linux/siphash.h>
 #include <linux/spinlock.h>
 #include <linux/syscall_user_dispatch_types.h>
 #include <linux/mm_types_task.h>
@@ -1611,6 +1612,11 @@ struct task_struct {
 #endif
 #ifdef CONFIG_KSTACK_ERASE_METRICS
 	unsigned long			prev_lowest_stack;
+#endif
+
+#ifdef CONFIG_RANDOMIZE_KSTACK_OFFSET
+	siphash_key_t			random_kstack_key;
+	u64				random_kstack_seq;
 #endif
 
 #ifdef CONFIG_X86_MCE

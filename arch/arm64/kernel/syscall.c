@@ -41,7 +41,7 @@ static void invoke_syscall(struct pt_regs *regs, unsigned int scno,
 {
 	long ret;
 
-	add_random_kstack_offset();
+	apply_and_update_kstack_offset();
 
 	if (likely(scno < sc_nr)) {
 		syscall_fn_t syscall_fn;
@@ -52,17 +52,6 @@ static void invoke_syscall(struct pt_regs *regs, unsigned int scno,
 	}
 
 	syscall_set_return_value(current, regs, 0, ret);
-
-	/*
-	 * This value will get limited by KSTACK_OFFSET_MAX(), which is 10
-	 * bits. The actual entropy will be further reduced by the compiler
-	 * when applying stack alignment constraints: the AAPCS mandates a
-	 * 16-byte aligned SP at function boundaries, which will remove the
-	 * 4 low bits from any entropy chosen here.
-	 *
-	 * The resulting 6 bits of entropy is seen in SP[9:4].
-	 */
-	choose_random_kstack_offset(get_random_u16());
 }
 
 static inline bool has_syscall_work(unsigned long flags)
