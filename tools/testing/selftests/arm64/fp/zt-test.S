@@ -195,8 +195,6 @@ endfunction
 // Main program entry point
 .globl _start
 function _start
-	enable_gcs
-
 	mov	x23, #0		// signal count
 
 	mov	w0, #SIGINT
