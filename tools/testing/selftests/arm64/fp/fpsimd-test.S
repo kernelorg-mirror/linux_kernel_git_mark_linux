@@ -172,9 +172,7 @@ function terminate_handler
 	ldr	x0, [x20, #ucontext_regs + 8 * 23]
 	bl	putdecn
 
-	mov	x0, #0
-	mov	x8, #__NR_exit
-	svc	#0
+	exit	0
 endfunction
 
 // w0: signal number
@@ -204,7 +202,7 @@ function setsignal
 	cbz	w0, 1f
 
 	puts	"sigaction failure\n"
-	b	.Labort
+	exit	1
 
 1:	ldr	x30, [sp], #((sa_sz + 15) / 16 * 16 + 16)
 	ret
@@ -250,7 +248,7 @@ function _start
 1:	puts	"Bad vector length: "
 	mov	x0, x19
 	bl	putdecn
-	b	.Labort
+	exit	1
 
 2:	puts	"Vector length:\t"
 	mov	x0, x19
@@ -292,12 +290,6 @@ function _start
 
 	add	x22, x22, #1
 	b	.Ltest_loop
-
-.Labort:
-	mov	x0, #0
-	mov	x1, #SIGABRT
-	mov	x8, #__NR_kill
-	svc	#0
 endfunction
 
 function barf
@@ -324,7 +316,5 @@ function barf
 	bl	dumphex
 	puts	"]\n"
 
-	mov	x0, #1
-	mov	x8, #__NR_exit
-	svc	#0
+	exit	1
 endfunction

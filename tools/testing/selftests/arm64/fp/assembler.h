@@ -65,4 +65,10 @@ endfunction
 	bl	puts
 .endm
 
+.macro exit status:req
+	mov	x0, #\status
+	mov	x8, #__NR_exit
+	svc	#0
+.endm
+
 #endif /* ! ASSEMBLER_H */
