@@ -19,6 +19,7 @@
 #include <sys/auxv.h>
 #include <sys/epoll.h>
 #include <sys/prctl.h>
+#include <sys/signalfd.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/wait.h>
@@ -37,10 +38,11 @@ struct child_data {
 	int stdout;
 	bool output_seen;
 	bool exited;
-	int exit_status;
+	bool failed;
 };
 
 static int epoll_fd;
+static int signal_fd;
 static struct child_data *children;
 static struct epoll_event *evs;
 static int tests;
@@ -60,6 +62,49 @@ static int num_processors(void)
 	return nproc;
 }
 
+static void init_signalfd(void)
+{
+	sigset_t mask;
+	struct epoll_event ev;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGCHLD);
+
+	/*
+	 * TODO: explain default disposition for SIGTERM/SIGINT.
+	 */
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
+		ksft_exit_fail_msg("Failed to configure signal disposition: %s (%d)\n",
+				   strerror(errno), errno);
+
+	signal_fd = signalfd(-1, &mask, 0);
+	if (signal_fd == -1)
+		ksft_exit_fail_msg("Failed to open signalfd: %s (%d)\n",
+				   strerror(errno), errno);
+
+	ev.events = EPOLLIN;
+	ev.data.ptr = NULL;
+
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, signal_fd, &ev) == -1)
+		ksft_exit_fail_msg("signalfd: EPOLL_CTL_ADD failed: %s (%d)\n",
+				   strerror(errno), errno);
+}
+
+void init_child_signals(void)
+{
+	sigset_t mask;
+
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGCHLD);
+
+	if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
+		ksft_exit_fail_msg("Failed to configure signal disposition: %s (%d)\n",
+				   strerror(errno), errno);
+}
+
 static void child_start(struct child_data *child, const char *program)
 {
 	int ret, pipefd[2], i;
@@ -76,6 +121,8 @@ static void child_start(struct child_data *child, const char *program)
 				   strerror(errno), errno);
 
 	if (!child->pid) {
+		init_child_signals();
+
 		/*
 		 * In child, replace stdout with the pipe, errors to
 		 * stderr from here as kselftest prints to stdout.
@@ -130,6 +177,7 @@ static void child_start(struct child_data *child, const char *program)
 		child->stdout = pipefd[0];
 		child->output = NULL;
 		child->exited = false;
+		child->failed = false;
 		child->output_seen = false;
 
 		ev.events = EPOLLIN | EPOLLHUP;
@@ -232,80 +280,66 @@ static void child_stop(struct child_data *child)
 		kill(child->pid, SIGTERM);
 }
 
-static void child_cleanup(struct child_data *child)
+void child_wait(struct child_data *child, bool nonblocking)
 {
-	pid_t ret;
-	int status;
-	bool fail = false;
+	int opts = nonblocking ? WNOHANG : 0;
 
-	if (!child->exited) {
-		do {
-			ret = waitpid(child->pid, &status, 0);
-			if (ret == -1 && errno == EINTR)
-				continue;
+	if (child->exited)
+		return;
 
-			if (ret == -1) {
-				ksft_print_msg("waitpid(%d) failed: %s (%d)\n",
-					       child->pid, strerror(errno),
-					       errno);
-				fail = true;
-				break;
+	for (;;) {
+		pid_t ret;
+		int wstatus;
+
+		ret = waitpid(child->pid, &wstatus, opts);
+
+		if (ret == 0)
+			return;
+
+		if (ret == -1 && errno == EINTR)
+			continue;
+
+		if (ret == -1) {
+			ksft_print_msg("%s waitpid(%d) failed: %s (%d)\n",
+				       child->name, child->pid,
+				       strerror(errno), errno);
+			child->failed = true;
+			break;
+		}
+
+		if (WIFEXITED(wstatus)) {
+			int err = WEXITSTATUS(wstatus);
+			if (!err) {
+				child->exited = true;
+				return;
 			}
-		} while (!WIFEXITED(status));
-		child->exit_status = WEXITSTATUS(status);
-	}
 
-	if (!child->output_seen) {
-		ksft_print_msg("%s no output seen\n", child->name);
-		fail = true;
-	}
+			ksft_print_msg("%s exited with error code %d\n",
+				       child->name, err);
+			break;
+		}
 
-	if (child->exit_status != 0) {
-		ksft_print_msg("%s exited with error code %d\n",
-			       child->name, child->exit_status);
-		fail = true;
-	}
-
-	ksft_test_result(!fail, "%s\n", child->name);
-}
-
-static void handle_child_signal(int sig, siginfo_t *info, void *context)
-{
-	int i;
-	bool found = false;
-
-	for (i = 0; i < num_children; i++) {
-		if (children[i].pid == info->si_pid) {
-			children[i].exited = true;
-			children[i].exit_status = info->si_status;
-			found = true;
+		if (WIFSIGNALED(wstatus)) {
+			ksft_print_msg("%s exited terminated by signal %d\n",
+				       child->name, WTERMSIG(wstatus));
 			break;
 		}
 	}
 
-	if (!found)
-		ksft_print_msg("SIGCHLD for unknown PID %d with status %d\n",
-			       info->si_pid, info->si_status);
+	child->exited = true;
+	child->failed = true;
 }
 
-static void handle_exit_signal(int sig, siginfo_t *info, void *context)
+static void child_cleanup(struct child_data *child)
 {
-	int i;
+	child_wait(child, false);
 
-	/* If we're already exiting then don't signal again */
-	if (terminate)
-		return;
+	if (!child->output_seen) {
+		ksft_print_msg("%s no output seen\n", child->name);
+		child->failed = true;
+	}
 
-	ksft_print_msg("Got signal, exiting...\n");
-
-	terminate = true;
-
-	/*
-	 * This should be redundant, the main loop should clean up
-	 * after us, but for safety stop everything we can here.
-	 */
-	for (i = 0; i < num_children; i++)
-		child_stop(&children[i]);
+	ksft_test_result(!child->failed, "%s\n", child->name);
 }
 
 static void start_fpsimd(struct child_data *child, int cpu, int copy)
@@ -423,6 +457,49 @@ static void probe_vls(int vls[], int *vl_count, int set_vl)
 	}
 }
 
+void handle_signalfd_sigchld(const struct signalfd_siginfo *info)
+{
+	int i;
+
+	for (i = 0; i < num_children; i++) {
+		child_wait(&children[i], true);
+	}
+}
+
+void handle_signalfd_event(struct epoll_event *ev)
+{
+	struct signalfd_siginfo info = { };
+	int sig;
+
+	if (read(signal_fd, &info, sizeof(info)) != sizeof(info))
+		ksft_print_msg("read of signalfd failed\n");
+
+	sig = info.ssi_signo;
+
+	switch (sig) {
+	case SIGCHLD:
+		handle_signalfd_sigchld(&info);
+		break;
+	case SIGINT:
+	case SIGTERM:
+		ksft_print_msg("Got signal %d, exiting...\n", sig);
+		terminate = true;
+		break;
+	default:
+		ksft_print_msg("Got unexpected signal %d, exiting...\n", sig);
+		terminate = true;
+		break;
+	}
+}
+
+void handle_epoll_event(struct epoll_event *ev, bool flush_children)
+{
+	if (ev->data.ptr)
+		child_output(ev->data.ptr, ev->events, flush_children);
+	else
+		handle_signalfd_event(ev);
+}
+
 /* Handle any pending output without blocking */
 static void drain_output(bool flush)
 {
@@ -439,7 +516,7 @@ static void drain_output(bool flush)
 		}
 
 		for (i = 0; i < ret; i++)
-			child_output(evs[i].data.ptr, evs[i].events, flush);
+			handle_epoll_event(&evs[i], flush);
 	}
 }
 
@@ -459,7 +536,6 @@ int main(int argc, char **argv)
 	int seen_children;
 	int sve_vls[MAX_VLS], sme_vls[MAX_VLS];
 	bool have_sme2;
-	struct sigaction sa;
 
 	while ((c = getopt_long(argc, argv, "t:", options, NULL)) != -1) {
 		switch (c) {
@@ -522,30 +598,14 @@ int main(int argc, char **argv)
 				   strerror(errno), ret);
 	epoll_fd = ret;
 
+	/* Get signal handers ready before we start any children */
+	init_signalfd();
+
 	/* Create a pipe which children will block on before execing */
 	ret = pipe(startup_pipe);
 	if (ret != 0)
 		ksft_exit_fail_msg("Failed to create startup pipe: %s (%d)\n",
 				   strerror(errno), errno);
-
-	/* Get signal handers ready before we start any children */
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_sigaction = handle_exit_signal;
-	sa.sa_flags = SA_RESTART | SA_SIGINFO;
-	sigemptyset(&sa.sa_mask);
-	ret = sigaction(SIGINT, &sa, NULL);
-	if (ret < 0)
-		ksft_print_msg("Failed to install SIGINT handler: %s (%d)\n",
-			       strerror(errno), errno);
-	ret = sigaction(SIGTERM, &sa, NULL);
-	if (ret < 0)
-		ksft_print_msg("Failed to install SIGTERM handler: %s (%d)\n",
-			       strerror(errno), errno);
-	sa.sa_sigaction = handle_child_signal;
-	ret = sigaction(SIGCHLD, &sa, NULL);
-	if (ret < 0)
-		ksft_print_msg("Failed to install SIGCHLD handler: %s (%d)\n",
-			       strerror(errno), errno);
 
 	evs = calloc(tests, sizeof(*evs));
 	if (!evs)
@@ -598,10 +658,8 @@ int main(int argc, char **argv)
 
 		/* Output? */
 		if (ret > 0) {
-			for (i = 0; i < ret; i++) {
-				child_output(evs[i].data.ptr, evs[i].events,
-					     false);
-			}
+			for (i = 0; i < ret; i++)
+				handle_epoll_event(&evs[i], false);
 			continue;
 		}
 
@@ -627,6 +685,8 @@ int main(int argc, char **argv)
 
 			all_children_started = true;
 			poll_interval = SIGNAL_INTERVAL_MS;
+
+			ksft_print_msg("All children started.\n");
 		}
 
 		if ((timeout % LOG_INTERVALS) == 0)
