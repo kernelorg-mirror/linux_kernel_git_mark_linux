@@ -1134,6 +1134,9 @@ static int za_get(struct task_struct *target,
 	if (!system_supports_sme())
 		return -EINVAL;
 
+	if (target == current)
+		fpsimd_preserve_current_state();
+
 	/* Header */
 	memset(&header, 0, sizeof(header));
 
@@ -1155,9 +1158,6 @@ static int za_get(struct task_struct *target,
 
 	BUILD_BUG_ON(ZA_PT_ZA_OFFSET != sizeof(header));
 	end = ZA_PT_ZA_OFFSET;
-
-	if (target == current)
-		fpsimd_preserve_current_state();
 
 	/* Any register data to include? */
 	if (thread_za_enabled(&target->thread)) {
@@ -1267,6 +1267,9 @@ static int zt_get(struct task_struct *target,
 {
 	if (!system_supports_sme2())
 		return -EINVAL;
+
+	if (target == current)
+		fpsimd_preserve_current_state();
 
 	/*
 	 * If PSTATE.ZA is not set then ZT will be zeroed when it is
