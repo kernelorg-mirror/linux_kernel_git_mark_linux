@@ -16,6 +16,7 @@
 #include <linux/cpu.h>
 #include <linux/cpu_pm.h>
 #include <linux/ctype.h>
+#include <linux/debugfs.h>
 #include <linux/kernel.h>
 #include <linux/linkage.h>
 #include <linux/irqflags.h>
@@ -51,6 +52,52 @@
 #define FPEXC_UFF	(1 << 3)
 #define FPEXC_IXF	(1 << 4)
 #define FPEXC_IDF	(1 << 7)
+
+struct fpsimd_stats {
+	unsigned long switch_total;
+	unsigned long switch_foreign;
+	unsigned long kernel_revive;
+	unsigned long kernel_reload;
+	unsigned long user_revive;
+	unsigned long user_reload;
+};
+
+static DEFINE_PER_CPU(struct fpsimd_stats, fpsimd_stats);
+
+static int fpsimd_stats_show(struct seq_file *seq, void *v)
+{
+	struct fpsimd_stats stats_total = { };
+	int c;
+
+	for_each_possible_cpu(c) {
+		struct fpsimd_stats *cpu_stats = per_cpu_ptr(&fpsimd_stats, c);
+
+		stats_total.switch_total	+= READ_ONCE(cpu_stats->switch_total);
+		stats_total.switch_foreign	+= READ_ONCE(cpu_stats->switch_foreign);
+		stats_total.kernel_revive	+= READ_ONCE(cpu_stats->kernel_revive);
+		stats_total.kernel_reload	+= READ_ONCE(cpu_stats->kernel_reload);
+		stats_total.user_revive		+= READ_ONCE(cpu_stats->user_revive);
+		stats_total.user_reload		+= READ_ONCE(cpu_stats->user_reload);
+	}
+
+	seq_printf(seq, "switch_total:   %lu\n", stats_total.switch_total);
+	seq_printf(seq, "switch_foreign: %lu\n", stats_total.switch_foreign);
+	seq_printf(seq, "kernel_revive:  %lu\n", stats_total.kernel_revive);
+	seq_printf(seq, "kernel_reload:  %lu\n", stats_total.kernel_reload);
+	seq_printf(seq, "user_revive:    %lu\n", stats_total.user_revive);
+	seq_printf(seq, "user_reload:    %lu\n", stats_total.user_reload);
+
+	return 0;
+}
+DEFINE_SHOW_ATTRIBUTE(fpsimd_stats);
+
+
+static int __init fpsimd_stats_init(void)
+{
+	debugfs_create_file("fpsimd_stats", 0400, NULL, NULL, &fpsimd_stats_fops);
+	return 0;
+}
+late_initcall(fpsimd_stats_init);
 
 /*
  * (Note: in this discussion, statements about FPSIMD apply equally to SVE.)
@@ -1503,9 +1550,12 @@ static void fpsimd_load_kernel_state(struct task_struct *task)
 	 * FPSIMD context of the current task.
 	 */
 	if (last->st == task->thread.kernel_fpsimd_state &&
-	    task->thread.kernel_fpsimd_cpu == smp_processor_id())
+	    task->thread.kernel_fpsimd_cpu == smp_processor_id()) {
+		__this_cpu_inc(fpsimd_stats.kernel_revive);
 		return;
+	}
 
+	__this_cpu_inc(fpsimd_stats.kernel_reload);
 	fpsimd_load_state(task->thread.kernel_fpsimd_state);
 }
 
@@ -1552,6 +1602,8 @@ void fpsimd_thread_switch(struct task_struct *next)
 	if (!system_supports_fpsimd())
 		return;
 
+	__this_cpu_inc(fpsimd_stats.switch_total);
+
 	WARN_ON_ONCE(!irqs_disabled());
 
 	/* Save unsaved fpsimd state, if any: */
@@ -1576,6 +1628,11 @@ void fpsimd_thread_switch(struct task_struct *next)
 
 		update_tsk_thread_flag(next, TIF_FOREIGN_FPSTATE,
 				       wrong_task || wrong_cpu);
+
+		if (!wrong_task && !wrong_cpu)
+			__this_cpu_inc(fpsimd_stats.user_revive);
+		else
+			__this_cpu_inc(fpsimd_stats.switch_foreign);
 	}
 }
 
@@ -1758,6 +1815,7 @@ void fpsimd_restore_current_state(void)
 	get_cpu_fpsimd_context();
 
 	if (test_and_clear_thread_flag(TIF_FOREIGN_FPSTATE)) {
+		__this_cpu_inc(fpsimd_stats.user_reload);
 		task_fpsimd_load();
 		fpsimd_bind_task_to_cpu();
 	}
