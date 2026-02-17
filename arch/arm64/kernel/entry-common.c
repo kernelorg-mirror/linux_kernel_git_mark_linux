@@ -158,10 +158,12 @@ static void noinstr __panic_unhandled(struct pt_regs *regs, const char *vector,
 }
 
 #define UNHANDLED(el, regsize, vector)							\
-asmlinkage void noinstr el##_##regsize##_##vector##_handler(struct pt_regs *regs)	\
+asmlinkage void noinstr el##_##regsize##_##vector##_handler(struct pt_regs *regs,	\
+							    unsigned long esr,		\
+							    unsigned long far)		\
 {											\
 	const char *desc = #regsize "-bit " #el " " #vector;				\
-	__panic_unhandled(regs, desc, read_sysreg(esr_el1));				\
+	__panic_unhandled(regs, desc, esr);						\
 }
 
 #ifdef CONFIG_ARM64_ERRATUM_1463225
@@ -293,9 +295,8 @@ UNHANDLED(el1t, 64, irq)
 UNHANDLED(el1t, 64, fiq)
 UNHANDLED(el1t, 64, error)
 
-static void noinstr el1_abort(struct pt_regs *regs, unsigned long esr)
+static void noinstr el1_abort(struct pt_regs *regs, unsigned long esr, unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
 	irqentry_state_t state;
 
 	state = enter_from_kernel_mode(regs);
@@ -305,9 +306,8 @@ static void noinstr el1_abort(struct pt_regs *regs, unsigned long esr)
 	exit_to_kernel_mode(regs, state);
 }
 
-static void noinstr el1_pc(struct pt_regs *regs, unsigned long esr)
+static void noinstr el1_pc(struct pt_regs *regs, unsigned long esr, unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
 	irqentry_state_t state;
 
 	state = enter_from_kernel_mode(regs);
@@ -392,10 +392,8 @@ static void noinstr el1_softstp(struct pt_regs *regs, unsigned long esr)
 	arm64_exit_el1_dbg(regs, state);
 }
 
-static void noinstr el1_watchpt(struct pt_regs *regs, unsigned long esr)
+static void noinstr el1_watchpt(struct pt_regs *regs, unsigned long esr, unsigned long far)
 {
-	/* Watchpoints are the only debug exception to write FAR_EL1 */
-	unsigned long far = read_sysreg(far_el1);
 	irqentry_state_t state;
 
 	state = arm64_enter_el1_dbg(regs);
@@ -427,21 +425,21 @@ static void noinstr el1_fpac(struct pt_regs *regs, unsigned long esr)
 	exit_to_kernel_mode(regs, state);
 }
 
-asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs)
+asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs,
+					     unsigned long esr,
+					     unsigned long far)
 {
-	unsigned long esr = read_sysreg(esr_el1);
-
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_DABT_CUR:
 	case ESR_ELx_EC_IABT_CUR:
-		el1_abort(regs, esr);
+		el1_abort(regs, esr, far);
 		break;
 	/*
 	 * We don't handle ESR_ELx_EC_SP_ALIGN, since we will have hit a
 	 * recursive exception when trying to push the initial pt_regs.
 	 */
 	case ESR_ELx_EC_PC_ALIGN:
-		el1_pc(regs, esr);
+		el1_pc(regs, esr, far);
 		break;
 	case ESR_ELx_EC_SYS64:
 	case ESR_ELx_EC_UNKNOWN:
@@ -463,7 +461,7 @@ asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs)
 		el1_softstp(regs, esr);
 		break;
 	case ESR_ELx_EC_WATCHPT_CUR:
-		el1_watchpt(regs, esr);
+		el1_watchpt(regs, esr, far);
 		break;
 	case ESR_ELx_EC_BRK64:
 		el1_brk64(regs, esr);
@@ -510,19 +508,24 @@ static void noinstr el1_interrupt(struct pt_regs *regs,
 		__el1_irq(regs, handler);
 }
 
-asmlinkage void noinstr el1h_64_irq_handler(struct pt_regs *regs)
+asmlinkage void noinstr el1h_64_irq_handler(struct pt_regs *regs,
+					    unsigned long esr,
+					    unsigned long far)
 {
 	el1_interrupt(regs, handle_arch_irq);
 }
 
-asmlinkage void noinstr el1h_64_fiq_handler(struct pt_regs *regs)
+asmlinkage void noinstr el1h_64_fiq_handler(struct pt_regs *regs,
+					    unsigned long esr,
+					    unsigned long far)
 {
 	el1_interrupt(regs, handle_arch_fiq);
 }
 
-asmlinkage void noinstr el1h_64_error_handler(struct pt_regs *regs)
+asmlinkage void noinstr el1h_64_error_handler(struct pt_regs *regs,
+					      unsigned long esr,
+					      unsigned long far)
 {
-	unsigned long esr = read_sysreg(esr_el1);
 	irqentry_state_t state;
 
 	local_daif_restore(DAIF_ERRCTX);
@@ -531,20 +534,16 @@ asmlinkage void noinstr el1h_64_error_handler(struct pt_regs *regs)
 	irqentry_nmi_exit(regs, state);
 }
 
-static void noinstr el0_da(struct pt_regs *regs, unsigned long esr)
+static void noinstr el0_da(struct pt_regs *regs, unsigned long esr, unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
-
 	arm64_enter_from_user_mode(regs);
 	local_daif_restore(DAIF_PROCCTX);
 	do_mem_abort(far, esr, regs);
 	arm64_exit_to_user_mode(regs);
 }
 
-static void noinstr el0_ia(struct pt_regs *regs, unsigned long esr)
+static void noinstr el0_ia(struct pt_regs *regs, unsigned long esr, unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
-
 	/*
 	 * We've taken an instruction abort from userspace and not yet
 	 * re-enabled IRQs. If the address is a kernel address, apply
@@ -599,10 +598,8 @@ static void noinstr el0_sys(struct pt_regs *regs, unsigned long esr)
 	arm64_exit_to_user_mode(regs);
 }
 
-static void noinstr el0_pc(struct pt_regs *regs, unsigned long esr)
+static void noinstr el0_pc(struct pt_regs *regs, unsigned long esr, unsigned long far)
 {
-	unsigned long far = read_sysreg(far_el1);
-
 	if (!is_ttbr0_addr(instruction_pointer(regs)))
 		arm64_apply_bp_hardening();
 
@@ -694,11 +691,8 @@ static void noinstr el0_softstp(struct pt_regs *regs, unsigned long esr)
 	arm64_exit_to_user_mode(regs);
 }
 
-static void noinstr el0_watchpt(struct pt_regs *regs, unsigned long esr)
+static void noinstr el0_watchpt(struct pt_regs *regs, unsigned long esr, unsigned long far)
 {
-	/* Watchpoints are the only debug exception to write FAR_EL1 */
-	unsigned long far = read_sysreg(far_el1);
-
 	arm64_enter_from_user_mode(regs);
 	debug_exception_enter(regs);
 	do_watchpoint(far, esr, regs);
@@ -734,19 +728,19 @@ static void noinstr el0_fpac(struct pt_regs *regs, unsigned long esr)
 	arm64_exit_to_user_mode(regs);
 }
 
-asmlinkage void noinstr el0t_64_sync_handler(struct pt_regs *regs)
+asmlinkage void noinstr el0t_64_sync_handler(struct pt_regs *regs,
+					     unsigned long esr,
+					     unsigned long far)
 {
-	unsigned long esr = read_sysreg(esr_el1);
-
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC64:
 		el0_svc(regs);
 		break;
 	case ESR_ELx_EC_DABT_LOW:
-		el0_da(regs, esr);
+		el0_da(regs, esr, far);
 		break;
 	case ESR_ELx_EC_IABT_LOW:
-		el0_ia(regs, esr);
+		el0_ia(regs, esr, far);
 		break;
 	case ESR_ELx_EC_FP_ASIMD:
 		el0_fpsimd_acc(regs, esr);
@@ -768,7 +762,7 @@ asmlinkage void noinstr el0t_64_sync_handler(struct pt_regs *regs)
 		el0_sp(regs, esr);
 		break;
 	case ESR_ELx_EC_PC_ALIGN:
-		el0_pc(regs, esr);
+		el0_pc(regs, esr, far);
 		break;
 	case ESR_ELx_EC_UNKNOWN:
 		el0_undef(regs, esr);
@@ -789,7 +783,7 @@ asmlinkage void noinstr el0t_64_sync_handler(struct pt_regs *regs)
 		el0_softstp(regs, esr);
 		break;
 	case ESR_ELx_EC_WATCHPT_LOW:
-		el0_watchpt(regs, esr);
+		el0_watchpt(regs, esr, far);
 		break;
 	case ESR_ELx_EC_BRK64:
 		el0_brk64(regs, esr);
@@ -824,7 +818,9 @@ static void noinstr __el0_irq_handler_common(struct pt_regs *regs)
 	el0_interrupt(regs, handle_arch_irq);
 }
 
-asmlinkage void noinstr el0t_64_irq_handler(struct pt_regs *regs)
+asmlinkage void noinstr el0t_64_irq_handler(struct pt_regs *regs,
+					    unsigned long esr,
+					    unsigned long far)
 {
 	__el0_irq_handler_common(regs);
 }
@@ -834,14 +830,16 @@ static void noinstr __el0_fiq_handler_common(struct pt_regs *regs)
 	el0_interrupt(regs, handle_arch_fiq);
 }
 
-asmlinkage void noinstr el0t_64_fiq_handler(struct pt_regs *regs)
+asmlinkage void noinstr el0t_64_fiq_handler(struct pt_regs *regs,
+					    unsigned long esr,
+					    unsigned long far)
 {
 	__el0_fiq_handler_common(regs);
 }
 
-static void noinstr __el0_error_handler_common(struct pt_regs *regs)
+static void noinstr __el0_error_handler_common(struct pt_regs *regs,
+					       unsigned long esr)
 {
-	unsigned long esr = read_sysreg(esr_el1);
 	irqentry_state_t state;
 
 	arm64_enter_from_user_mode(regs);
@@ -853,9 +851,11 @@ static void noinstr __el0_error_handler_common(struct pt_regs *regs)
 	arm64_exit_to_user_mode(regs);
 }
 
-asmlinkage void noinstr el0t_64_error_handler(struct pt_regs *regs)
+asmlinkage void noinstr el0t_64_error_handler(struct pt_regs *regs,
+					      unsigned long esr,
+					      unsigned long far)
 {
-	__el0_error_handler_common(regs);
+	__el0_error_handler_common(regs, esr);
 }
 
 #ifdef CONFIG_COMPAT
@@ -884,19 +884,19 @@ static void noinstr el0_bkpt32(struct pt_regs *regs, unsigned long esr)
 	arm64_exit_to_user_mode(regs);
 }
 
-asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
+asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs,
+					     unsigned long esr,
+					     unsigned long far)
 {
-	unsigned long esr = read_sysreg(esr_el1);
-
 	switch (ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_SVC32:
 		el0_svc_compat(regs);
 		break;
 	case ESR_ELx_EC_DABT_LOW:
-		el0_da(regs, esr);
+		el0_da(regs, esr, far);
 		break;
 	case ESR_ELx_EC_IABT_LOW:
-		el0_ia(regs, esr);
+		el0_ia(regs, esr, far);
 		break;
 	case ESR_ELx_EC_FP_ASIMD:
 		el0_fpsimd_acc(regs, esr);
@@ -905,7 +905,7 @@ asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
 		el0_fpsimd_exc(regs, esr);
 		break;
 	case ESR_ELx_EC_PC_ALIGN:
-		el0_pc(regs, esr);
+		el0_pc(regs, esr, far);
 		break;
 	case ESR_ELx_EC_UNKNOWN:
 	case ESR_ELx_EC_CP14_MR:
@@ -924,7 +924,7 @@ asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
 		el0_softstp(regs, esr);
 		break;
 	case ESR_ELx_EC_WATCHPT_LOW:
-		el0_watchpt(regs, esr);
+		el0_watchpt(regs, esr, far);
 		break;
 	case ESR_ELx_EC_BKPT32:
 		el0_bkpt32(regs, esr);
@@ -934,19 +934,25 @@ asmlinkage void noinstr el0t_32_sync_handler(struct pt_regs *regs)
 	}
 }
 
-asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs)
+asmlinkage void noinstr el0t_32_irq_handler(struct pt_regs *regs,
+					    unsigned long esr,
+					    unsigned long far)
 {
 	__el0_irq_handler_common(regs);
 }
 
-asmlinkage void noinstr el0t_32_fiq_handler(struct pt_regs *regs)
+asmlinkage void noinstr el0t_32_fiq_handler(struct pt_regs *regs,
+					    unsigned long esr,
+					    unsigned long far)
 {
 	__el0_fiq_handler_common(regs);
 }
 
-asmlinkage void noinstr el0t_32_error_handler(struct pt_regs *regs)
+asmlinkage void noinstr el0t_32_error_handler(struct pt_regs *regs,
+					      unsigned long esr,
+					      unsigned long far)
 {
-	__el0_error_handler_common(regs);
+	__el0_error_handler_common(regs, esr);
 }
 #else /* CONFIG_COMPAT */
 UNHANDLED(el0t, 32, sync)
@@ -955,11 +961,10 @@ UNHANDLED(el0t, 32, fiq)
 UNHANDLED(el0t, 32, error)
 #endif /* CONFIG_COMPAT */
 
-asmlinkage void noinstr __noreturn handle_bad_stack(struct pt_regs *regs)
+asmlinkage void noinstr __noreturn handle_bad_stack(struct pt_regs *regs,
+						    unsigned long esr,
+						    unsigned long far)
 {
-	unsigned long esr = read_sysreg(esr_el1);
-	unsigned long far = read_sysreg(far_el1);
-
 	irqentry_nmi_enter(regs);
 	panic_bad_stack(regs, esr, far);
 }

@@ -26,27 +26,27 @@ static inline unsigned long disr_to_esr(u64 disr)
 	return esr;
 }
 
-asmlinkage void __noreturn handle_bad_stack(struct pt_regs *regs);
+asmlinkage void __noreturn handle_bad_stack(struct pt_regs *regs, unsigned long esr, unsigned long far);
 
-asmlinkage void el1t_64_sync_handler(struct pt_regs *regs);
-asmlinkage void el1t_64_irq_handler(struct pt_regs *regs);
-asmlinkage void el1t_64_fiq_handler(struct pt_regs *regs);
-asmlinkage void el1t_64_error_handler(struct pt_regs *regs);
+asmlinkage void el1t_64_sync_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el1t_64_irq_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el1t_64_fiq_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el1t_64_error_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
 
-asmlinkage void el1h_64_sync_handler(struct pt_regs *regs);
-asmlinkage void el1h_64_irq_handler(struct pt_regs *regs);
-asmlinkage void el1h_64_fiq_handler(struct pt_regs *regs);
-asmlinkage void el1h_64_error_handler(struct pt_regs *regs);
+asmlinkage void el1h_64_sync_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el1h_64_irq_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el1h_64_fiq_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el1h_64_error_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
 
-asmlinkage void el0t_64_sync_handler(struct pt_regs *regs);
-asmlinkage void el0t_64_irq_handler(struct pt_regs *regs);
-asmlinkage void el0t_64_fiq_handler(struct pt_regs *regs);
-asmlinkage void el0t_64_error_handler(struct pt_regs *regs);
+asmlinkage void el0t_64_sync_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el0t_64_irq_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el0t_64_fiq_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el0t_64_error_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
 
-asmlinkage void el0t_32_sync_handler(struct pt_regs *regs);
-asmlinkage void el0t_32_irq_handler(struct pt_regs *regs);
-asmlinkage void el0t_32_fiq_handler(struct pt_regs *regs);
-asmlinkage void el0t_32_error_handler(struct pt_regs *regs);
+asmlinkage void el0t_32_sync_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el0t_32_irq_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el0t_32_fiq_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
+asmlinkage void el0t_32_error_handler(struct pt_regs *regs, unsigned long esr, unsigned long far);
 
 asmlinkage void call_on_irq_stack(struct pt_regs *regs,
 				  void (*func)(struct pt_regs *));

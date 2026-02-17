@@ -560,6 +560,8 @@ SYM_CODE_START_LOCAL(__bad_stack)
 
 	/* Stash the regs for handle_bad_stack */
 	mov	x0, sp
+	mrs	x1, esr_el1
+	mrs	x2, far_el1
 
 	/* Time to die */
 	bl	handle_bad_stack
@@ -571,6 +573,8 @@ SYM_CODE_END(__bad_stack)
 SYM_CODE_START_LOCAL(el\el\ht\()_\regsize\()_\label)
 	kernel_entry \el, \regsize
 	mov	x0, sp
+	mrs	x1, esr_el1
+	mrs	x2, far_el1
 	bl	el\el\ht\()_\regsize\()_\label\()_handler
 	.if \el == 0
 	b	ret_to_user
