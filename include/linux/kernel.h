@@ -42,7 +42,11 @@
 struct completion;
 struct user;
 
-#ifdef CONFIG_PREEMPT_VOLUNTARY_BUILD
+#if defined(CONFIG_ARCH_HAS_PREEMPT_LAZY)
+
+# define might_resched() do { } while (0)
+
+#elif defined(CONFIG_PREEMPT_VOLUNTARY_BUILD)
 
 extern int __cond_resched(void);
 # define might_resched() __cond_resched()
