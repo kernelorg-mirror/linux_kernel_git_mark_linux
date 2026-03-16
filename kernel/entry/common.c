@@ -235,8 +235,10 @@ noinstr void irqentry_exit(struct pt_regs *regs, irqentry_state_t state)
 		}
 
 		instrumentation_begin();
-		if (IS_ENABLED(CONFIG_PREEMPTION))
+		if (IS_ENABLED(CONFIG_PREEMPTION) &&
+		    !IS_ENABLED(CONFIG_ARCH_HAS_OWN_IRQ_PREEMPTION)) {
 			irqentry_exit_cond_resched();
+		}
 
 		/* Covers both tracing and lockdep */
 		trace_hardirqs_on();

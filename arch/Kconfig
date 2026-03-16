@@ -102,6 +102,9 @@ config HOTPLUG_PARALLEL
 	bool
 	select HOTPLUG_SPLIT_STARTUP
 
+config ARCH_HAS_OWN_IRQ_PREEMPTION
+	bool
+
 config GENERIC_IRQ_ENTRY
 	bool
 
