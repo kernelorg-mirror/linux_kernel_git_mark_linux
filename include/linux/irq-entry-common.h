@@ -421,10 +421,18 @@ static __always_inline irqentry_state_t irqentry_enter_from_kernel_mode(struct p
 	return ret;
 }
 
-static __always_inline void irqentry_exit_to_kernel_mode(struct pt_regs *regs, irqentry_state_t state)
+static inline void irqentry_exit_to_kernel_mode_preempt(struct pt_regs *regs, irqentry_state_t state)
 {
-	lockdep_assert_irqs_disabled();
+	if (regs_irqs_disabled(regs) || state.exit_rcu)
+		return;
 
+	if (IS_ENABLED(CONFIG_PREEMPTION))
+		irqentry_exit_cond_resched();
+}
+
+static __always_inline void
+irqentry_exit_to_kernel_mode_after_preempt(struct pt_regs *regs, irqentry_state_t state)
+{
 	if (!regs_irqs_disabled(regs)) {
 		/*
 		 * If RCU was not watching on entry this needs to be done
@@ -443,9 +451,6 @@ static __always_inline void irqentry_exit_to_kernel_mode(struct pt_regs *regs, i
 		}
 
 		instrumentation_begin();
-		if (IS_ENABLED(CONFIG_PREEMPTION))
-			irqentry_exit_cond_resched();
-
 		/* Covers both tracing and lockdep */
 		trace_hardirqs_on();
 		instrumentation_end();
@@ -457,6 +462,17 @@ static __always_inline void irqentry_exit_to_kernel_mode(struct pt_regs *regs, i
 		if (state.exit_rcu)
 			ct_irq_exit();
 	}
+}
+
+static __always_inline void irqentry_exit_to_kernel_mode(struct pt_regs *regs, irqentry_state_t state)
+{
+	lockdep_assert_irqs_disabled();
+
+	instrumentation_begin();
+	irqentry_exit_to_kernel_mode_preempt(regs, state);
+	instrumentation_end();
+
+	irqentry_exit_to_kernel_mode_after_preempt(regs, state);
 }
 
 /**
