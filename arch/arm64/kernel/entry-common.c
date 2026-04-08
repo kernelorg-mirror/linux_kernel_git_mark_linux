@@ -143,15 +143,18 @@ extern void (*handle_arch_irq)(struct pt_regs *);
 extern void (*handle_arch_fiq)(struct pt_regs *);
 
 static void noinstr __panic_unhandled(struct pt_regs *regs, const char *vector,
-				      unsigned long esr)
+				      unsigned long esr, unsigned long far)
 {
 	irqentry_nmi_enter(regs);
 
 	console_verbose();
 
-	pr_crit("Unhandled %s exception on CPU%d, ESR 0x%016lx -- %s\n",
+	pr_crit("Unhandled %s exception on CPU%d\n"
+	        "  ESR 0x%016lx -- %s\n"
+		"  FAR 0x%016lx\n",
 		vector, smp_processor_id(), esr,
-		esr_get_class_string(esr));
+		esr_get_class_string(esr),
+		far);
 
 	__show_regs(regs);
 	panic("Unhandled exception");
@@ -163,7 +166,7 @@ asmlinkage void noinstr el##_##regsize##_##vector##_handler(struct pt_regs *regs
 							    unsigned long far)		\
 {											\
 	const char *desc = #regsize "-bit " #el " " #vector;				\
-	__panic_unhandled(regs, desc, esr);						\
+	__panic_unhandled(regs, desc, esr, far);					\
 }
 
 #ifdef CONFIG_ARM64_ERRATUM_1463225
@@ -470,7 +473,7 @@ asmlinkage void noinstr el1h_64_sync_handler(struct pt_regs *regs,
 		el1_fpac(regs, esr);
 		break;
 	default:
-		__panic_unhandled(regs, "64-bit el1h sync", esr);
+		__panic_unhandled(regs, "64-bit el1h sync", esr, far);
 	}
 }
 
