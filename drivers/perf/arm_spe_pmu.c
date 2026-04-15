@@ -16,6 +16,7 @@
 #include <linux/bitops.h>
 #include <linux/bug.h>
 #include <linux/capability.h>
+#include <linux/cpu_pm.h>
 #include <linux/cpuhotplug.h>
 #include <linux/cpumask.h>
 #include <linux/device.h>
@@ -1290,6 +1291,24 @@ static int arm_spe_pmu_cpu_teardown(unsigned int cpu, struct hlist_node *node)
 	__arm_spe_pmu_stop_one(spe_pmu);
 	return 0;
 }
+#ifdef CONFIG_CPU_PM
+static int cpu_pm_spe_notify(struct notifier_block *b, unsigned long cmd, void *v)
+{
+	return 0;
+}
+
+static int cpu_pm_spe_register(struct arm_spe_pmu *spe_pmu)
+{
+	return 0;
+}
+
+static void cpu_pm_spe_unregister(struct arm_spe_pmu *spe_pmu)
+{
+}
+#else /* CONFIG_CPU_PM */
+static inline int cpu_pm_spe_register(struct arm_spe_pmu *spe_pmu) { return 0; }
+static inline void cpu_pm_spe_unregister(struct arm_spe_pmu *spe_pmu) { }
+#endif /* CONFIG_CPU_PM */
 
 static int arm_spe_pmu_dev_init(struct arm_spe_pmu *spe_pmu)
 {
@@ -1315,13 +1334,25 @@ static int arm_spe_pmu_dev_init(struct arm_spe_pmu *spe_pmu)
 	ret = cpuhp_state_add_instance(arm_spe_pmu_online,
 				       &spe_pmu->hotplug_node);
 	if (ret)
-		free_percpu_irq(spe_pmu->irq, spe_pmu->handle);
+		goto out_free_irq;
 
+	ret = cpu_pm_spe_register(spe_pmu);
+	if (ret)
+		goto out_unregister_cpuhp;
+
+	return 0;
+
+out_unregister_cpuhp:
+	cpuhp_state_remove_instance_nocalls(arm_spe_pmu_online,
+					    &spe_pmu->hotplug_node);
+out_free_irq:
+	free_percpu_irq(spe_pmu->irq, spe_pmu->handle);
 	return ret;
 }
 
 static void arm_spe_pmu_dev_teardown(struct arm_spe_pmu *spe_pmu)
 {
+	cpu_pm_spe_unregister(spe_pmu);
 	cpuhp_state_remove_instance(arm_spe_pmu_online, &spe_pmu->hotplug_node);
 	free_percpu_irq(spe_pmu->irq, spe_pmu->handle);
 }
