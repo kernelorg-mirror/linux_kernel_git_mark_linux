@@ -747,7 +747,7 @@ static int arm_perf_teardown_cpu(unsigned int cpu, struct hlist_node *node)
 }
 
 #ifdef CONFIG_CPU_PM
-static void cpu_pm_pmu_setup(struct arm_pmu *armpmu, unsigned long cmd)
+static void uninstall_active_events(struct arm_pmu *armpmu)
 {
 	struct pmu_hw_events *hw_events = this_cpu_ptr(armpmu->hw_events);
 	struct perf_event *event;
@@ -757,24 +757,21 @@ static void cpu_pm_pmu_setup(struct arm_pmu *armpmu, unsigned long cmd)
 		event = hw_events->events[idx];
 		if (!event)
 			continue;
+		armpmu_stop(event, PERF_EF_UPDATE);
+	}
+}
 
-		switch (cmd) {
-		case CPU_PM_ENTER:
-			/*
-			 * Stop and update the counter
-			 */
-			armpmu_stop(event, PERF_EF_UPDATE);
-			break;
-		case CPU_PM_EXIT:
-		case CPU_PM_ENTER_FAILED:
-			 /*
-			  * Restore and enable the counter.
-			  */
-			armpmu_start(event, PERF_EF_RELOAD);
-			break;
-		default:
-			break;
-		}
+static void reinstall_active_events(struct arm_pmu *armpmu)
+{
+	struct pmu_hw_events *hw_events = this_cpu_ptr(armpmu->hw_events);
+	struct perf_event *event;
+	int idx;
+
+	for_each_set_bit(idx, armpmu->cntr_mask, ARMPMU_MAX_HWEVENTS) {
+		event = hw_events->events[idx];
+		if (!event)
+			continue;
+		armpmu_start(event, PERF_EF_RELOAD);
 	}
 }
 
@@ -801,11 +798,11 @@ static int cpu_pm_pmu_notify(struct notifier_block *b, unsigned long cmd,
 	switch (cmd) {
 	case CPU_PM_ENTER:
 		armpmu->stop(armpmu);
-		cpu_pm_pmu_setup(armpmu, cmd);
+		uninstall_active_events(armpmu);
 		break;
 	case CPU_PM_EXIT:
 	case CPU_PM_ENTER_FAILED:
-		cpu_pm_pmu_setup(armpmu, cmd);
+		reinstall_active_events(armpmu);
 		armpmu->start(armpmu);
 		break;
 	default:
