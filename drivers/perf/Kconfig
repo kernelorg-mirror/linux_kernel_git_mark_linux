@@ -250,6 +250,11 @@ config ARM_DMC620_PMU
 	  Support for PMU events monitoring on the ARM DMC-620 memory
 	  controller.
 
+config BOGO_PMU
+	tristate "Enable support for Bogo PMU"
+	help
+	  Enable support for a pure-software bogus PMU.
+
 config MARVELL_CN10K_TAD_PMU
 	tristate "Marvell CN10K LLC-TAD PMU"
 	depends on ARCH_THUNDER || (COMPILE_TEST && 64BIT)
