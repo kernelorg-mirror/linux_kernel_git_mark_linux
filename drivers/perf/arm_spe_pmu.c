@@ -1431,7 +1431,7 @@ static int __init arm_spe_pmu_init(void)
 {
 	int ret;
 
-	ret = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN, DRVNAME,
+	ret = cpuhp_setup_state_multi(CPUHP_AP_PERF_ARM_SPE_STARTING, DRVNAME,
 				      arm_spe_pmu_cpu_startup,
 				      arm_spe_pmu_cpu_teardown);
 	if (ret < 0)
