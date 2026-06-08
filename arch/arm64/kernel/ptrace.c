@@ -1174,13 +1174,15 @@ static int za_set(struct task_struct *target,
 	if (!system_supports_sme())
 		return -EINVAL;
 
+	fpsimd_flush_task_state(target);
+
 	/* Header */
 	if (count < sizeof(header))
 		return -EINVAL;
 	ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &header,
 				 0, sizeof(header));
 	if (ret)
-		goto out;
+		return ret;
 
 	/*
 	 * All current ZA_PT_* flags are consumed by
@@ -1190,7 +1192,7 @@ static int za_set(struct task_struct *target,
 	ret = vec_set_vector_length(target, ARM64_VEC_SME, header.vl,
 		((unsigned long)header.flags) << 16);
 	if (ret)
-		goto out;
+		return ret;
 
 	/*
 	 * Actual VL set may be different from what the user asked
@@ -1202,10 +1204,8 @@ static int za_set(struct task_struct *target,
 	/* Ensure there is some SVE storage for streaming mode */
 	if (!target->thread.sve_state) {
 		sve_alloc(target, false);
-		if (!target->thread.sve_state) {
-			ret = -ENOMEM;
-			goto out;
-		}
+		if (!target->thread.sve_state)
+			return -ENOMEM;
 	}
 
 	/*
@@ -1219,7 +1219,7 @@ static int za_set(struct task_struct *target,
 	/* If there is no data then disable ZA */
 	if (!count) {
 		target->thread.svcr &= ~SVCR_ZA_MASK;
-		goto out;
+		return 0;
 	}
 
 	/*
@@ -1227,10 +1227,8 @@ static int za_set(struct task_struct *target,
 	 * register data, the data layout will be wrong: don't even
 	 * try to set the registers in this case.
 	 */
-	if (vq != sve_vq_from_vl(header.vl)) {
-		ret = -EIO;
-		goto out;
-	}
+	if (vq != sve_vq_from_vl(header.vl))
+		return -EIO;
 
 	BUILD_BUG_ON(ZA_PT_ZA_OFFSET != sizeof(header));
 	start = ZA_PT_ZA_OFFSET;
@@ -1239,15 +1237,13 @@ static int za_set(struct task_struct *target,
 				 target->thread.sme_state,
 				 start, end);
 	if (ret)
-		goto out;
+		return ret;
 
 	/* Mark ZA as active and let userspace use it */
 	set_tsk_thread_flag(target, TIF_SME);
 	target->thread.svcr |= SVCR_ZA_MASK;
 
-out:
-	fpsimd_flush_task_state(target);
-	return ret;
+	return 0;
 }
 
 static int zt_get(struct task_struct *target,
