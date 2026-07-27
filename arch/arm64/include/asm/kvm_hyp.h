@@ -39,23 +39,23 @@ DECLARE_PER_CPU(struct kvm_nvhe_init_params, kvm_init_params);
 #define VHE_ALT_KEY	ARM64_HAS_VIRT_HOST_EXTN
 #endif
 
-#define read_sysreg_elx(r,nvh,vh)					\
-	({								\
-		u64 reg;						\
-		asm volatile(ALTERNATIVE(__mrs_s("%0", r##nvh),		\
-					 __mrs_s("%0", r##vh),		\
-					 VHE_ALT_KEY)			\
-			     : "=r" (reg));				\
-		reg;							\
+#define read_sysreg_elx(r,nvh,vh)						\
+	({									\
+		u64 reg;							\
+		asm volatile(ALTERNATIVE_NORELOC(__mrs_s("%0", r##nvh),		\
+						 __mrs_s("%0", r##vh),		\
+					 	 VHE_ALT_KEY)			\
+			     : "=r" (reg));					\
+		reg;								\
 	})
 
-#define write_sysreg_elx(v,r,nvh,vh)					\
-	do {								\
-		u64 __val = (u64)(v);					\
-		asm volatile(ALTERNATIVE(__msr_s(r##nvh, "%x0"),	\
-					 __msr_s(r##vh, "%x0"),		\
-					 VHE_ALT_KEY)			\
-					 : : "rZ" (__val));		\
+#define write_sysreg_elx(v,r,nvh,vh)						\
+	do {									\
+		u64 __val = (u64)(v);						\
+		asm volatile(ALTERNATIVE_NORELOC(__msr_s(r##nvh, "%x0"),	\
+					 __msr_s(r##vh, "%x0"),			\
+					 VHE_ALT_KEY)				\
+					 : : "rZ" (__val));			\
 	} while (0)
 
 #define read_sysreg_el0(r)	read_sysreg_elx(r, _EL0, _EL02)
