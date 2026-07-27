@@ -66,9 +66,9 @@ static inline notrace u64 arch_timer_read_cntpct_el0(void)
 {
 	u64 cnt;
 
-	asm volatile(ALTERNATIVE("isb\n mrs %0, cntpct_el0",
-				 "nop\n" __mrs_s("%0", SYS_CNTPCTSS_EL0),
-				 ARM64_HAS_ECV)
+	asm volatile(ALTERNATIVE_NORELOC("isb\n mrs %0, cntpct_el0",
+					 "nop\n" __mrs_s("%0", SYS_CNTPCTSS_EL0),
+					 ARM64_HAS_ECV)
 		     : "=r" (cnt));
 
 	return cnt;
@@ -78,9 +78,9 @@ static inline notrace u64 arch_timer_read_cntvct_el0(void)
 {
 	u64 cnt;
 
-	asm volatile(ALTERNATIVE("isb\n mrs %0, cntvct_el0",
-				 "nop\n" __mrs_s("%0", SYS_CNTVCTSS_EL0),
-				 ARM64_HAS_ECV)
+	asm volatile(ALTERNATIVE_NORELOC("isb\n mrs %0, cntvct_el0",
+					 "nop\n" __mrs_s("%0", SYS_CNTVCTSS_EL0),
+					 ARM64_HAS_ECV)
 		     : "=r" (cnt));
 
 	return cnt;
