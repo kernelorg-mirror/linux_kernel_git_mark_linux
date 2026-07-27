@@ -328,7 +328,7 @@ static __always_inline void __load_stage2(struct kvm_s2_mmu *mmu)
 	 * above before we can switch to the EL1/EL0 translation regime used by
 	 * the guest.
 	 */
-	asm(ALTERNATIVE("nop", "isb", ARM64_WORKAROUND_SPECULATIVE_AT));
+	asm(ALTERNATIVE_NORELOC("nop", "isb", ARM64_WORKAROUND_SPECULATIVE_AT));
 }
 
 static inline struct kvm *kvm_s2_mmu_to_kvm(struct kvm_s2_mmu *mmu)
