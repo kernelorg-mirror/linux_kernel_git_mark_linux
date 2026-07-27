@@ -264,6 +264,9 @@ SECTIONS
 		*(.altinstructions)
 		__alt_instructions_end = .;
 	}
+	.altinstr_replacement : {
+		*(.altinstr_replacement)
+	}
 
 	UNWIND_DATA_SECTIONS
 

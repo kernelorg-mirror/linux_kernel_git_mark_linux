@@ -53,6 +53,9 @@ SECTIONS
 	.altinstructions : {
 		*(.altinstructions)
 	}
+	.altinstr_replacement : {
+		*(.altinstr_replacement)
+	}
 
 	.dynamic	: { *(.dynamic) }		:text	:dynamic
 

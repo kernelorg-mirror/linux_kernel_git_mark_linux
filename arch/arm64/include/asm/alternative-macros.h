@@ -53,20 +53,20 @@
  *
  * Alternatives with callbacks do not generate replacement instructions.
  */
-#define __ALTERNATIVE(oldinstr, newinstr, cpucap)			\
+#define __ALTERNATIVE(oldinstr, newinstr, cpucap, newpush, newpop)	\
 	"661:\n\t"							\
 	oldinstr "\n"							\
 	"662:\n"							\
 	".pushsection .altinstructions,\"a\"\n"				\
 	ALTINSTR_ENTRY(cpucap)						\
 	".popsection\n"							\
-	".subsection 1\n"						\
+	newpush "\n"							\
 	"663:\n\t"							\
 	newinstr "\n"							\
 	"664:\n\t"							\
 	".org	. - (664b-663b) + (662b-661b)\n\t"			\
 	".org	. - (662b-661b) + (664b-663b)\n\t"			\
-	".previous\n"							\
+	newpop "\n"
 
 #define __ALTERNATIVE_CB(oldinstr, cpucap, cb)				\
 	"661:\n\t"							\
@@ -79,7 +79,13 @@
 	"664:\n\t"							\
 
 #define _ALTERNATIVE(oldinstr, newinstr, cpucap)			\
-	__ALTERNATIVE(oldinstr, newinstr, cpucap)
+	__ALTERNATIVE(oldinstr, newinstr, cpucap,			\
+		      ".subsection 1", ".previous")
+
+#define ALTERNATIVE_NORELOC(oldinstr, newinstr, cpucap)			\
+	__ALTERNATIVE(oldinstr, newinstr, cpucap,			\
+		      ".pushsection .altinstr_replacement, \"ax\"",	\
+		      ".popsection")
 
 #define ALTERNATIVE_CB(oldinstr, cpucap, cb) \
 	__ALTERNATIVE_CB(oldinstr, (1 << ARM64_CB_SHIFT) | (cpucap), cb)
