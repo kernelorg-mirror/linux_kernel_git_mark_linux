@@ -4,6 +4,8 @@
 
 #include <linux/thread_info.h>
 
+#include <asm/thunk.h>
+
 #define PREEMPT_NEED_RESCHED	BIT(32)
 #define PREEMPT_ENABLED	(PREEMPT_NEED_RESCHED)
 
@@ -74,7 +76,6 @@ static inline bool __preempt_count_dec_and_test(void)
 
 #ifdef CONFIG_PREEMPTION
 
-void preempt_schedule(void);
 void preempt_schedule_notrace(void);
 
 #ifdef CONFIG_PREEMPT_DYNAMIC
@@ -86,8 +87,8 @@ void dynamic_preempt_schedule_notrace(void);
 
 #else /* CONFIG_PREEMPT_DYNAMIC */
 
-#define __preempt_schedule()		preempt_schedule()
-#define __preempt_schedule_notrace()	preempt_schedule_notrace()
+#define __preempt_schedule()		thunk_preempt_schedule()
+#define __preempt_schedule_notrace()	thunk_preempt_schedule_notrace()
 
 #endif /* CONFIG_PREEMPT_DYNAMIC */
 #endif /* CONFIG_PREEMPTION */
