@@ -765,6 +765,8 @@ static int fpmr_set(struct task_struct *target, const struct user_regset *regset
 	if (!system_supports_fpmr())
 		return -EINVAL;
 
+	fpsimd_flush_task_state(target);
+
 	fpmr = target->thread.uw.fpmr;
 
 	ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &fpmr, 0, count);
@@ -772,8 +774,6 @@ static int fpmr_set(struct task_struct *target, const struct user_regset *regset
 		return ret;
 
 	target->thread.uw.fpmr = fpmr;
-
-	fpsimd_flush_task_state(target);
 
 	return 0;
 }
