@@ -1958,30 +1958,35 @@ static int compat_vfp_set(struct task_struct *target,
 			  unsigned int pos, unsigned int count,
 			  const void *kbuf, const void __user *ubuf)
 {
-	struct user_fpsimd_state *uregs;
+	struct user_fpsimd_state newstate;
 	compat_ulong_t fpscr;
 	int ret, vregs_end_pos;
 
 	if (!system_supports_fpsimd())
 		return -EINVAL;
 
-	uregs = &target->thread.uw.fpsimd_state;
+	fpsimd_flush_task_state(target);
+
+	newstate = target->thread.uw.fpsimd_state;
+	fpscr = (uregs->fpsr & VFP_FPSCR_STAT_MASK) |
+		(uregs->fpcr & VFP_FPSCR_CTRL_MASK);
 
 	vregs_end_pos = VFP_STATE_SIZE - sizeof(compat_ulong_t);
-	ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, uregs, 0,
+	ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &newstate, 0,
 				 vregs_end_pos);
+	if (ret)
+		return ret;
 
-	if (count && !ret) {
-		ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &fpscr,
-					 vregs_end_pos, VFP_STATE_SIZE);
-		if (!ret) {
-			uregs->fpsr = fpscr & VFP_FPSCR_STAT_MASK;
-			uregs->fpcr = fpscr & VFP_FPSCR_CTRL_MASK;
-		}
-	}
+	ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &fpscr,
+				 vregs_end_pos, VFP_STATE_SIZE);
+	if (ret)
+		return ret;
 
-	fpsimd_flush_task_state(target);
-	return ret;
+	newstate.fpsr = fpscr & VFP_FPSCR_STAT_MASK;
+	newstate.fpcr = fpscr & VFP_FPSCR_CTRL_MASK;
+	target->thread.uw.fpsimd_state = newstate;
+
+	return 0;
 }
 
 static int compat_tls_get(struct task_struct *target,
