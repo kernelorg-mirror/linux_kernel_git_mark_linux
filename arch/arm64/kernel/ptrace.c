@@ -693,12 +693,13 @@ static int fpr_set(struct task_struct *target, const struct user_regset *regset,
 	if (!system_supports_fpsimd())
 		return -EINVAL;
 
+	fpsimd_flush_task_state(target);
+
 	ret = __fpr_set(target, regset, pos, count, kbuf, ubuf, 0);
 	if (ret)
 		return ret;
 
 	fpsimd_sync_to_effective_state_zeropad(target);
-	fpsimd_flush_task_state(target);
 
 	return ret;
 }
