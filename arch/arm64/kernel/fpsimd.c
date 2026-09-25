@@ -2003,28 +2003,37 @@ void __efi_fpsimd_begin(void)
 
 	if (may_use_simd()) {
 		kernel_neon_begin(&efi_fpsimd_state);
-	} else {
-		/*
-		 * We are running in hardirq or NMI context, and the only
-		 * legitimate case where this might happen is when EFI pstore
-		 * is attempting to record the system's dying gasps into EFI
-		 * variables. This could be due to an oops, a panic or a call
-		 * to emergency_restart(), and in none of those cases, we can
-		 * expect the current task to ever return to user space again,
-		 * or for the kernel to resume any normal execution, for that
-		 * matter (an oops in hardirq context triggers a panic too).
-		 *
-		 * Therefore, there is no point in attempting to preserve any
-		 * SVE/SME state here. On the off chance that we might have
-		 * ended up here for a different reason inadvertently, kill the
-		 * task and preserve/restore the base FP/SIMD state, which
-		 * might belong to kernel mode FP/SIMD.
-		 */
-		pr_warn_ratelimited("Calling EFI runtime from %s context\n",
-				    in_nmi() ? "NMI" : "hardirq");
-		force_signal_inject(SIGKILL, SI_KERNEL, 0, 0);
-		fpsimd_save_state(&efi_fpsimd_state);
+		return;
 	}
+
+	/*
+	 * TODO: write this more clearly.
+	 *
+	 * We are running in hardirq or NMI context, and the only
+	 * legitimate case where this might happen is when EFI pstore
+	 * is attempting to record the system's dying gasps into EFI
+	 * variables. This could be due to an oops, a panic or a call
+	 * to emergency_restart().
+	 *
+	 * The FPSIMD/SVE/SME registers (and CPACR controls) are in some
+	 * arbitrary state. The data structures which track the live state
+	 * could also be incorrect. We cannot safely save away any state, and
+	 * we cannot touch any state until we've performed some reset.
+	 *
+	 * We CANNOT safely return to the context that owned the FPSIMD/SVE/SME
+	 * register state.
+	 *
+	 * Reset the registers into a sane state, discarding anything live.
+	 *
+	 */
+	pr_warn_ratelimited("Calling EFI runtime from %s context\n",
+			    in_nmi() ? "NMI" : "hardirq");
+	force_signal_inject(SIGKILL, SI_KERNEL, 0, 0);
+
+	/*
+	 * Reset the FPSIMD/SVE/SME state (e.g. to exit streaming mode).
+	 */
+	fpsimd_flush_cpu_state();
 }
 
 /*
@@ -2037,9 +2046,11 @@ void __efi_fpsimd_end(void)
 
 	if (may_use_simd()) {
 		kernel_neon_end(&efi_fpsimd_state);
-	} else {
-		fpsimd_load_state(&efi_fpsimd_state);
 	}
+
+	/*
+	 * TODO: explain there's nothing to restore.
+	 */
 }
 
 #endif /* CONFIG_EFI */
